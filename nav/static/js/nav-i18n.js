@@ -361,6 +361,7 @@
         '抓取对方首页的 <title>、favicon 和 description': "Fetch the site's <title>, favicon and description",
         '选择图标:纯色文字 / 在线获取 / 本地上传': 'Choose icon: color letter / online / upload',
         '按网址抓取对方网站的 meta description': "Fetch the site's meta description",
+        '高级选项(子网页 / 备用网址)': 'Advanced (sub-pages / alternate URLs)',
         '子网页 / 子站点': 'Sub-pages / sub-sites',
         '自定义': 'Custom',
         '(可选,点击卡片时弹窗选择)': '(optional, pick in the card dialog)',

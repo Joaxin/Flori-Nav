@@ -190,11 +190,11 @@ class UnifiedBulkbarTests(TestCase):
 
 
 class CollapseVisibilityConflictTests(TestCase):
-    """Tailwind 的 .collapse 工具类会污染 Bootstrap 折叠组件(通用防护)。
+    """「高级选项」折叠区靠 Bootstrap 的 .collapse + .show 展开。
 
     tailwind.gen.css 里有个同名工具类 .collapse{visibility:collapse},对非表格元素
-    等于 hidden,且无条件命中 —— 曾让添加站点「高级选项」展开成 120px 空白。该项已
-    改为常显,但 nav-sites.css 仍须把 visibility 拨回 visible,避免下次再用 .collapse 踩坑。
+    等于 hidden,且无条件命中 —— 展开后高度 120px 但一片空白。nav-sites.css 必须
+    显式把 visibility 拨回 visible;收起仍由 .collapse:not(.show) 的 display:none 负责。
     """
 
     @classmethod
@@ -212,3 +212,10 @@ class CollapseVisibilityConflictTests(TestCase):
         rules = dict(_rule_blocks(self.css))
         self.assertIn('.collapse', rules)
         self.assertIn('visibility: visible', rules['.collapse'])
+
+    def test_collapse_not_show_hides(self):
+        """兼容层没生成 Bootstrap 的收起规则,必须自己补 .collapse:not(.show){display:none};
+        否则折叠区默认摊开、点开也收不回去(「高级选项」实测 h=120 display=block)。"""
+        rules = dict(_rule_blocks(self.css))
+        self.assertIn('.collapse:not(.show)', rules)
+        self.assertIn('display: none', rules['.collapse:not(.show)'])

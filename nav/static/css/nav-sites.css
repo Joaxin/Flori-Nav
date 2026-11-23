@@ -1701,10 +1701,13 @@
 .nav-topbar a:focus-visible, .nav-topbar button:focus-visible {
     outline: none; box-shadow: var(--d-ring); border-radius: var(--nav-r-sm);
 }
-/* 防护:Tailwind 预编译里的 .collapse 是 visibility:collapse(隐藏)工具类,与 Bootstrap 折叠组件同名,
-   叠加后 .collapse.show 也会被判不可见 —— 添加站点「高级选项」曾因此展开成 120px 空白(2026-11-23 修复)。
-   本站不用 Tailwind 的 collapse 语义,统一让 Bootstrap 语义生效(收起仍靠 :not(.show) 的 display:none)。 */
+/* Tailwind 预编译里的 .collapse 是 visibility:collapse(隐藏)工具类,和 Bootstrap 折叠组件同名:
+   · 它让 .collapse(.show 时也一样)被判不可见 —— 「高级选项」展开后成 120px 空白;
+   · 而 Bootstrap 的收起规则 .collapse:not(.show){display:none} 在兼容层里并没有生成 ——
+     只补可见性的话,折叠区会变成默认摊开、怎么点都收不起来(2026-11-23 两处一并修)。
+   下面第 2 条按 Bootstrap 原版语义补齐,折叠才真的能开能合。 */
 .collapse { visibility: visible; }
+.collapse:not(.show) { display: none; }
 
 /* 弹窗不在 .nav-hub 作用域里,默认焦点环会贴着 .btn-link 画一圈硬边黑框
    (「高级选项(子网页 / 备用网址)」被看成坏掉)。改成淡底高亮:不描边,
