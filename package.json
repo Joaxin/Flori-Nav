@@ -1,0 +1,14 @@
+{
+  "name": "flori-nav-css",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tailwind 预编译:把浏览器运行时替换成静态 CSS",
+  "scripts": {
+    "build:css": "tailwindcss -i assets/tailwind.css -o nav/static/css/tailwind.gen.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "tailwindcss": "^4.1.0"
+  },
+  "packageManager": "pnpm@12.18.0"
+}

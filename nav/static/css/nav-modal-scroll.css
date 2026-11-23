@@ -1,0 +1,16 @@
+/* ==========================================================================
+   R-23 编辑弹窗 70vh 内滚动骨架(零迁移,独立组件样式)
+   - 只作用于两个既有编辑弹窗:主人 #addSiteModal、访客 #navGuestEditModal;
+     不新增弹窗,不改 dialog / dialog-lg 形态 class,不写全局裸 .modal-body 规则。
+   - 内容区超高时在 .modal-body 内部滚动,弹窗本体不拉满视口;滚动链被
+     overscroll-behavior: contain 截断,不带动背景页面。
+   - 几何口径与既有先例 #navPetSettingsModal .modal-body 一致(内部 overflow-y:auto),
+     宽度 / 居中 / 形态仍由共享骨架 class 决定,本文件不另写几何覆盖。
+   ========================================================================== */
+
+#addSiteModal .modal-body,
+#navGuestEditModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}

@@ -1,0 +1,285 @@
+{
+ "format": "nav-public",
+ "version": 1,
+ "generatedAt": "2026-11-21T08:25:22.814733+00:00",
+ "scope": "builtin",
+ "brand": {
+  "name": "寻花集",
+  "tagline": "网址导航"
+ },
+ "categories": [
+  "内置网站"
+ ],
+ "sites": [
+  {
+   "name": "ChatGPT",
+   "url": "https://chatgpt.com",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "OpenAI 对话入口,GPT-5 系列 + 深度研究/Agent",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "OpenAI 平台",
+     "url": "https://platform.openai.com"
+    },
+    {
+     "name": "Codex",
+     "url": "https://platform.openai.com/codex"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "需代理",
+    "免费",
+    "多模态"
+   ],
+   "order": null
+  },
+  {
+   "name": "Claude",
+   "url": "https://claude.ai",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "Anthropic 对话,当前 Opus 5.5 / Sonnet 5.5",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "Claude Code",
+     "url": "https://claude.com/product/claude-code"
+    },
+    {
+     "name": "Anthropic 控制台",
+     "url": "https://console.anthropic.com"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "需代理",
+    "免费",
+    "编程"
+   ],
+   "order": null
+  },
+  {
+   "name": "Gemini",
+   "url": "https://gemini.google.com",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "Google 助手,Gemini 3.1 Pro,整合 Workspace",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "AI Studio",
+     "url": "https://aistudio.google.com"
+    },
+    {
+     "name": "Google Flow",
+     "url": "https://flow.google.com"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "需代理",
+    "订阅",
+    "多模态"
+   ],
+   "order": null
+  },
+  {
+   "name": "Grok",
+   "url": "https://grok.com",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "xAI 对话,实时信息与 X 内容联动",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "xAI 控制台",
+     "url": "https://console.x.ai"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "需代理",
+    "订阅",
+    "长文本"
+   ],
+   "order": null
+  },
+  {
+   "name": "DeepSeek",
+   "url": "https://chat.deepseek.com",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "深度求索,DeepSeek V4 系列,推理与代码强",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "DeepSeek 开放平台",
+     "url": "https://platform.deepseek.com"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "国产",
+    "免费",
+    "编程"
+   ],
+   "order": null
+  },
+  {
+   "name": "通义千问 Qwen",
+   "url": "https://chat.qwen.ai",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "阿里 Qwen3.7-Max,长上下文与多模态",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "通义",
+     "url": "https://tongyi.aliyun.com"
+    },
+    {
+     "name": "阿里云百炼",
+     "url": "https://bailian.console.aliyun.com"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "国产",
+    "免费",
+    "多模态"
+   ],
+   "order": null
+  },
+  {
+   "name": "豆包",
+   "url": "https://www.doubao.com",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "字节豆包,Seed 2.0 系列,中文口语化",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "火山方舟",
+     "url": "https://console.volcengine.com/ark"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "国产",
+    "免费",
+    "语音"
+   ],
+   "order": null
+  },
+  {
+   "name": "智谱清言 GLM",
+   "url": "https://chatglm.cn",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "智谱 GLM-5.2,中文写作与智能体",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "Z.ai",
+     "url": "https://chat.z.ai"
+    },
+    {
+     "name": "智谱开放平台",
+     "url": "https://bigmodel.cn"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "国产",
+    "免费",
+    "编程"
+   ],
+   "order": null
+  },
+  {
+   "name": "Kimi",
+   "url": "https://www.kimi.com",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "月之暗面,长文档阅读与资料整理",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "Moonshot 开放平台",
+     "url": "https://platform.moonshot.cn"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "国产",
+    "免费",
+    "长文本"
+   ],
+   "order": null
+  },
+  {
+   "name": "MiniMax",
+   "url": "https://www.minimax.io",
+   "category": "内置网站",
+   "subcat": "",
+   "description": "MiniMax 官方站,M 系列模型与语音",
+   "site_title": "",
+   "favicon": "",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [
+    {
+     "name": "海螺 AI",
+     "url": "https://hailuoai.com"
+    }
+   ],
+   "alternates": [],
+   "tags": [
+    "国产",
+    "免费",
+    "语音"
+   ],
+   "order": null
+  }
+ ]
+}

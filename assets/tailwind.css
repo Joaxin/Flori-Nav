@@ -1,0 +1,245 @@
+/* 由 nav/templates/nav/base.html 的内联 Tailwind 块抽出(2026-11-12)。
+   改样式请改这里,然后 npm run build:css —— 不要再往模板里写 type="text/tailwindcss"。 */
+@import "tailwindcss";
+@source "../nav/templates/**/*.html";
+@source "../nav/static/js/**/*.js";
+
+@custom-variant dark (&:where([data-bs-theme="dark"], [data-bs-theme="dark"] *));
+        @layer base {
+            :root {
+                --app-primary: #635bff;
+                --bs-body-bg: #f8f9fa; --bs-body-color: #212529;
+                --bs-border-color: #dee2e6; --bs-secondary-color: #6c757d;
+                --bs-tertiary-bg: #f8f9fa; --bs-danger: #dc3545; --bs-success: #198754;
+            }
+            [data-bs-theme="dark"] {
+                --bs-body-bg: #14181f; --bs-body-color: #d8dee8;
+                --bs-border-color: #2a3140; --bs-secondary-color: #98a2b3;
+                --bs-tertiary-bg: #1b222d;
+            }
+            body { @apply bg-[var(--bs-body-bg)] text-[var(--bs-body-color)] antialiased;
+                   font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+                   background-image: radial-gradient(1100px 380px at 50% -120px, color-mix(in srgb, var(--app-primary) 12%, transparent), transparent 70%);
+                   background-attachment: fixed; }
+        }
+        @layer components {
+            /* ---- 按钮 ---- */
+            .btn { @apply inline-flex items-center justify-center gap-1 rounded-lg border px-3 py-1.5 text-sm font-medium cursor-pointer transition-colors leading-normal; }
+            .btn-sm, .btn-group-sm > .btn { @apply px-2.5 py-1 text-xs; }
+            .btn-primary { @apply border-transparent text-white; background-color: var(--nav-accent); }
+            .btn-primary:hover { @apply brightness-90; }
+            .btn-secondary { @apply border-[var(--bs-border-color)] bg-[var(--bs-tertiary-bg)] text-[var(--bs-body-color)]; }
+            .btn-secondary:hover { @apply border-[var(--nav-accent)] text-[var(--nav-accent)]; }
+            .btn-success { @apply bg-emerald-600 border-emerald-600 text-white; }
+            .btn-danger { @apply bg-red-600 border-red-600 text-white; }
+            .btn-outline-primary { @apply border-[color-mix(in_srgb,var(--nav-accent)_55%,var(--bs-border-color))] text-[var(--nav-accent)]; }
+            .btn-outline-primary:hover { @apply bg-[var(--nav-accent)] text-white; }
+            .btn-outline-secondary { @apply border-[var(--bs-border-color)] text-[var(--bs-secondary-color)]; }
+            .btn-outline-secondary:hover { @apply border-[var(--nav-accent)] text-[var(--nav-accent)]; }
+            .btn-outline-danger { @apply border-red-300 text-red-500; }
+            .btn-outline-danger:hover { @apply bg-red-500 text-white; }
+            .btn-link { @apply border-transparent text-[var(--nav-accent)] underline-offset-2 hover:underline; }
+            .btn-close { box-sizing: content-box; width: 1em; height: 1em; padding: .25em;
+                border: 0; border-radius: .375rem; opacity: .55; cursor: pointer;
+                background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236c757d'%3e%3cpath d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.586 6.586a1 1 0 1 1-1.414 1.414L8 9.414l-6.586 6.586a1 1 0 1 1-1.414-1.414L6.586 8 .293 1.414a1 1 0 0 1 0-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat; }
+            .btn-close:hover { opacity: .9; }
+            .offcanvas-header { @apply flex items-center justify-between gap-2 p-3; }
+            .offcanvas-title { @apply text-base font-semibold; }
+            /* ---- 表单 ---- */
+            .form-control, .form-select { @apply block w-full rounded-lg border border-[var(--bs-border-color)] bg-[var(--bs-body-bg)] px-3 py-1.5 text-sm text-[var(--bs-body-color)] outline-none; }
+            .form-control:focus, .form-select:focus { @apply border-[var(--nav-accent)] ring-2 ring-[color-mix(in_srgb,var(--nav-accent)_25%,transparent)] border-solid; }
+            .form-control-sm, .form-select-sm { @apply px-2 py-1 text-xs; }
+            .form-select { @apply pr-8 bg-no-repeat; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-position: right .6rem center; background-size: 14px; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236c757d' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); }
+            .form-select::-ms-expand { display: none; }
+            .form-label { @apply block text-xs font-medium mb-1; }
+            .form-text { @apply text-xs opacity-70 [overflow-wrap:anywhere]; }
+            .input-group { @apply relative flex; }
+            .input-group > * { @apply min-w-0; }
+            .input-group > :not(:first-child) { @apply rounded-l-none border-l-0 -ml-px; }
+            .input-group > :not(:last-child) { @apply rounded-r-none; }
+            .input-group-text { @apply flex items-center px-3 border border-[var(--bs-border-color)] bg-[var(--bs-tertiary-bg)] text-[var(--bs-secondary-color)] text-sm; }
+            .form-check { @apply flex items-center gap-2; }
+            .form-check-input { @apply appearance-none relative inline-block h-5 w-9 rounded-full bg-gray-300 align-middle cursor-pointer transition-colors shrink-0; }
+            .form-check-input:checked { @apply bg-[var(--nav-accent)] border-[var(--nav-accent)]; }
+            .form-check-input::before { content: ""; @apply absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform; }
+            .form-check-input:checked::before { @apply translate-x-4; }
+            .form-check-label { @apply text-sm cursor-pointer select-none; }
+            .form-switch .form-check-input { @apply w-9; }
+            /* ---- 弹窗 ---- */
+            .modal { @apply hidden fixed inset-0 z-[1055] overflow-x-hidden overflow-y-auto outline-none; }
+            .modal.show { @apply block; }
+            /* 弹窗宽度跟视口走,而不是写死 512/768px(2026-11-12 宽屏反馈) */
+            .modal-dialog { @apply relative z-[1056] mx-auto my-4 pointer-events-none;
+                            width: min(92vw, 560px); }
+            .modal-lg .modal-dialog, .modal-dialog.modal-lg { max-width: none; width: min(94vw, 980px); }
+            .modal-sm .modal-dialog, .modal-dialog.modal-sm { max-width: none; width: min(92vw, 320px); }   /* 确认/选择类小弹窗 */
+            @media (min-width: 1600px) {
+                .modal-dialog { width: min(88vw, 720px); }
+                .modal-lg .modal-dialog, .modal-dialog.modal-lg { width: min(90vw, 1180px); }
+            }
+            .modal-dialog-centered { @apply flex min-h-[calc(100%-2rem)] items-center; }
+            .modal-dialog-scrollable .modal-content { @apply max-h-[calc(100vh-2rem)]; }
+            .modal-dialog-scrollable .modal-body { @apply overflow-y-auto; }
+            .modal-content { @apply relative flex flex-col pointer-events-auto rounded-xl border border-[var(--bs-border-color)] bg-[var(--bs-body-bg)] shadow-2xl outline-none; }
+            .modal-header { @apply flex items-center justify-between gap-2 p-4 border-b border-[var(--bs-border-color)]; }
+            .modal-title { @apply text-lg font-semibold; }
+            .modal-body { @apply flex-1 p-4; }
+            .modal-footer { @apply flex items-center gap-2 p-4 border-t border-[var(--bs-border-color)]; }
+            .modal-backdrop { @apply fixed inset-0 z-[1050] bg-black/50 transition-opacity; }
+            .modal-backdrop.fade { @apply opacity-0; }
+            .modal-backdrop.show { @apply opacity-100; }
+            /* ---- 垫片专用类(bootstrap-shim.js 创建):之前全项目没有这两条 CSS,
+               弹窗无压暗遮罩、背后还能滚动(2026-10-06 修复) ---- */
+            .ui-backdrop { position: fixed; inset: 0; z-index: 1040; background: rgba(0,0,0,.5); transition: opacity .2s ease; }
+            .ui-backdrop.fade { opacity: 0; }
+            .ui-backdrop.show { opacity: 1; }
+            body.ui-modal-open { overflow: hidden; }
+            /* ---- offcanvas-md 手机抽屉(目录 <768px 滑出):之前只有 .show{visibility:visible} 一条,
+               没有基础定位/默认隐藏样式,手机端目录以普通流式常驻、汉堡按钮点了没反应(2026-10-06 修复)。
+               z-index 1045 > .ui-backdrop 1040(与 Bootstrap 一致);桌面 ≥768px 无这些规则,
+               nav_sites.html 的 sticky 侧栏样式照常生效 ---- */
+            @media (max-width: 767.98px) {
+                .offcanvas-md {
+                    position: fixed; bottom: 0; z-index: 1045;
+                    display: flex; flex-direction: column;
+                    max-width: 100%; visibility: hidden;
+                    background: var(--bs-body-bg); color: var(--bs-body-color);
+                    transition: transform .3s ease-in-out;
+                }
+                .offcanvas-md.offcanvas-start {
+                    top: 0; left: 0; width: var(--bs-offcanvas-width, 300px);
+                    border-right: 1px solid var(--bs-border-color);
+                    transform: translateX(-100%);
+                    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+                }
+                .offcanvas-md.showing, .offcanvas-md.show { transform: none; visibility: visible; }
+            }
+            /* ---- 下拉/抽屉/标签页 ---- */
+            .dropdown { @apply relative; }
+            .dropdown-menu { @apply hidden absolute z-[1080] min-w-40 max-w-[calc(100vw-16px)] rounded-lg border border-[var(--bs-border-color)] bg-[var(--bs-body-bg)] text-[var(--bs-body-color)] p-2 shadow-xl; }
+            .dropdown-menu.show { @apply block; }
+            .dropdown-menu-end { @apply right-0 left-auto; }
+            /* 下拉按钮的小三角:兼容层一直漏了这个,带文字的 dropdown-toggle 看起来不像能点 */
+            .dropdown-toggle::after {
+                content: ""; display: inline-block; margin-left: .35em; vertical-align: .15em;
+                border-top: .3em solid; border-right: .3em solid transparent;
+                border-bottom: 0; border-left: .3em solid transparent;
+            }
+            .dropdown-toggle:empty::after { margin-left: 0; }
+            .dropdown-item { @apply block w-full rounded-md px-2 py-1 text-sm text-[var(--bs-body-color)] cursor-pointer hover:bg-[var(--bs-tertiary-bg)]; }
+            .dropdown-item.active { @apply bg-[color-mix(in_srgb,var(--nav-accent)_15%,var(--bs-body-bg))]; }
+            .offcanvas-md.showing, .offcanvas.show, .offcanvas-md.show { @apply visible; }
+                /* 通用 offcanvas(非响应式,如体检篮抽屉):垫片用 .showing 切换 */
+                .offcanvas { position: fixed; top: 0; bottom: 0; z-index: 1045; display: flex; flex-direction: column; visibility: hidden; background: var(--bs-body-bg); color: var(--bs-body-color); transition: transform .3s ease-in-out; }
+                .offcanvas.offcanvas-end { right: 0; width: var(--bs-offcanvas-width, 400px); border-left: 1px solid var(--bs-border-color); transform: translateX(100%); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+                .offcanvas.showing { transform: none; visibility: visible; }
+            .nav-tabs { @apply flex flex-wrap border-b border-[var(--bs-border-color)]; }
+            .nav-tabs .nav-link { @apply -mb-px px-3 py-1.5 text-sm border border-transparent rounded-t-lg cursor-pointer text-[var(--bs-secondary-color)]; }
+            .nav-tabs .nav-link.active { @apply border-[var(--bs-border-color)] border-b-transparent bg-[var(--bs-body-bg)] text-[var(--nav-accent)]; }
+            .nav-fill .nav-link { @apply grow text-center; }
+            .tab-content > .tab-pane { @apply hidden; }
+            .tab-content > .tab-pane.active { @apply block; }
+            .tab-content > .fade { @apply opacity-0 transition-opacity; }
+            .tab-content > .fade.active { @apply opacity-100; }
+            /* ---- 提示/徽章 ---- */
+            .alert { @apply rounded-lg border px-3 py-2 text-sm mb-2; }
+            .alert-success { @apply bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-800; }
+            .alert-danger { @apply bg-red-50 border-red-200 text-red-700 dark:bg-red-950/40 dark:text-red-200 dark:border-red-800; }
+            .alert-warning { @apply bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800; }
+            .alert-info { @apply bg-sky-50 border-sky-200 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200 dark:border-sky-800; }
+            .alert-secondary { @apply bg-[var(--bs-tertiary-bg)] border-[var(--bs-border-color)] text-[var(--bs-secondary-color)]; }
+            .badge { @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium; }
+            .bg-secondary { @apply bg-gray-500 text-white; }
+            .text-bg-secondary { @apply bg-gray-500 text-white; }
+            /* 徽标配色:JS 里动态拼的 success/warning 等系列,预编译后不会再自动生成 */
+            .text-bg-success { @apply bg-green-600 text-white; }
+            .text-bg-warning { @apply bg-amber-300 text-amber-950; }
+            .text-bg-danger { @apply bg-red-600 text-white; }
+            .text-bg-info { @apply bg-sky-500 text-white; }
+            .spinner-border { @apply inline-block h-4 w-4 rounded-full border-2 border-current border-r-transparent animate-spin align-middle; }
+            .spinner-border-sm { @apply h-3.5 w-3.5 border-[1.5px]; }
+            .alert-link { @apply underline font-medium; }
+            /* ---- Bootstrap 工具类别名(margin/字号/逻辑属性与 BS 等值) ---- */
+            /* d-none 等"状态开关"类必须 !important(与 BS 一致),否则会被组件 display 规则压过:
+               排序保存条因此常显(2026-09-30 踩坑) */
+            .d-none { display: none !important; }
+            .d-flex { @apply flex; } .d-block { @apply block; }
+            .flex-grow-1 { @apply grow; } .flex-shrink-0 { @apply shrink-0; }
+            .align-items-center { @apply items-center; } .align-items-start { @apply items-start; } .align-items-end { @apply items-end; }
+            .align-self-center { @apply self-center; } .justify-content-between { @apply justify-between; } .justify-content-center { @apply justify-center; }
+            .me-1 { @apply mr-1; } .me-2 { @apply mr-2; } .ms-1 { @apply ml-1; } .ms-2 { @apply ml-2; } .ms-3 { @apply ml-3; }
+            .fw-bold { @apply font-bold; } .fw-semibold { @apply font-semibold; } .fw-normal { @apply font-normal; } .fw-light { @apply font-light; }
+            .fs-6 { @apply text-base; } .small { @apply text-sm; }
+            .text-muted { @apply text-[var(--bs-secondary-color)]; }
+            .text-decoration-none { @apply no-underline; }
+            /* Bootstrap 语义:占满可用宽度。必须 !important —— Tailwind v4 的动态间距表会把 w-100
+               生成成 400px(100 × .25rem),盖掉 @layer components 里的这条。
+               2026-11-09 实测:齿轮下拉里 w-100 的按钮宽 400px,比 260px 的菜单还宽 156px,
+               结果按钮内容被推向右、整页横向溢出 48px。 */
+            .w-100 { width: 100% !important; }
+            .border { @apply border border-[var(--bs-border-color)]; }
+            .border-bottom { @apply border-b border-b-[var(--bs-border-color)]; }
+            .list-unstyled { @apply list-none p-0 m-0; }
+            .row { @apply flex flex-wrap; }
+            .col-4 { @apply w-1/3; } .col-5 { @apply w-[41.666%]; } .col-6 { @apply w-1/2; } .col-7 { @apply w-[58.333%]; } .col-12 { @apply w-full; }
+            .col-md-2 { @apply md:w-1/6; } .col-md-3 { @apply md:w-1/4; } .col-md-4 { @apply md:w-1/3; } .col-md-5 { @apply md:w-[41.666%]; }
+            [data-bs-toggle="tooltip"] { @apply cursor-help; }
+            .text-danger { color: var(--bs-danger); }
+            .text-success { color: var(--bs-success); }
+            .text-warning { color: #d97706; }
+            .text-warning-emphasis { color: #b45309; }
+            .d-md-none { @apply md:hidden; }
+            .d-md-block { @apply md:block; }
+            .btn-group { @apply inline-flex; }
+            .btn-group > .btn:not(:first-child) { @apply rounded-l-none border-l-0 -ml-px; }
+            .btn-group > .btn:not(:last-child) { @apply rounded-r-none; }
+            .list-group { @apply flex flex-col rounded-lg border border-[var(--bs-border-color)] overflow-hidden; }
+            .list-group-flush { @apply rounded-none border-0; }
+            .list-group-item { @apply px-3 py-2 border-b border-b-[var(--bs-border-color)] last:border-b-0 bg-[var(--bs-body-bg)]; }
+            .list-group-item-action { @apply cursor-pointer hover:bg-[var(--bs-tertiary-bg)]; }
+
+            /* --- 模板里在用、兼容层却漏实现的 Bootstrap 类(2026-11-12 补齐)---
+               这些是把「模板用到的类名必须在编译产物里有规则」做成守卫测试后扫出来的:
+               类名缺失不会报错,只是静默不生效 —— .text-truncate 就这么漏了很久。 */
+            .col-lg-3 { @apply lg:w-1/4; }          /* 工具卡/站点卡宽屏应四列,原来一直是三列 */
+            .dropdown-divider { @apply h-0 my-1 border-t border-t-[var(--bs-border-color)]; }
+            /* 轨道用 gray-200:Bootstrap 默认 #e9ecef 这一档,--bs-tertiary-bg 是 #f8f9fa,
+               在白底弹窗里几乎看不见进度条到底有没有在跑 */
+            .progress { @apply w-full overflow-hidden rounded-full bg-gray-200; }
+            .progress-bar { @apply h-full rounded-full bg-[var(--nav-accent)]; transition: width .2s ease; }
+            .font-monospace { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+            .form-control-color { @apply w-9 h-9 p-0.5; }
+            .form-check-inline { @apply inline-flex items-center mr-3; }
+            .input-group-sm > .form-control,
+            .input-group-sm > .form-select,
+            .input-group-sm > .btn { @apply text-xs px-2 py-1; }
+            .btn-outline-success { @apply border-emerald-300 text-emerald-600; }
+            .btn-outline-success:hover { @apply bg-emerald-600 border-emerald-600 text-white; }
+            .btn-outline-warning { @apply border-amber-300 text-amber-600; }
+            .btn-outline-warning:hover { @apply bg-amber-500 border-amber-500 text-white; }
+            .bg-danger { @apply bg-red-600; }
+            .position-relative { @apply relative; }
+            .position-absolute { @apply absolute; }
+            .d-inline-block { @apply inline-block; }
+            .input-group-lg > .form-control,
+            .input-group-lg > .form-select,
+            .input-group-lg > .btn { @apply text-base px-3 py-2; }
+            /* 原生 range:input 本身不能压扁 —— 轨道画在 ::-webkit-slider-runnable-track 上。
+               第一版把 6px 高的轨道画在 input 上,14px 的滑块直接被裁掉,滑杆等于看不见。 */
+            .form-range { @apply w-full appearance-none bg-transparent p-0; height: 1.25rem; }
+            .form-range::-webkit-slider-runnable-track {
+                height: 6px; border-radius: 9999px; background: var(--bs-tertiary-bg);
+            }
+            .form-range::-webkit-slider-thumb {
+                -webkit-appearance: none; margin-top: -4px; border: 0;
+                width: 14px; height: 14px; border-radius: 9999px;
+                background: var(--nav-accent, #5850ec); cursor: pointer;
+            }
+            .form-range::-moz-range-track {
+                height: 6px; border-radius: 9999px; background: var(--bs-tertiary-bg);
+            }
+            .form-range::-moz-range-thumb {
+                width: 14px; height: 14px; border: 0; border-radius: 9999px;
+                background: var(--nav-accent, #5850ec); cursor: pointer;
+            }
+        }

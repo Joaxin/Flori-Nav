@@ -1,0 +1,79 @@
+/* ==========================================================================
+   R-24 左下 fixbar(独立组件)
+   - 全部样式隔离在本文件,不改动 nav-sites.css / nav_sites.html。
+   - 定位:fixed **左下**竖条。右下角既有常住浮层 #navBackTop(回顶,right24/
+     bottom24,42×42)与 #navPet(桌宠默认落点,64×72),本组件不再占用同一
+     角落;与两者靠位置分离实现零交集,不靠提高 z-index 压制。
+   - z-index 1030:与既有回顶同档,低于桌宠(1035)、多选工具条(1055)与
+     齿轮/抽屉(1045)。
+   - 收起态:单个 ≤40px 小圆钮;展开态:竖排三动作 + 收起钮。
+   - 移动端(<768)默认收起;多选条激活时由 JS 动态抬高(避免遮挡 #navMsBar /
+     #ngSnapBulkBar / #navBulkBar),回落口径在 nav-fixbar.js 的 syncAvoid()。
+   ========================================================================== */
+
+#navFixbar {
+    position: fixed;
+    left: 14px;
+    right: auto;
+    bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    z-index: 1030;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+#navFixbar .nav-fixbar-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .14);
+    cursor: pointer;
+    padding: 0;
+    font-size: .86rem;
+    line-height: 1;
+    transition: border-color .2s, color .2s, transform .2s, opacity .2s, box-shadow .2s;
+}
+
+#navFixbar .nav-fixbar-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-2px);
+}
+
+#navFixbar .nav-fixbar-btn[disabled] {
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+#navFixbar .nav-fixbar-btn i { width: 1em; text-align: center; }
+
+/* 展开态:主动作列;收起态整列隐藏,只留 toggle 小圆钮 */
+#navFixbar .nav-fixbar-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+#navFixbar.is-collapsed .nav-fixbar-main { display: none; }
+
+/* 收起态 toggle 钮直径 ≤40;展开态同一钮换成收起图标,尺寸不变 */
+#navFixbar .nav-fixbar-toggle { width: 40px; height: 40px; }
+
+/* 抬高让位态:bottom 由 JS 内联写入(基于多选条实测高度),这里只做过渡兜底 */
+#navFixbar.nav-fixbar-dodging { transition: bottom .18s ease; }
+
+@media (max-width: 767.98px) {
+    #navFixbar { left: 12px; }
+}

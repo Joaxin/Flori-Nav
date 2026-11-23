@@ -1,0 +1,93 @@
+{% load static %}<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" id="navThemeColorMeta" content="#f8f9fb">
+    <meta name="color-scheme" content="light dark">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>{% block title %}{{ nav_brand_name }} · {{ nav_brand_tagline }}{% endblock %}</title>
+    <!-- PWA(独立运行) -->
+    <link rel="manifest" href="{% url 'nav_manifest' %}">
+    <link rel="icon" href="{% url 'nav_pwa_icon' %}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{% url 'nav_pwa_icon' %}">
+    <!-- Bootstrap JS API 兼容垫片(样式已改为预编译 CSS,不再加载 Tailwind 运行时) -->
+    <script src="{% static 'bootstrap-shim.js' %}?v={{ static_version }}"></script>
+    <!-- Font Awesome(复用宿主本地资源，静态目录全局可见) -->
+    <link rel="stylesheet" href="{% static 'vendor/css/all.min.css' %}">
+    <script>
+        // 明暗：自动(跟随系统)/浅色/深色，只存本机 navColorMode;页面内主题皮肤(navTheme)会按需覆盖。
+        // 放在 head 里尽早执行，避免深色用户先闪一帧白底。
+        (function () {
+            var KEY = 'navColorMode';
+            var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+            var THEME_LIGHT = '#f8f9fb', THEME_DARK = '#111318';
+            function syncThemeColor() {
+                var meta = document.getElementById('navThemeColorMeta');
+                if (meta) meta.setAttribute('content', document.documentElement.getAttribute('data-bs-theme') === 'dark' ? THEME_DARK : THEME_LIGHT);
+            }
+            function read() {
+                try {
+                    var v = localStorage.getItem(KEY);
+                    return (v === 'light' || v === 'dark' || v === 'auto') ? v : 'auto';
+                } catch (e) { return 'auto'; }
+            }
+            function apply(mode) {
+                var dark = mode === 'dark' || (mode === 'auto' && !!(mq && mq.matches));
+                document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+                if (window.applyNavAccent) window.applyNavAccent(localStorage.getItem('navAccent') || '');
+                syncThemeColor();
+            }
+            apply(read());
+            // 供 nav-sites.js 的「明暗」快捷档调用
+            window.navSetColorMode = apply;
+            if (mq) {
+                // 自动档下系统明暗切换要实时跟上；手动浅/深档则忽略系统
+                var onChange = function () { if (read() === 'auto') apply('auto'); };
+                if (mq.addEventListener) mq.addEventListener('change', onChange);
+                else if (mq.addListener) mq.addListener(onChange);
+            }
+        })();
+    </script>
+    {% block extra_head %}{% endblock %}
+    <!-- Bootstrap 兼容层：类名沿用、实现全部换成 Tailwind(已预编译进 tailwind.gen.css) -->
+        <!-- Tailwind 预编译产物(2026-11-12):改样式请编辑 assets/tailwind.css 后 npm run build:css -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.gen.css' %}?v={{ static_version }}">
+</head>
+<body>
+    {# 背景特效层：固定在最底(z-index:-1),不吃点击；每个主题靠 body 上的 --fx-* 变量换效果 #}
+    <div class="nav-fx" aria-hidden="true"></div>
+    <!-- 独立顶部条：点品牌即返回主页；全部工具控件收在 .nav-bar 里(样式见 nav-sites.css「顶栏」一节) -->
+    <header class="nav-topbar" role="banner">
+    <a class="nav-brand" href="/" title="返回{{ nav_brand_name }}首页">
+        <span class="nav-brand__mark" aria-hidden="true">{{ nav_brand_mark }}</span>
+        <span class="nav-brand__name">{{ nav_brand_name }}</span>
+        </a>
+        {% block navbar %}{% endblock %}
+    </header>
+    <!-- 壁纸层(可模糊)与遮罩层(浓度):fixed 定位，在 body 背景之上、内容(.nav-hub z-1/目录 z-20/顶栏 z-40)之下 -->
+    <div id="navWallLayer" aria-hidden="true"></div>
+    <div id="navWallMask" aria-hidden="true"></div>
+    <main class="nav-container mx-auto px-4 py-4" style="max-width: var(--nav-wrap-w, 1400px);"><!-- 页面宽度可调(蒸馏 Pinsflora --wrap-w):JS 把 navPageWidth 写到 <html> 的 --nav-wrap-w,默认 1400px;目录宽度/字号按 data-nav-wrap 档位自适应 -->
+        {% block content %}{% endblock %}
+    </main>
+    <script src="{% static 'vendor/js/jquery-3.7.1.min.js' %}"></script>
+    <!-- 悬浮工具条：回到顶部(借鉴发现导航 fixbar) -->
+    {% comment %} 显隐由 nav-ux.js 加/去 .show 控制，样式在 nav-sites.css #navBackTop;
+       这里不要再写第二套内联 opacity/visibility(2026-11-13 收口)。{% endcomment %}
+    <button id="navBackTop" type="button" title="回到顶部" aria-label="回到顶部">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    <script>
+        // PWA:service worker 注册(仅独立运行模式；需要 https 或 localhost)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('{% url 'nav_sw' %}').catch(function () {});
+            });
+        }
+        // 回到顶部：显隐与点击统一交给 nav-ux.js(2026-11-13 去掉这里的第二套开关)
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

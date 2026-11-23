@@ -1,0 +1,20 @@
+/* ==========================================================================
+   R-23 标签稳定配色 —— nav-tags.js 配套视觉规则。
+
+   配色来源:nav-tags.js 按标签名稳定哈希,把色相写入 chip 的
+   data-nav-tag-color 属性与内联 CSS 变量 --nav-tag-c;本文件只负责把这两个
+   落点映射成背景 / 文字色。datalist 建议下拉是浏览器原生控件,不在此写样式。
+
+   边界:不改 nav-sites.css;不使用 !important 压既有规则;不改变 chip 几何
+   (字号 / 圆角 / 间距仍沿用 nav-sites.css 既有 chip 规则)。
+   ========================================================================== */
+
+/* 命中哈希色相的 chip:背景低饱和 tint,文字取同色相加深,保持低对比不抢站名。 */
+.site-tagchip[data-nav-tag-color] {
+    background: color-mix(in srgb, var(--nav-tag-c, var(--nav-accent)) 12%, var(--bs-body-bg));
+    color: color-mix(in srgb, var(--nav-tag-c, var(--nav-accent)) 78%, var(--bs-body-color));
+}
+
+.site-tagchip[data-nav-tag-color]:hover {
+    background: color-mix(in srgb, var(--nav-tag-c, var(--nav-accent)) 20%, var(--bs-body-bg));
+}

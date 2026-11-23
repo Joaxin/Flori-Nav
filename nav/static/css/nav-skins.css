@@ -1,0 +1,96 @@
+/* ==========================================================================
+   nav-skins.css — R-25 全屏背景皮肤(纯视觉层,2026-11-22)
+
+   边界(与既有视觉层共存,互不改写):
+   · 既有层叠(自底向上,见 nav-sites.css 1431/1437/1701):
+       body 底色(主题/配色模式)
+       .nav-fx            fixed z-index:-1  背景特效光斑/纹理
+       #navWallLayer      fixed z-index:-1  壁纸图(可模糊)
+       #navWallMask       fixed z-index:0  壁纸遮罩
+       内容层 .nav-hub z-index:1 / 目录 z-20 / 顶栏 z-40 / 弹窗抽屉更高
+   · 本皮肤层 #navSkinLayer 固定在 z-index:-2,只贴在 body 底色之上、
+     特效层与壁纸层之下;pointer-events:none,不吃任何点击。
+   · 不改写 body 的 background-color / background-image,不碰
+     navWall* / navTheme / navColorMode 的存储键与选择器规则;
+     本文件不使用 !important 压既有规则,皮肤只画自己这一层。
+   · 配色全部走 CSS 变量;明暗两态由 [data-bs-theme] 覆盖,跟随开关
+     (body[data-nav-skin-follow="off"])固定使用浅色配方。
+
+   为什么用独立 div 而不是 body::before:
+     theme.js 给 body 内联了 !important 的壁纸 background-image/size/
+     position/attachment,body 本身还承载主题底色;伪元素与 body 背景层
+     直接打架(同 nav-sites.css 1693 对 .nav-fx 的既定结论)。独立 div
+     层叠层级显式可控、可整体移除,不参与 body 背景层竞争。
+   ========================================================================== */
+
+#navSkinLayer {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    overflow: hidden;
+    display: none;
+    opacity: var(--nav-skin-opacity, .9);
+}
+
+body[data-nav-skin="aurora"] #navSkinLayer,
+body[data-nav-skin="grid"] #navSkinLayer {
+    display: block;
+}
+
+#navSkinLayer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--nav-skin-bg, none);
+    background-size: cover;
+    background-position: center;
+}
+
+/* --- 配方:浅色档(默认,body 底色之上的低饱和叠加) --- */
+body[data-nav-skin="aurora"] {
+    --nav-skin-bg-light:
+        radial-gradient(46% 40% at 16% 18%, rgba(99, 102, 241, .16), transparent 70%),
+        radial-gradient(48% 42% at 84% 26%, rgba(14, 165, 233, .14), transparent 72%),
+        radial-gradient(44% 38% at 50% 88%, rgba(244, 114, 182, .12), transparent 70%);
+    --nav-skin-bg-dark:
+        radial-gradient(46% 40% at 16% 18%, rgba(99, 102, 241, .26), transparent 70%),
+        radial-gradient(48% 42% at 84% 26%, rgba(14, 165, 233, .22), transparent 72%),
+        radial-gradient(44% 38% at 50% 88%, rgba(45, 212, 191, .20), transparent 70%);
+}
+
+body[data-nav-skin="grid"] {
+    --nav-skin-bg-light:
+        linear-gradient(rgba(15, 23, 42, .055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, .055) 1px, transparent 1px);
+    --nav-skin-bg-dark:
+        linear-gradient(rgba(255, 255, 255, .07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .07) 1px, transparent 1px);
+    --nav-skin-grid-size: 44px 44px;
+}
+
+body[data-nav-skin="grid"] #navSkinLayer::before {
+    background-size: var(--nav-skin-grid-size, 44px 44px);
+    background-position: center;
+}
+
+/* 明暗取值:默认跟随。配色模式把 data-bs-theme 写在 <html>(base.html 早期脚本),
+   主题 aurora 把 data-bs-theme 写在 <body>(theme.js);两种挂点都要覆盖。 */
+body { --nav-skin-bg: var(--nav-skin-bg-light); }
+html[data-bs-theme="dark"] body,
+body[data-bs-theme="dark"] { --nav-skin-bg: var(--nav-skin-bg-dark); }
+/* 跟随开关关闭:深色态也固定用浅色配方 */
+html[data-bs-theme="dark"] body[data-nav-skin-follow="off"],
+body[data-bs-theme="dark"][data-nav-skin-follow="off"] {
+    --nav-skin-bg: var(--nav-skin-bg-light);
+}
+
+/* --- 控件(挂进齿轮快捷设置「外观」分组;只追加节点,不改抽屉结构) --- */
+.nav-skin-box { margin-bottom: .5rem; }
+.nav-skin-box .nav-skin-group { gap: .25rem; }
+.nav-skin-box .nav-skin-group .btn { flex: 1 1 0; }
+.nav-skin-follow { display: flex; align-items: center; gap: .5rem; margin: 0; }
+.nav-skin-follow .form-check-input { margin-top: .1rem; }
+/* 壁纸模式:与明暗/皮肤/特效一致置灰(只读镜像 data-nav-wall,不改既有锁逻辑) */
+.nav-skin-locked .nav-skin-btn,
+.nav-skin-locked .nav-skin-follow-input { opacity: .5; cursor: not-allowed; }

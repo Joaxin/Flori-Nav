@@ -1,0 +1,37 @@
+{% comment %} 导航站点卡片(大类直属 / 小分类内共用)。
+   结构：div.site-card-box(定位外壳，position:relative)> a.site-card(可点区域)+ 星标/编辑/删除三个按钮。
+   ⚠️ 按钮不能放进 <a> 里:<button> 是可交互元素，塞进 <a> 属非法 HTML,浏览器会把 <a> 拆开。
+   ⚠️ a 的类名保持 site-card 不变：find-ai.js(点击埋点 closest('a.site-card'))、stars-filter.js
+      (最近使用 [data-site-item] a.site-card、↑↓ 选卡 children('a.site-card'))都写死了这个选择器。
+   含子页的站点：a 仍然指向真实主站地址，Ctrl/中键/shift+点击都能正常打开主站,
+   普通左键才由 stars-filter.js 拦截成「主站 + 子页」选择弹窗(见 nav-sites.js 里的组合键放行)。
+   子页数据放在卡片外的 .site-subs / .site-alts 里，同样不能嵌进 <a>{% endcomment %}
+<div class="col-md-4 col-lg-3" data-site-item data-id="{{ site.pk }}" data-clicks="{{ site.click_count }}" data-url="{{ site.url }}" data-name="{{ site.name }}" data-initial="{{ site.pinyin_initial }}" data-check-at="{{ site.last_check_at|date:'U' }}" data-check-code="{{ site.last_check_code|default_if_none:'' }}" data-check-ms="{{ site.last_check_ms|default_if_none:'' }}" data-created="{{ site.created_at|date:'U' }}" data-cat="{{ site.category }}" data-search="{{ site.name }} {{ site.url }} {{ site.description }} {{ site.category }} {{ site.subcat }}{% for sub in site.children %} {{ sub.name }} {{ sub.url }}{% endfor %}{% for alt in site.alternates %} 备用 {{ alt.name }} {{ alt.url }}{% endfor %}{% for t in site.tags %} #{{ t }}{% endfor %}" data-tags='[{% for t in site.tags %}"{{ t }}"{% if not forloop.last %},{% endif %}{% endfor %}]'>
+    <div class="site-card-box">
+    <a class="site-card" draggable="false" href="{{ site.url }}"{% if site.children or site.alternates %} data-has-sub="1" data-main-url="{{ site.url }}" data-name="{{ site.name }}"{% endif %} target="_blank" rel="noopener noreferrer">
+        {% comment %} 第一行只放 图标 + 站名(2026-11-14)。
+           原来这一行塞了 6 个零件(红点/图标/标题/黄点/子页胶囊/收藏星),标题被挤到
+           "Claude ● 子页 2 …",几乎每张卡都截断。现在:
+             · 体检状态点挂到图标右下角(6px + 白描边),不再占一行宽度;
+             · 子页 / 备用 胶囊挪到底部标签行，和标签排在一起;
+             · 只剩「打不开」这种真异常才在右上角挂徽章。
+           「自定义」徽章已撤(2026-11-18):它标的是 is_builtin=False,而导入的书签、
+           自己收的站全都是非内置 —— 等于每张卡都重复同一句没有信息量的话,
+           一屏扫下来全是「自定义」,反而把站名和异常状态都盖住了。
+           内置/自建的差别在看「设置 → 内置站点维护」和导出时(导出只出非内置)就够了。{% endcomment %}
+        <div class="site-name"><span class="site-favwrap">{% if site.icon_text %}<span class="site-fav fav-letter" style="background:{{ site.icon_color|default:'#5850ec' }};--fav-fs:{{ site.icon_size|default:10 }}px;">{{ site.icon_text }}</span>{% elif site.fav_url %}<img class="site-fav" src="{{ site.fav_url }}" data-alt="{{ site.fav_url_alt }}" loading="lazy" alt="" onerror="if(!this.dataset.tried&&this.dataset.alt){this.dataset.tried='1';this.src=this.dataset.alt}else if(window.navFavFail){navFavFail(this)}else{this.remove()}">{% endif %}{% if site.last_check_at and not site.check_failed %}<span class="site-dot {% if site.last_check_ms > 1500 %}dot-warn{% else %}dot-ok{% endif %}" data-tip="{{ site.check_tip }}" aria-hidden="true"></span>{% endif %}</span><span class="site-text"><span class="site-title">{{ site.name }}</span><span class="site-meta">{% if site.description %}{{ site.description }}{% else %}{{ site.host }}{% endif %}</span></span>{% if site.check_failed %} <span class="badge site-tag site-check-bad" data-tip="{{ site.check_tip }}&#10;只是记录，没有改动你的链接；重跑「链接测活」会更新它">打不开</span>{% endif %}</div>
+        {% if site.description %}<div class="site-desc">{{ site.description }}</div>{% endif %}
+        {% if site.tags or site.children or site.alternates %}<div class="site-tags">{% if site.children %}<span class="badge site-tag" data-tip="含 {{ site.children|length }} 个子网页&#10;左键点卡片先选子页">子页 {{ site.children|length }}</span>{% endif %}{% if site.alternates %}<span class="badge site-tag" data-tip="备用网址{% for alt in site.alternates %}{% if forloop.first %}:{% else %}、{% endif %}{{ alt.name|default:alt.url }}{% endfor %}">备用 {{ site.alternates|length }}</span>{% endif %}{% for t in site.tags %}<span class="site-tagchip" data-tag="{{ t }}" title="点击按此标签筛选">{{ t }}</span>{% endfor %}</div>{% endif %}
+        <div class="site-url" title="{{ site.url }}">{{ site.url }}</div>
+     </a>
+        <button type="button" class="site-star" data-url="{{ site.url }}" data-tip="加入常用收藏" aria-label="加入常用收藏"><i class="far fa-star"></i></button>
+        <button type="button" class="site-edit" data-id="{{ site.pk }}" data-name="{{ site.name }}" data-url="{{ site.url }}" data-category="{{ site.category }}" data-subcat="{{ site.subcat }}" data-desc="{{ site.description }}" data-tags="{% for t in site.tags %}{{ t }}{% if not forloop.last %},{% endif %}{% endfor %}" data-title="{{ site.site_title }}" data-favicon="{{ site.favicon }}" data-icon-text="{{ site.icon_text }}" data-icon-color="{{ site.icon_color }}" data-icon-size="{{ site.icon_size }}" data-tip="编辑这个站点" aria-label="编辑"><i class="fas fa-pen"></i></button>
+        <button type="button" class="site-del" data-id="{{ site.pk }}" data-url="{{ site.url }}" data-name="{{ site.name }}" data-tip="删除这个站点&#10;8 秒内可撤销" aria-label="删除"><i class="fas fa-times"></i></button>
+     </div>
+    {% if site.children %}
+    <div class="site-subs d-none">{% for sub in site.children %}<a class="site-sub" href="{{ sub.url }}" data-name="{{ sub.name }}"></a>{% endfor %}</div>
+    {% endif %}
+    {% if site.alternates %}
+    <div class="site-alts d-none">{% for alt in site.alternates %}<a class="site-alt" href="{{ alt.url }}" data-name="{{ alt.name }}"></a>{% endfor %}</div>
+    {% endif %}
+</div>
