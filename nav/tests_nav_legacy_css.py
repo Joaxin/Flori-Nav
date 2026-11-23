@@ -187,3 +187,28 @@ class UnifiedBulkbarTests(TestCase):
         self.assertTrue(cluster, '多选态操作簇让位规则缺失')
         for _, body in cluster:
             self.assertIn('display: none !important', body)
+
+
+class CollapseVisibilityConflictTests(TestCase):
+    """「高级选项」折叠区靠 Bootstrap 的 .collapse + .show 展开。
+
+    tailwind.gen.css 里有个同名工具类 .collapse{visibility:collapse},对非表格元素
+    等于 hidden,且无条件命中 —— 展开后高度 120px 但一片空白。nav-sites.css 必须
+    显式把 visibility 拨回 visible;收起仍由 .collapse:not(.show) 的 display:none 负责。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.css = static_text('css/nav-sites.css')
+        cls.tw = static_text('css/tailwind.gen.css')
+
+    def test_tailwind_still_ships_visibility_collapse(self):
+        """回归的前提还在:Tailwind 仍在输出这条 visibility 工具类。"""
+        self.assertIn('.collapse{visibility:collapse}', self.tw.replace('\n', '').replace(' ', ''))
+
+    def test_nav_css_overrides_collapse_visibility(self):
+        """nav-sites.css 必须留一条把 .collapse 拨回 visible 的规则。"""
+        rules = dict(_rule_blocks(self.css))
+        self.assertIn('.collapse', rules)
+        self.assertIn('visibility: visible', rules['.collapse'])
