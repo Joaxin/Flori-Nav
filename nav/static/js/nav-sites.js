@@ -1340,10 +1340,9 @@ $(function() {
         + '<div class="col-4"><label class="form-label small mb-1">简介 <button type="button" class="btn btn-link btn-sm p-0 f-fetch-desc" title="按网址抓取对方网站的 meta description">抓取</button></label><input class="form-control form-control-sm f-desc" maxlength="200" placeholder="一句话说明用途"></div>'
         + '</div>'
         + '<div class="mb-2"><label class="form-label small mb-1">标签 <span class="text-muted">(可选,逗号分隔,最多 8 个;点卡片上的标签可按标签筛选)</span></label><input class="form-control form-control-sm f-tags" maxlength="120" placeholder=\"如:免费,常用,推理\"></div>'
-        /* 高级选项折叠(2026-11-18):子网页/备用网址低频,首屏只留 名称/网址/分类/简介/标签,
-           降低「打开弹窗就被一堆字段吓退」的摩擦;编辑已有子页/备用时自动展开 */
-        + '<button type="button" class="btn btn-sm btn-link p-0 mb-1 f-adv-toggle" aria-expanded="false"><i class="fas fa-chevron-down me-1"></i>高级选项(子网页 / 备用网址)</button>'
-        + '<div class="collapse f-adv mb-1">'
+        /* 子网页 / 备用网址:原折叠进「高级选项」(2026-11-18),后按用户要求改为常显(2026-11-23),
+           少一次点击,也不再有"展开了却看不到"的折叠态 */
+        + '<div class="f-adv mb-1">'
         + '<label class="form-label small mb-1">子网页 / 子站点 <span class="text-muted">(可选,点击卡片时弹窗选择)</span></label>'
         + '<div class="f-subrows"></div>'
         + '<button type="button" class="btn btn-sm btn-outline-secondary mt-1 f-addsub"><i class="fas fa-plus me-1"></i>添加子页</button>'
@@ -1458,12 +1457,6 @@ $(function() {
             }
             (prefill.children || []).forEach(function(c) { sfAddSubRow($form.find('.f-subrows'), c.name, c.url); });
             (prefill.alternates || []).forEach(function(a) { sfAddSubRow($form.find('.f-altrows'), a.name, a.url); });
-            // 编辑时已有子页/备用:高级区自动展开(2026-11-18 折叠配套)
-            if ((prefill.children || []).length || (prefill.alternates || []).length) {
-                $form.find('.f-adv').addClass('show');
-                $form.find('.f-adv-toggle').attr('aria-expanded', 'true')
-                    .find('i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
-            }
         }
         sfShowPane($pane);
         return $pane;
@@ -1507,14 +1500,6 @@ $(function() {
     });
     $('#siteFormPanes').on('click', '.f-addalt', function() {
         sfAddSubRow($(this).closest('.sf-form').find('.f-altrows'), '', '');
-    });
-    // 高级选项折叠开关(2026-11-18):手写 toggle(.collapse 的 show 类),批量多表单互不影响
-    $('#siteFormPanes').on('click', '.f-adv-toggle', function() {
-        const $adv = $(this).closest('.sf-form').find('.f-adv');
-        const open = !$adv.hasClass('show');
-        $adv.toggleClass('show', open);
-        $(this).attr('aria-expanded', open)
-            .find('i').toggleClass('fa-chevron-down', !open).toggleClass('fa-chevron-up', open);
     });
     $('#siteFormPanes').on('click', '.sub-del-row', function() { $(this).closest('.sub-row').remove(); });
 
