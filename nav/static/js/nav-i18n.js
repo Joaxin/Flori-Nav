@@ -547,6 +547,7 @@
         '找网站固定用上面的默认模型；这里只覆盖分类，建议选低温、稳定的模型。桌宠模型在「宠物设置 → 💬 聊天」里改。': 'Site finding always uses the default model; this only overrides categorization — a low-temperature, stable model works best. The pet model lives in Pet settings → 💬 Chat.',
         '「AI 找网站」弹窗里的接口设置是同一份，两边改都生效；桌宠人设、记忆轮数、桌宠模型、碎碎念开关在「宠物设置 → 💬 聊天」里改。': 'The endpoint in the “AI site finder” dialog is the same one; changes apply both ways. Pet persona, memory turns, model and musings live in Pet settings → 💬 Chat.',
         '生成候选 → 自动测活 → 去重导入': 'Generate → auto-check → dedupe and import',
+        '30 秒内未选择,将自动打开主站': 'Main site opens automatically if nothing is picked in 30 s',
         '背景皮肤': 'Background theme',
         '无': 'None',
         '还没有倒计时': 'No countdowns yet',

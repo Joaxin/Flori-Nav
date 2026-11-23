@@ -861,7 +861,7 @@ jQuery(function ($) {
         $w.children('.collapsible').children('.cheve').addClass('rot');
     });
 
-    // 含子网页的站点:点击卡片弹窗选择(主站 + 各子页);5 秒未选择自动打开主站
+    // 含子网页的站点:点击卡片弹窗选择(主站 + 各子页);30 秒未选择自动打开主站
     let subAutoTimer = null;
     function cancelSubAuto() { if (subAutoTimer) { clearTimeout(subAutoTimer); subAutoTimer = null; } }
     $('#subModal').on('hidden.bs.modal', cancelSubAuto);
@@ -901,7 +901,10 @@ jQuery(function ($) {
             if (!url) return;
             $body.append(subItem('备用', String($(this).data('name') || url), url, 'fa-shield-halved'));
         });
-        $body.append('<div class="small text-muted px-2 pt-1 pb-0">5 秒内未选择,将自动打开主站</div>');
+        const autoTip = (window.NavI18n && NavI18n.getLang && NavI18n.getLang() === 'en')
+            ? 'Opens the main site automatically if nothing is picked in 30 s'
+            : '30 秒内未选择,将自动打开主站';
+        $body.append($('<div class="small text-muted px-2 pt-1 pb-0">').text(autoTip));
         bootstrap.Modal.getOrCreateInstance($('#subModal')[0]).show();
         cancelSubAuto();
         if (mainUrl) {
@@ -909,7 +912,7 @@ jQuery(function ($) {
                 subAutoTimer = null;
                 bootstrap.Modal.getOrCreateInstance($('#subModal')[0]).hide();
                 window.open(mainUrl, '_blank', 'noopener');
-            }, 5000);
+            }, 30000);
         }
     });
 
