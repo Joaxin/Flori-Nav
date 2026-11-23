@@ -1,10 +1,11 @@
 # nav/tests_nav_legacy_css.py
-"""#9 遗留样式清理 / #3 访客小按钮隐藏 / #11 两端统一吸底工具条 —— CSS 静态断言门。
+"""#9 布局规则 / #3 访客小按钮隐藏 / #11 两端统一吸底工具条 —— CSS 静态断言门。
 
-契约(2026-11-21,11-CSS清理与统一 流):
-- #9:退役三档布局(杂志 mag / 极简 min / 分栏 cols)的 CSS 规则已全部删除;模板排列按钮
-  只留 card / icon / list,老 localStorage 值由 nav-sites.js 归并到保留档;默认档
-  (card / icon / list)规则必须原样保留。
+契约(2026-11-23 修订,六档布局恢复):
+- #9:2026-11-21 曾把 杂志 mag / 极简 min / 分栏 cols 三档删除;2026-11-23 按用户要求
+  全部恢复。现在 CSS 必须保留六档规则(lyr-mag / lyr-min / lyr-cols 与分栏从属
+  cols-even / data-cards-cols / --cols-count),JS 白名单六值、旧值归并表清空,模板
+  排列按钮输出六个 data-layout。默认卡片栅格的 :not() 守卫同时排除三档恢复布局。
 - #3:访客态(html.nav-guest-mode)卡片编辑/删除小按钮默认隐藏,覆盖 hover / show-actions /
   触屏全部态;body.nav-guest-cardbtns 开关开启后回落既有露出规则;主人端与 .site-star 不动。
 - #11:主人 #navMsBar 的 fixed 吸底为基准,主客共用同一套定位 / 安全区 / 宽度口径;
@@ -37,42 +38,40 @@ def _rule_blocks(css):
 
 
 class LegacyLayoutCleanupTests(TestCase):
-    """#9:退役三档规则已删,保留档规则仍在。"""
+    """#9:六档布局规则齐备(2026-11-23 从三档恢复成六档)。"""
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.css = static_text('css/nav-sites.css')
 
-    def test_legacy_layout_tokens_gone_from_css(self):
-        """mag / min / cols 三档遗留选择器与从属变量不再出现。"""
+    def test_six_layout_rules_present_in_css(self):
+        """mag / min / cols 三档选择器与从属变量必须留在 CSS 里。"""
         for token in ('lyr-mag', 'lyr-min', 'lyr-cols', 'cols-even',
                       'data-cards-cols', '--cols-count', 'cols-count'):
-            self.assertNotIn(token, self.css, '遗留布局规则未清干净: ' + token)
+            self.assertIn(token, self.css, '六档布局规则缺失: ' + token)
 
     def test_survivor_layout_rules_kept(self):
         """保留档 card / icon / list 的规则仍在,默认卡片 280px 栅格未被误删。"""
         self.assertIn('.nav-hub.lyr-icon .site-card', self.css)
         self.assertIn('.nav-hub.lyr-list .site-card', self.css)
         self.assertIn('minmax(280px, 1fr)', self.css)
-        # 默认档 :not() 守卫只保留 icon / list 两个保留档
+        # 默认卡片栅格的 :not() 守卫必须排除六个布局里的另外五档
         self.assertIn(':not(.lyr-icon):not(.lyr-list)', self.css)
 
-    def test_legacy_values_merged_in_js_not_css(self):
-        """JS 归并链路保留(只读核对):老值 mag/min/cols 映射到 card/list。"""
+    def test_js_layout_whitelist_is_six(self):
+        """JS 白名单六值齐全,旧值归并表已清空(不再静默降级)。"""
         js = static_text('js/nav-sites.js')
-        self.assertIn('NAV_LAYOUT_LEGACY', js)
-        self.assertIn("mag: 'card'", js)
-        self.assertIn("min: 'list'", js)
-        self.assertIn("cols: 'card'", js)
+        self.assertIn('NAV_LAYOUT_SURVIVORS', js)
+        for value in ("'card'", "'icon'", "'list'", "'mag'", "'min'", "'cols'"):
+            self.assertIn(value, js)
+        self.assertIn('const NAV_LAYOUT_LEGACY = {};', js)
 
-    def test_template_layout_buttons_only_survivors(self):
-        """模板排列按钮只输出 card / icon / list 三个 data-layout。"""
+    def test_template_layout_buttons_has_six(self):
+        """模板排列按钮输出六个 data-layout,一个不少。"""
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
-        for legacy in ('data-layout="mag"', 'data-layout="min"', 'data-layout="cols"'):
-            self.assertNotIn(legacy, html)
-        for survivor in ('data-layout="card"', 'data-layout="icon"', 'data-layout="list"'):
-            self.assertIn(survivor, html)
+        for layout in ('card', 'icon', 'list', 'mag', 'min', 'cols'):
+            self.assertIn('data-layout="' + layout + '"', html)
 
 
 class GuestSmallButtonsTests(TestCase):

@@ -94,7 +94,7 @@ document.documentElement.classList.add('nav-guest-mode');
 {% block navbar %}
 <div class="nav-bar">
     <button class="nav-chip nav-chip--icon d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#navToc" data-tip="打开目录" aria-label="打开目录"><i class="fas fa-list"></i></button>
-    <span class="nav-bar-stat" data-tip="共 {{ total }} 个站点{% if hidden_site_count %} · {{ hidden_site_count }} 个在隐藏分类{% endif %}{% if archived %} · 含休眠 {{ archived|length }}{% endif %}&#10;{% if hidden_site_count %}隐藏分类只影响显示，站还在库里；到 ⚙ 设置 → 分类排序 点眼睛恢复&#10;{% endif %}休眠的站仍在库里，只是不进分类；体检篮 → 🩺 保养 最下方可唤醒">共 {{ total }} 个站点{% if hidden_site_count %} · 其中 {{ hidden_site_count }} 个在隐藏分类{% endif %}{% if archived %} · 含休眠 {{ archived|length }}{% endif %}</span>
+    <span class="nav-bar-stat" data-tip="{% if nav_lang == 'en' %}{{ total }} sites{% if hidden_site_count %} · {{ hidden_site_count }} in hidden categories{% endif %}{% if archived %} · {{ archived|length }} dormant{% endif %}&#10;Hidden categories only affect display — the sites are still in the library. Restore them in Settings → Categories.&#10;Dormant sites stay in the library but are left out of the category tree.{% else %}共 {{ total }} 个站点{% if hidden_site_count %} · {{ hidden_site_count }} 个在隐藏分类{% endif %}{% if archived %} · 含休眠 {{ archived|length }}{% endif %}&#10;{% if hidden_site_count %}隐藏分类只影响显示，站还在库里；到 ⚙ 设置 → 分类排序 点眼睛恢复&#10;{% endif %}休眠的站仍在库里，只是不进分类；体检篮 → 🩺 保养 最下方可唤醒{% endif %}">{% if nav_lang == 'en' %}{{ total }} sites{% if hidden_site_count %} · {{ hidden_site_count }} in hidden categories{% endif %}{% if archived %} · {{ archived|length }} dormant{% endif %}{% else %}共 {{ total }} 个站点{% if hidden_site_count %} · 其中 {{ hidden_site_count }} 个在隐藏分类{% endif %}{% if archived %} · 含休眠 {{ archived|length }}{% endif %}{% endif %}</span>
     {% if nav_guest_mode %}
     <button class="nav-chip nav-chip--primary" type="button" id="navGuestLoginBtn"
             data-tip="输入访问令牌后，本网址变完整自用版&#10;快捷键 Ctrl/Cmd+Shift+L；网址不变">主人登录</button>
@@ -217,7 +217,8 @@ document.documentElement.classList.add('nav-guest-mode');
         <span class="nav-bar-sep" aria-hidden="true"></span>
 
         {# 2026-11-19 顶栏收敛:皮肤撤销独立入口,并入齿轮「外观」分区;主链只留高频动作 #}
-        <div class="dropdown">
+        {# 2026-11-23:外层容器带 id,供「设置按钮位置」把齿轮整体挪到左下/右下 #}
+        <div class="dropdown" id="navSettingsWrap">
             <button class="nav-chip nav-chip--icon" id="navSettingsToggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-tip="快捷设置&#10;外观 / 排列 / 显隐" aria-label="快捷设置"><i class="fas fa-gear"></i></button>
             <div class="dropdown-menu dropdown-menu-end p-2 shadow" id="navQuickSettingsMenu" style="width: min(292px, calc(100vw - 24px));">
                     <div class="nav-quick-sec">
@@ -250,6 +251,9 @@ document.documentElement.classList.add('nav-guest-mode');
                             <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="card" title="三列卡片 + 简介(默认)">卡片</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="icon" title="无边框大图标，悬停浮起(类 Flame)">大图标</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="list" title="左图标 + 站名/简介两行(类音乐播放器列表)">媒体行</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="mag" title="两列宽卡，大图标 + 完整简介(杂志风)">杂志</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="min" title="纯文字一行一项，超紧凑">极简</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="cols" title="分类成列，条目单行图标 + 名称(类 booky)">分栏</button>
                         </div>
                     </div>
                     <div class="nav-quick-sec">
@@ -322,7 +326,7 @@ document.documentElement.classList.add('nav-guest-mode');
                     <span class="nav-search__engname" id="navEngineLabel">Google</span>
                     <i class="fas fa-angle-down nav-search__engcar" aria-hidden="true"></i>
                 </button>
-                <input type="text" class="nav-search__input" id="navEngineQ" placeholder="搜索站内书签，Enter 全网搜索" aria-label="搜索站内书签或全网搜索"
+                <input type="text" class="nav-search__input" id="navEngineQ" placeholder="{% if nav_lang == 'en' %}Search bookmarks — Enter for web search{% else %}搜索站内书签，Enter 全网搜索{% endif %}" aria-label="{% if nav_lang == 'en' %}Search bookmarks or the web{% else %}搜索站内书签或全网搜索{% endif %}"
                        role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="navSuggest">
                 <button class="nav-search__go" type="submit" title="搜索" aria-label="搜索"><i class="fas fa-arrow-right"></i></button>
 {# 搜索胶囊右端那个 ? 已移除(2026-11-14):它打破了左右对称，说明改由设置面板提供 #}
@@ -355,9 +359,34 @@ document.documentElement.classList.add('nav-guest-mode');
         </div>
         <div class="toc-title d-flex justify-content-between align-items-center">
             <span><i class="fas fa-list me-1"></i>目录</span>
-            <div class="dropdown">
-                {# 2026-11-21(#5):目录齿轮已从标题旁移除;目录显隐/形态/样式/层级显隐收进主设置抽屉「布局 → 目录」分组(见 #setTabContent);图钉(固定到左侧)保留为轻量入口。 #}
+            <div class="d-flex align-items-center gap-1">
                 <button type="button" class="toc-pin" id="navTocPin" data-tip="固定到左侧(退出抽屉)" aria-label="固定到左侧"><i class="fas fa-thumbtack"></i></button>
+                <div class="dropdown">
+                    {# 2026-11-23:按用户要求把常改的三项放回目录齿轮;详细设置仍在「全部设置 → 布局 → 目录与页面」,这里不重复控件 ID。 #}
+                    <button type="button" class="toc-gear" id="tocGearBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-tip="分类与目录管理&#10;形态 / 展开折叠 / 列表样式" aria-label="目录设置"><i class="fas fa-gear"></i></button>
+                    <div class="dropdown-menu dropdown-menu-end p-2 shadow" id="tocGearMenu" style="width: min(232px, calc(100vw - 24px));">
+                        <div class="form-text small mb-1">形态</div>
+                        <div class="btn-group btn-group-sm w-100 mb-2" role="group" id="tocGearModeGroup" aria-label="目录形态">
+                            <button type="button" class="btn btn-outline-secondary" data-toc-mode="dock" title="固定在左侧，一直显示">常驻侧栏</button>
+                            <button type="button" class="btn btn-outline-secondary" data-toc-mode="drawer" title="收进抽屉，点左侧边缘把手才滑出">抽屉</button>
+                        </div>
+                        <div class="d-flex gap-1 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="tocGearExpand" title="展开目录里所有下级分类"><i class="fas fa-angles-down me-1"></i>展开全部</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="tocGearCollapse" title="折叠目录里所有下级分类"><i class="fas fa-angles-up me-1"></i>折叠全部</button>
+                        </div>
+                        <div class="form-text small mb-1">列表样式</div>
+                        <div class="d-flex flex-wrap gap-1 mb-1" id="tocGearStyleGroup" role="group" aria-label="目录列表样式">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toc-style="default" title="标准的目录列表">默认</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toc-style="seeseed" title="去边框、隐计数、大留白">极简</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toc-style="timeline" title="左侧细线 + 圆点，按分类纵向排列">时间轴</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toc-style="pill" title="圆角胶囊导航，选中项高亮填充">胶囊</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toc-style="soft" title="柔和圆角浅底 + 渐变选中">柔光</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-toc-style="ribbon" title="左侧渐变缎带标记层级">缎带</button>
+                        </div>
+                        <hr class="my-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100" id="tocGearMore">更多目录设置<i class="fas fa-arrow-right ms-1" style="font-size:.8em"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="toc-scroll">
@@ -935,6 +964,13 @@ document.documentElement.classList.add('nav-guest-mode');
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="setTabView" role="tabpanel">
                     <div class="form-text small mb-2">以下项目全部只存本机浏览器，不影响其他设备、不进导出文件。</div>
+                    {# 2026-11-23 多语言:语言存 cookie nav_lang,后端 gettext 与前端词条表共用这一份状态 #}
+                    <div class="nav-set-h">语言</div>
+                    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap" id="navLangGroup" role="group" aria-label="界面语言">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-lang="zh">中文</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-lang="en">English</button>
+                        <span class="form-text small">切换后整页刷新，只影响这台设备</span>
+                    </div>
                     <div class="nav-set-h">配色</div>
                     <div class="d-flex align-items-center gap-2 mb-3 flex-wrap" id="navAccentRow">
                         <span class="form-text small text-nowrap me-1">主题色</span>
@@ -953,7 +989,33 @@ document.documentElement.classList.add('nav-guest-mode');
                         <input class="form-check-input" type="checkbox" id="navWallAccentAuto">
                         <label class="form-check-label small" for="navWallAccentAuto">壁纸换色 → 主题色自动跟随</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="开启后，换壁纸（上传、随机、必应）时会自动把壁纸的主色用到主题色上；关掉后，只有点「从壁纸取色」才会取色。" aria-label="说明"></i>
                     </div>
-                    {# #9:退役分栏(mag/min/cols)布局的栏目数/每栏条目/列对齐控件已随 CSS 清理一并移除;老 localStorage 值由 nav-sites.js 的 NAV_LAYOUT_LEGACY 归并到 card/list。 #}
+                    {# 2026-11-23:六档布局回迁,分栏的列数 / 每栏条目 / 齐列控件一并恢复。 #}
+                    <div id="setColsBlock" class="d-none">
+                        <div class="form-text small mb-1 mt-2">分栏细节(选了「分栏」才生效)</div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small mb-0" for="setColsCount">分几栏</label>
+                                <select class="form-select form-select-sm" id="setColsCount">
+                                    <option value="2">2 栏</option>
+                                    <option value="3">3 栏(默认)</option>
+                                    <option value="4">4 栏</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-0" for="setCardsCols">每栏几列</label>
+                                <select class="form-select form-select-sm" id="setCardsCols">
+                                    <option value="0">跟着宽度走(默认)</option>
+                                    <option value="1">一列</option>
+                                    <option value="2">两列</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" id="setColsEven">
+                            <label class="form-check-label small" for="setColsEven">每个分类对齐顶部</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="关着：分类一个接一个往下排，每栏高度不一样，看着更自然；打开：每行分类顶部对齐，整齐一些，但栏尾可能留白。" aria-label="说明"></i>
+                        </div>
+                        <div class="form-text small mb-2">分栏里每条只有「图标 + 站名」一行，简介、标签、网址都不显示。</div>
+                    </div>
                     <div id="setIconBlock">
                     <div class="form-text small mb-1 mt-2">布局细节(对「大图标」布局生效)</div>
                     <div class="row g-2 mb-2">
@@ -1062,10 +1124,13 @@ document.documentElement.classList.add('nav-guest-mode');
                         <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-preset="app-first" aria-pressed="false" title="手机端为主、两层导航分离">移动优先</button>
                     </div>
                     <div class="nav-set-h">卡片布局</div>
-                    <div class="btn-group btn-group-sm w-100 mb-2" role="group" id="navLayoutGroup">
+                    <div class="btn-group btn-group-sm w-100 mb-2 flex-wrap" role="group" id="navLayoutGroup">
                         <button type="button" class="btn btn-outline-secondary" data-layout="card" title="三列卡片 + 简介(默认)">卡片</button>
                         <button type="button" class="btn btn-outline-secondary" data-layout="icon" title="无边框大图标，悬停浮起(类 Flame)">大图标</button>
                         <button type="button" class="btn btn-outline-secondary" data-layout="list" title="左图标 + 站名/简介两行(类音乐播放器列表)">媒体行</button>
+                        <button type="button" class="btn btn-outline-secondary" data-layout="mag" title="两列宽卡，大图标 + 完整简介(杂志风)">杂志</button>
+                        <button type="button" class="btn btn-outline-secondary" data-layout="min" title="纯文字一行一项，超紧凑">极简</button>
+                        <button type="button" class="btn btn-outline-secondary" data-layout="cols" title="分类成列，条目单行图标 + 名称(类 booky)">分栏</button>
                     </div>
                     <div class="nav-set-h">卡片密度</div>
                     <div class="btn-group btn-group-sm w-100 mb-2" role="group" id="navDensityGroup">
@@ -1231,6 +1296,13 @@ document.documentElement.classList.add('nav-guest-mode');
                             <label class="form-check-label small" for="tocShowSub3">显示三级分类</label>
                     </div>
                     </div>
+                    <div class="nav-set-h">设置按钮</div>
+                    <div class="btn-group btn-group-sm w-100 mb-1" role="group" id="navSettingsDockGroup" aria-label="设置按钮位置">
+                        <button type="button" class="btn btn-outline-secondary" data-settings-dock="top" title="放在顶栏右侧，和现在一样">顶栏</button>
+                        <button type="button" class="btn btn-outline-secondary" data-settings-dock="bottom-left" title="变成左下角的圆按钮，躲开左下的快捷条">左下角</button>
+                        <button type="button" class="btn btn-outline-secondary" data-settings-dock="bottom-right" title="变成右下角的圆按钮，躲在回顶钮上方">右下角</button>
+                    </div>
+                    <div class="form-text small mb-2">选左下或右下后，顶栏那个齿轮会变成页面角落的圆按钮，点开还是同一套设置。</div>
                     <div class="nav-set-h">交互</div>
                     <div class="form-text small mb-1">卡片操作：右键(触屏长按)打开菜单，可编辑 / 置顶 / 上移下移 / 换分类 / 删除</div>
                 </div>

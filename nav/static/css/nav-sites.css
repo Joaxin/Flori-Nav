@@ -672,8 +672,8 @@
        默认卡片布局不再固定 3 档列,任意屏宽自动算列(手机 1-2 列、宽屏 6-8 列)。
        :has() 命中"含卡片的行"(小分类/大类直属/工具三种容器统一);无 :has 的老浏览器回退 Bootstrap 列。
        大图标/紧凑列表保持各自的密度规则(100px/300px) */
-    .nav-hub:not(.lyr-icon):not(.lyr-list) .row.g-2:has(> [data-site-item]),
-    .nav-hub:not(.lyr-icon):not(.lyr-list) .cat-body.row:has(> [data-site-item]) {
+    .nav-hub:not(.lyr-icon):not(.lyr-list):not(.lyr-mag):not(.lyr-min):not(.lyr-cols) .row.g-2:has(> [data-site-item]),
+    .nav-hub:not(.lyr-icon):not(.lyr-list):not(.lyr-mag):not(.lyr-min):not(.lyr-cols) .cat-body.row:has(> [data-site-item]) {
         display: grid;
         /* D6:普通卡片网格统一 minmax(280px, 1fr);大图标/列表的密度规则保持原样 */
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -3194,8 +3194,8 @@ html {
 /* 手机默认卡片布局:从 220px 的最小列宽降到 160px,让 360–430px 的主流手机
    能排两列;320px 级仍自动回落到一列。只改列数/间距,卡片内容不删。 */
 @media (max-width: 575.98px) {
-    .nav-hub:not(.lyr-icon):not(.lyr-list) .row.g-2:has(> [data-site-item]),
-    .nav-hub:not(.lyr-icon):not(.lyr-list) .cat-body.row:has(> [data-site-item]) {
+    .nav-hub:not(.lyr-icon):not(.lyr-list):not(.lyr-mag):not(.lyr-min):not(.lyr-cols) .row.g-2:has(> [data-site-item]),
+    .nav-hub:not(.lyr-icon):not(.lyr-list):not(.lyr-mag):not(.lyr-min):not(.lyr-cols) .cat-body.row:has(> [data-site-item]) {
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: .5rem;
     }
@@ -3789,12 +3789,12 @@ body.bulk-mode .site-card-box .site-del { display: none !important; }
    3) min-height 随 --nav-desc-lines 联动(实测自然高 1 行 78 / 2 行 92 / 3 行 106,
       每行 +14px),2 行档与改前一致。注:Chromium 的 contain-intrinsic-size 只吃固定 px,
       calc/var 会整条丢弃回落 92px,故联动高度放在 min-height,不放在回填占位属性里。 */
-.nav-hub:not(.lyr-icon):not(.lyr-list) .site-card-box {
+.nav-hub:not(.lyr-icon):not(.lyr-list):not(.lyr-mag):not(.lyr-min):not(.lyr-cols) .site-card-box {
     contain-intrinsic-size: auto 0px;
     height: auto;
     min-height: calc(64px + var(--nav-desc-lines, 2) * 14px);
 }
-.nav-hub:not(.lyr-icon):not(.lyr-list) .site-card {
+.nav-hub:not(.lyr-icon):not(.lyr-list):not(.lyr-mag):not(.lyr-min):not(.lyr-cols) .site-card {
     height: auto;
     min-height: calc(64px + var(--nav-desc-lines, 2) * 14px);
 }
@@ -3963,4 +3963,140 @@ body.bulk-mode .site-card-box .site-del { display: none !important; }
     }
     .nav-hub.nav-preset-portal .nav-sub { display: block; }
     .nav-hub.nav-preset-portal .nav-sub-title { text-align: left; padding: 0; margin-bottom: .3rem; }
+}
+
+/* ==========================================================================
+   2026-11-23 回迁：杂志 / 极简 / 分栏 三种布局
+   来源：11-21 快照 97f9948（11-22 的“三档精简”把这三档连同 57 处规则删掉）。
+   已按当前 .site-card-box（按钮外置、虚拟化占位）结构补齐盒子高度与按钮定位。
+   ========================================================================== */
+/* 首字母兜底块随布局尺寸 */
+.nav-hub.lyr-mag .fav-letter { line-height: 44px; font-size: min(max(var(--fav-fs, 20px), 10px), 28px); border-radius: var(--nav-r-sm); padding: 0 5px; }
+.nav-hub.lyr-min .fav-letter { line-height: 18px; font-size: min(max(var(--fav-fs, 10px), 8px), 12px); border-radius: var(--nav-r-xs); padding: 0 2px; }
+
+/* 杂志：两列宽卡，大图标 + 完整简介 */
+.nav-hub.lyr-mag .cat-body.row, .nav-hub.lyr-mag .row.g-2, .nav-hub.lyr-min .cat-body.row, .nav-hub.lyr-min .row.g-2 { display: grid; gap: .8rem; }
+.nav-hub.lyr-mag .cat-body.row, .nav-hub.lyr-mag .nav-cat > .row.g-2, .nav-hub.lyr-mag .cat-body > .row.g-2 { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
+.nav-hub.lyr-mag [data-site-item], .nav-hub.lyr-min [data-site-item] { width: auto; flex: none; max-width: none; }
+.nav-hub.lyr-mag .site-card { padding: 16px 18px; border-radius: var(--nav-r-lg); display: block; }
+.nav-hub.lyr-mag .site-card .site-fav { width: 44px; height: 44px; border-radius: var(--nav-r-sm); float: left; margin: 0 12px 6px 0; }
+.nav-hub.lyr-mag .site-card .site-name { font-size: 1.02rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-hub.lyr-mag .site-card .site-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; white-space: normal; margin-top: 6px; line-height: 1.6; }
+
+/* 极简：纯文字行，无卡片边框无简介，一行一项 */
+.nav-hub.lyr-min .cat-body.row, .nav-hub.lyr-min .nav-cat > .row.g-2, .nav-hub.lyr-min .cat-body > .row.g-2 { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.nav-hub.lyr-min .site-card { border-color: transparent; background: transparent; box-shadow: none; padding: 4px 10px; display: flex; align-items: center; gap: .5rem; border-radius: var(--nav-r-sm); }
+.nav-hub.lyr-min .site-card:hover { background: color-mix(in srgb, var(--accent) 8%, var(--bs-body-bg)); }
+.nav-hub.lyr-min .site-card .site-fav { width: 18px; height: 18px; margin: 0; border-radius: var(--nav-r-xs); }
+.nav-hub.lyr-min .site-card .site-desc, .nav-hub.lyr-min .site-card .badge, .nav-hub.lyr-min .site-card .site-url { display: none; }
+.nav-hub.lyr-min .site-card .site-name { font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-hub.lyr-mag .site-card-box { contain-intrinsic-size: auto 104px; }
+.nav-hub.lyr-min .site-card-box { contain-intrinsic-size: auto 34px; }
+
+/* 分栏：分类成列 + 单行条目（默认按 columns 流入，.cols-even 用 grid 对齐） */
+.nav-hub.lyr-cols .nav-cols { columns: var(--cols-count, 3); column-gap: 2rem; }
+.nav-hub.lyr-cols.cols-even .nav-cols {
+    columns: auto; display: grid;
+    grid-template-columns: repeat(var(--cols-count, 3), minmax(0, 1fr));
+    gap: 0 2rem; align-items: start;
+}
+.nav-hub.lyr-cols[data-cards-cols="1"] .nav-cols .row.g-2:has(> [data-site-item]),
+.nav-hub.lyr-cols[data-cards-cols="1"] .nav-cols .cat-body.row:has(> [data-site-item]) { grid-template-columns: minmax(0, 1fr) !important; }
+.nav-hub.lyr-cols[data-cards-cols="2"] .nav-cols .row.g-2:has(> [data-site-item]),
+.nav-hub.lyr-cols[data-cards-cols="2"] .nav-cols .cat-body.row:has(> [data-site-item]) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.nav-hub.lyr-cols .nav-cat {
+    break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid;
+    margin: 0 0 1.1rem; padding: 0; border: 0; background: transparent;
+}
+.nav-hub.lyr-cols .nav-cat-title {
+    display: flex; align-items: center; gap: .3rem;
+    font-size: .95rem; font-weight: 600;
+    border-left: 0;
+    padding: 0 0 6px;
+    border-bottom: 1px solid var(--bs-border-color);
+    margin: 0 0 4px;
+}
+.nav-hub.lyr-cols .nav-cat-title .cheve { font-size: .7rem; color: var(--bs-secondary-color); opacity: .6; }
+.nav-hub.lyr-cols .nav-cat-title:hover .cheve { opacity: 1; }
+.nav-hub.lyr-cols .nav-cat-title .nav-cat-menu { margin-left: auto; }
+.nav-hub.lyr-cols .nav-cat-menu { display: block; }
+.nav-hub.lyr-cols .cat-body.row,
+.nav-hub.lyr-cols .nav-cat > .row.g-2,
+.nav-hub.lyr-cols .cat-body > .row.g-2 { display: block; margin-left: 0; margin-right: 0; }
+.nav-hub.lyr-cols [data-site-item] { width: auto; max-width: none; padding-left: 0; padding-right: 0; flex: none; }
+.nav-hub.lyr-cols .site-card {
+    display: block; border: 0; background: transparent; box-shadow: none;
+    padding: 4px 64px 4px 6px; border-radius: var(--nav-r-sm);
+}
+.nav-hub.lyr-cols .site-card:hover {
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    border-color: transparent; box-shadow: none; transform: none;
+}
+.nav-hub.lyr-cols .site-card .site-fav { display: inline-block; width: 16px; height: 16px; margin: 0 6px 0 0; border-radius: var(--nav-r-xs); vertical-align: -3px; }
+.nav-hub.lyr-cols .site-card .site-name { font-weight: 400; font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-hub.lyr-cols .site-card .site-desc,
+.nav-hub.lyr-cols .site-card .site-tags,
+.nav-hub.lyr-cols .site-card .site-url,
+.nav-hub.lyr-cols .site-card .badge,
+.nav-hub.lyr-cols .site-card .site-star { display: none !important; }
+.nav-hub.lyr-cols .nav-sub, .nav-hub.lyr-cols .nav-sub2 { margin: 0; }
+.nav-hub.lyr-cols .nav-sub-title,
+.nav-hub.lyr-cols .nav-sub2-title {
+    display: flex; align-items: center; gap: .25rem;
+    border-left: 0; font-size: .78rem; font-weight: 600;
+    padding: 2px 0; margin: .4rem 0 2px;
+}
+.nav-hub.lyr-cols .nav-cat-add {
+    display: block; width: 100%; text-align: left;
+    border: 1px dashed var(--bs-border-color); background: transparent;
+    color: var(--accent); border-radius: var(--nav-r-sm); font-size: .78rem;
+    padding: 3px 8px; margin: 4px 0 2px;
+}
+.nav-hub.lyr-cols .nav-cat-add:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); border-style: solid; }
+.nav-hub.lyr-cols .site-card-box { contain-intrinsic-size: auto 32px; }
+.nav-hub.lyr-cols .site-card-box .site-star { display: none !important; }
+.nav-hub.lyr-cols .site-card-box .site-edit { top: 3px; right: 32px; }
+.nav-hub.lyr-cols .site-card-box .site-del { top: 3px; right: 6px; }
+@media (max-width: 991.98px) {
+    .nav-hub.lyr-cols .nav-cols { columns: 1; }
+    .nav-hub.lyr-cols.cols-even .nav-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ==========================================================================
+   设置入口三档位置（2026-11-23）
+   顶栏（默认）/ 左下 / 右下。实现方式是整体搬同一个 #navSettingsWrap，
+   不复制按钮与菜单；位置避让左下 fixbar、右下回顶钮（bottom 24 + 42）与桌宠。
+   ========================================================================== */
+#navSettingsWrap.nav-settings-dock {
+    position: fixed;
+    z-index: 1042;                    /* 高于回顶 1038、桌宠 1035；低于设置抽屉 1045 */
+    margin: 0;
+}
+#navSettingsWrap.nav-settings-dock--bl {
+    left: 64px;                       /* 左下的 fixbar 占 left 14 + 40，这里并排躲开 */
+    right: auto;
+    bottom: max(14px, env(safe-area-inset-bottom, 0px));
+}
+#navSettingsWrap.nav-settings-dock--br {
+    right: 24px;
+    left: auto;
+    bottom: calc(24px + 42px + 10px);  /* 回顶钮上方 */
+}
+#navSettingsWrap.nav-settings-dock #navSettingsToggle {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-body-color);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .16);
+}
+#navSettingsWrap.nav-settings-dock #navSettingsToggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+#navSettingsWrap.nav-settings-dock #navSettingsToggle i { font-size: .9rem; }
+@media (max-width: 575.98px) {
+    #navSettingsWrap.nav-settings-dock--bl { left: 60px; }
+    #navSettingsWrap.nav-settings-dock--br { right: 16px; bottom: calc(16px + 42px + 8px); }
 }

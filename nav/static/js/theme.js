@@ -376,7 +376,11 @@ jQuery(function ($) {
         if (!el || el.classList.contains('d-none')) return;
         const now = new Date();
         const h = now.getHours();
-        const greet = h < 6 ? '夜深了' : h < 11 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好';
+        // 2026-11-23 多语言：问候语随 nav_lang 走，英文模式下不再出现中文时段词
+        const en = !!(window.NavI18n && window.NavI18n.getLang() === 'en');
+        const greet = en
+            ? (h < 6 ? 'Late night' : h < 11 ? 'Good morning' : h < 14 ? 'Good noon' : h < 18 ? 'Good afternoon' : 'Good evening')
+            : (h < 6 ? '夜深了' : h < 11 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : '晚上好');
         const hi = document.getElementById('navGreetHi');
         if (hi) hi.textContent = greet;
         el.textContent = String(h).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
@@ -391,13 +395,22 @@ jQuery(function ($) {
         const now = new Date();
         const week = '日一二三四五六'.charAt(now.getDay());
         const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-        let line = (now.getMonth() + 1) + '月' + now.getDate() + '日 星期' + week +
-            ' · 今年第 ' + dayOfYear + ' 天';
+        // 2026-11-23 多语言：英文用 "Nov 23, Monday · Day 327 of 2026"，不机翻中文日期串
+        const en = !!(window.NavI18n && window.NavI18n.getLang() === 'en');
+        const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        let line = en
+            ? MONTHS_EN[now.getMonth()] + ' ' + now.getDate() + ', ' + DAYS_EN[now.getDay()] +
+              ' · Day ' + dayOfYear + ' of ' + now.getFullYear()
+            : (now.getMonth() + 1) + '月' + now.getDate() + '日 星期' + week +
+              ' · 今年第 ' + dayOfYear + ' 天';
         const h = now.getHours();
         // 下班倒计时(off-work 思路):工作日 9~18 点显示距 18:00 的剩余时间
         if (h >= 9 && h < 18 && now.getDay() >= 1 && now.getDay() <= 5) {
             const mins = (18 - h) * 60 - now.getMinutes();
-            line += ' · 距下班 ' + Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分';
+            line += en
+                ? ' · ' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm to off work'
+                : ' · 距下班 ' + Math.floor(mins / 60) + ' 小时 ' + (mins % 60) + ' 分';
         }
         el.textContent = line;
     }

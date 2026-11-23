@@ -33,6 +33,25 @@ def nav_brand(request):
     }
 
 
+def nav_lang(request):
+    """页面语言(2026-11-23)。
+
+    语言状态只有一份:cookie `nav_lang`。LocaleMiddleware 也读它,
+    所以模板里的 gettext 与前端词条表不会各说各话。
+    取值只有 zh / en;未知值一律回落中文。
+    """
+    raw = (request.COOKIES.get('nav_lang') or '').strip().lower()
+    # ?lang=xx 只对当次请求生效，用于预览/分享，不写 cookie
+    query = (request.GET.get('lang') or '').strip().lower()
+    if query in ('zh', 'zh-hans', 'en'):
+        raw = query
+    lang = 'en' if raw.startswith('en') else 'zh'
+    return {
+        'nav_lang': lang,
+        'nav_lang_code': 'en' if lang == 'en' else 'zh-CN',
+    }
+
+
 def static_version(request):
     now = time.time()
     if now - _CACHE['at'] > 2:

@@ -40,39 +40,38 @@ class NavSiteTests(TestCase):
         self.assertIn("document.querySelector('.offcanvas.showing", shim)
 
     def test_columns_layout_controls(self):
-        """#9:退役 mag/min/cols 三档选择器、从属变量与旧控件不再出现;保留档 card/icon/list
-        规则仍在;老 localStorage 值由 JS 归并到保留档(不删整条测试,也不放宽成恒真)。"""
+        """2026-11-23:六档布局回迁,分栏控件与 mag/min/cols 规则回归;
+        card/icon/list 三档规则仍在。"""
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
         js = static_text('js/nav-sites.js')
         css = static_text('css/nav-sites.css')
-        # 退役控件不再渲染
-        for retired_id in ('setColsCount', 'setCardsCols', 'setColsBlock'):
-            self.assertNotIn('id="%s"' % retired_id, html)
-        # 遗留档选择器 / 旧数据属性 / 从属变量在模板与 CSS 双侧都不再出现
-        for legacy in ('lyr-mag', 'lyr-min', 'lyr-cols', 'data-cards-cols',
-                       '--cols-count', 'cols-even'):
-            self.assertNotIn(legacy, html, '模板仍残留遗留布局标记: ' + legacy)
-            self.assertNotIn(legacy, css, 'CSS 仍残留遗留布局规则: ' + legacy)
+        # 分栏从属控件重新渲染
+        for back_id in ('setColsCount', 'setCardsCols', 'setColsBlock'):
+            self.assertIn('id="%s"' % back_id, html)
+        # 六档选择器 / 数据属性 / 从属变量在模板与 CSS 双侧都在
+        for restored in ('lyr-mag', 'lyr-min', 'lyr-cols', 'data-cards-cols',
+                         '--cols-count', 'cols-even'):
+            self.assertIn(restored, css, 'CSS 缺回迁布局规则: ' + restored)
+        for restored in ('mag', 'min', 'cols'):
+            self.assertIn(restored, html, '模板缺回迁布局标记: ' + restored)
+        self.assertIn('data-cards-cols', js, 'JS 缺每栏条目数据属性')
         # 保留档规则仍在:默认卡片 280px 栅格 + 大图标 + 媒体行
         self.assertIn('minmax(280px, 1fr)', css)
         self.assertIn('.nav-hub.lyr-icon .site-card', css)
         self.assertIn('.nav-hub.lyr-list .site-card', css)
-        # 旧 localStorage 值归并仍生效:三档映射 mag→card / min→list / cols→card,白名单兜底
-        self.assertIn('NAV_LAYOUT_LEGACY', js)
-        self.assertIn("mag: 'card'", js)
-        self.assertIn("min: 'list'", js)
-        self.assertIn("cols: 'card'", js)
+        # 白名单恢复六值
+        self.assertIn("['card', 'icon', 'list', 'mag', 'min', 'cols']", js)
         self.assertIn('NAV_LAYOUT_SURVIVORS', js)
 
     def test_settings_view_tab_is_grouped(self):
-        """全部设置按 tab 分段(2026-11-18 重组后现值):
-        外观=配色/主题皮肤/壁纸,布局=卡片布局/卡片密度/卡片排序/显示内容/目录与页面/交互,
-        效果=页面效果,维护=图标资产/内置站点 —— 共 12 段。"""
+        """全部设置按 tab 分段:
+        外观=语言/配色/主题皮肤/壁纸,布局=卡片布局/卡片密度/卡片排序/显示内容/目录与页面/设置按钮/交互,
+        效果=页面效果,维护=图标资产/内置站点 —— 共 15 段。"""
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
-        for label in ('配色', '主题皮肤', '壁纸', '卡片布局', '卡片密度', '卡片排序', '显示内容', '目录与页面',
-                      '交互', '页面效果', '图标资产', '内置站点'):
+        for label in ('语言', '配色', '主题皮肤', '壁纸', '卡片布局', '卡片密度', '卡片排序', '显示内容', '目录与页面',
+                      '设置按钮', '交互', '页面效果', '图标资产', '内置站点'):
             self.assertIn('class="nav-set-h">' + label, html)
-        self.assertEqual(13, html.count('class="nav-set-h"'))
+        self.assertEqual(15, html.count('class="nav-set-h"'))
 
     def test_pinyin_initial_is_server_rendered_with_toggle(self):
         """首字母不再依赖手动刷新静态表:服务端随卡片渲染写 data-initial;前端可开关且 ≥3 个字母才参与。"""

@@ -286,11 +286,11 @@ $(function() {
     // D5 父子开关联动:「显示左侧目录」关掉时,目录形态/样式/二级三级显隐/展开折叠这些
     // 子项一并置灰禁用;主开关恢复后子项解锁。复用 navShowToc 同一本机键,不新增存储。
     function navSyncTocChildren(on) {
-        const $groups = $('#navTocModeGroup, #tocStyleGroup');
+        const $groups = $('#navTocModeGroup, #tocStyleGroup, #tocGearModeGroup, #tocGearStyleGroup');
         $groups.toggleClass('nav-child-locked', !on);
         $groups.find('button').prop('disabled', !on)
             .attr('aria-disabled', !on ? 'true' : 'false');
-        $('#tocExpandSubs, #tocCollapseSubs').prop('disabled', !on)
+        $('#tocExpandSubs, #tocCollapseSubs, #tocGearExpand, #tocGearCollapse').prop('disabled', !on)
             .attr('aria-disabled', !on ? 'true' : 'false')
             .toggleClass('opacity-50', !on);
         ['#tocShowNums', '#tocShowSubs', '#tocShowSub3'].forEach(function (sel) {
@@ -385,8 +385,8 @@ $(function() {
         const drawer = mode === 'drawer';
         $('.nav-hub').toggleClass('toc-drawer', drawer).toggleClass('toc-open', drawer && !!open);
         localStorage.setItem(tocModeKey, drawer ? 'drawer' : 'dock');
-        // 设置面板里的「目录形态」与把手/图钉共用这一个状态,谁改都要回显
-        $('#navTocModeGroup .btn').each(function() {
+        // 设置面板里的「目录形态」、目录齿轮与把手/图钉共用这一个状态,谁改都要回显
+        $('#navTocModeGroup .btn, #tocGearModeGroup .btn').each(function() {
             const on = String($(this).data('toc-mode')) === (drawer ? 'drawer' : 'dock');
             $(this).toggleClass('btn-secondary', on).toggleClass('btn-outline-secondary', !on);
         });
@@ -412,7 +412,8 @@ $(function() {
     $('#navTocBackdrop').on('click', tocCloseDrawer);
     $('#navTocPin').on('click', function() { tocApplyMode('dock', false); });        // 回常驻侧栏
     // 设置面板里直接选形态(选「抽屉」不自动弹开 —— 面板还开着,弹出来也是被压在下面)
-    $('#navTocModeGroup').on('click', '.btn', function() {
+    // 目录齿轮里也放了一份(不复制控件 ID,共用同一键)
+    $('#navTocModeGroup, #tocGearModeGroup').on('click', '.btn', function() {
         tocApplyMode(String($(this).data('toc-mode')), false);
     });
     $(document).on('keydown', function(e) {
@@ -483,7 +484,7 @@ $(function() {
             ribbon: 'toc-style-ribbon'
         }[v];
         if (styleClass) toc.classList.add(styleClass);
-        $('#tocStyleGroup .btn').each(function() {
+        $('#tocStyleGroup .btn, #tocGearStyleGroup .btn').each(function() {
             const on = String($(this).data('toc-style')) === (v || 'default');
             $(this).toggleClass('btn-secondary', on).toggleClass('btn-outline-secondary', !on);
         });
@@ -495,7 +496,7 @@ $(function() {
         localStorage.setItem('navTocStyle', 'default');
     }
     applyTocStyle(tocStyleSaved);
-    $('#tocStyleGroup').on('click', '.btn', function() {
+    $('#tocStyleGroup, #tocGearStyleGroup').on('click', '.btn', function() {
         const v = String($(this).data('toc-style'));
         localStorage.setItem('navTocStyle', v);
         applyTocStyle(v);
@@ -525,18 +526,36 @@ $(function() {
             paintTocWidth(v);
         });
     }
-    $('#tocExpandSubs').on('click', function() {
+    function tocExpandAll() {
         localStorage.setItem(tocCollapsedKey, '[]');
         $('#navToc .toc-subs').removeClass('d-none');
         $('#navToc .toc-cheve').removeClass('rot');
-    });
-    $('#tocCollapseSubs').on('click', function() {
+    }
+    function tocCollapseAll() {
         const cats = $('#navToc .toc-item[data-toc-cat]').map(function() {
             return String($(this).data('toc-cat'));
         }).get();
         localStorage.setItem(tocCollapsedKey, JSON.stringify(cats));
         $('#navToc .toc-subs').addClass('d-none');
         $('#navToc .toc-cheve').addClass('rot');
+    }
+    $('#tocExpandSubs, #tocGearExpand').on('click', tocExpandAll);
+    $('#tocCollapseSubs, #tocGearCollapse').on('click', tocCollapseAll);
+    // 齿轮的「更多目录设置」:收掉菜单,直接打开全部设置并停在「布局 → 目录与页面」
+    $('#tocGearMore').on('click', function() {
+        try { if (window.bootstrap && bootstrap.Dropdown) bootstrap.Dropdown.clearMenus(); } catch (e) {}
+        const drawer = document.getElementById('navSettingsMenu');
+        if (!drawer) return;
+        const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(drawer);
+        try {
+            bootstrap.Tab.getOrCreateInstance(document.getElementById('tabBtn-content')).show();
+        } catch (e) {}
+        drawer.addEventListener('shown.bs.offcanvas', function onShown() {
+            drawer.removeEventListener('shown.bs.offcanvas', onShown);
+            const block = document.getElementById('tocSettingsMenu');
+            if (block) block.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        });
+        offcanvas.show();
     });
 
     // D5:展开/折叠状态读写 API。主页面将来挂展开/折叠控件时,经这里读/写现有本机键,
@@ -688,14 +707,10 @@ $(function() {
     // 设置:卡片布局(默认卡片/大图标/紧凑列表)与主题色(覆盖 .nav-hub 内 --accent,不影响宿主)
     const navLayoutKey = 'navLayout', navAccentKey = 'navAccent',
           navColsEvenKey = 'navColsEven', navColsCountKey = 'navColsCount';
-    // D3:排列 6 种精简为 3 种(卡片 card / 大图标 icon / 媒体行 list)。
-    // 老浏览器 localStorage 里存过退役值时,按下表归并到保留档;归并后回写本机键,
-    // 既不会每次刷新都重走映射,也不会因值不在白名单而回退成默认卡片。
-    // 映射:杂志 mag → 卡片 card(宽卡 + 简介,同源加宽变体);
-    //       极简 min → 媒体行 list(紧凑单行条目);
-    //       分栏 cols → 卡片 card(分类成列的特殊排布,条目样式回到卡片)。
-    const NAV_LAYOUT_SURVIVORS = ['card', 'icon', 'list'];
-    const NAV_LAYOUT_LEGACY = { mag: 'card', min: 'list', cols: 'card' };
+    // 2026-11-23:恢复 11-21 的六档布局(卡片 / 大图标 / 媒体行 / 杂志 / 极简 / 分栏)。
+    // 11-22 曾精简为三档并把退役值归并;本次回迁后白名单恢复六值,未知值仍回落卡片。
+    const NAV_LAYOUT_SURVIVORS = ['card', 'icon', 'list', 'mag', 'min', 'cols'];
+    const NAV_LAYOUT_LEGACY = {};
     function navNormalizeLayout(v) {
         if (NAV_LAYOUT_SURVIVORS.indexOf(v) >= 0) return v;
         if (NAV_LAYOUT_LEGACY[v]) return NAV_LAYOUT_LEGACY[v];
@@ -2133,6 +2148,48 @@ $(function() {
         $('#navSettingsToggle').attr('aria-expanded', 'false');
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('navSettingsMenu')).show();
     });
+
+    // ===== 设置入口位置:顶栏 / 左下 / 右下(2026-11-23) =====
+    // 只搬同一个 dropdown 容器(#navSettingsWrap),不复制按钮与菜单 ——
+    // 复制菜单会出现两套同名 ID 与两份状态,后面必然对不上。
+    const SETTINGS_DOCK_KINDS = ['top', 'bottom-left', 'bottom-right'];
+    let settingsWrapHome = null;
+    (function rememberSettingsHome() {
+        const wrap = document.getElementById('navSettingsWrap');
+        if (!wrap) return;
+        settingsWrapHome = { parent: wrap.parentNode, next: wrap.nextSibling };
+    })();
+    function settingsDockValue() {
+        try {
+            const v = localStorage.getItem('navSettingsDock');
+            return SETTINGS_DOCK_KINDS.indexOf(v) >= 0 ? v : 'top';
+        } catch (e) { return 'top'; }
+    }
+    function navApplySettingsDock(v) {
+        const wrap = document.getElementById('navSettingsWrap');
+        if (!wrap) return;
+        const kind = SETTINGS_DOCK_KINDS.indexOf(v) >= 0 ? v : 'top';
+        wrap.classList.remove('nav-settings-dock--bl', 'nav-settings-dock--br');
+        wrap.classList.toggle('nav-settings-dock', kind !== 'top');
+        if (kind === 'top') {
+            if (settingsWrapHome && settingsWrapHome.parent && wrap.parentNode !== settingsWrapHome.parent) {
+                settingsWrapHome.parent.insertBefore(wrap, settingsWrapHome.next);
+            }
+        } else {
+            wrap.classList.add(kind === 'bottom-left' ? 'nav-settings-dock--bl' : 'nav-settings-dock--br');
+            if (wrap.parentNode !== document.body) document.body.appendChild(wrap);
+        }
+        $('#navSettingsDockGroup .btn').each(function() {
+            const on = String($(this).data('settings-dock')) === kind;
+            $(this).toggleClass('btn-secondary', on).toggleClass('btn-outline-secondary', !on);
+        });
+    }
+    $('#navSettingsDockGroup').on('click', '.btn', function() {
+        const v = String($(this).data('settings-dock'));
+        try { localStorage.setItem('navSettingsDock', v); } catch (e) {}
+        navApplySettingsDock(v);
+    });
+    navApplySettingsDock(settingsDockValue());
 
     // ===== P1 · R-12 / R-13 / R-16 / R-09 新增导航链路 =====
     // 边界:只消费模板已渲染的 DOM 与既有上下文;零网络请求;不另建第二套滚动监听 / 存储层。

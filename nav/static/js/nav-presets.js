@@ -30,7 +30,8 @@ const KEY_PRESET = 'navLayoutPreset';
 const KEY_MIGRATED = 'navPresetMigrated';
 
 // 既有三档布局白名单(与 nav-sites.js 既有值域一致,严禁新增)。
-const ALLOWED_LAYOUTS = ['card', 'icon', 'list'];
+// 2026-11-23:随六档布局回迁,包内 navLayout 允许值恢复六值(预设自身仍只写 card / list / icon)。
+const ALLOWED_LAYOUTS = ['card', 'icon', 'list', 'mag', 'min', 'cols'];
 
 // 旧档值 → 预设 id 的一次性迁移映射(契约 resolveLegacy)。
 const LEGACY_LAYOUT_MAP = {

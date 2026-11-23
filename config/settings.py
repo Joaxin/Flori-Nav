@@ -82,6 +82,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.middleware.common.CommonMiddleware',
+    # 2026-11-23 i18n:按 ?lang= / cookie nav_lang 切语言;必须在 CommonMiddleware 之后
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # 可选写令牌:NAV_WRITE_TOKEN 为空时完全放行(本地无感);放 CSRF 之后,不干预读请求
@@ -101,6 +103,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'config.context_processors.static_version',
                 'config.context_processors.nav_brand',
+                'config.context_processors.nav_lang',
             ],
         },
     },
@@ -193,6 +196,22 @@ LANGUAGE_CODE = 'zh-hans'
 TIME_ZONE = 'Asia/Shanghai'
 USE_I18N = True
 USE_TZ = True
+
+# ---------------------------------------------------------------------------
+# 语言(2026-11-23):中文默认,可切英文。
+# - 模板/后端用 Django 原生 i18n(gettext);前端文案由 nav-i18n.js 的词条表翻译。
+# - 语言存在 cookie `nav_lang`(不是 django_language),LocaleMiddleware 直接吃这个值,
+#   这样前端切语言和后端 gettext 是同一份状态,不会出现「页面英文、接口中文」。
+# ---------------------------------------------------------------------------
+from django.utils.translation import gettext_lazy as _lazy
+
+LANGUAGES = [
+    ('zh-hans', _lazy('简体中文')),
+    ('en', _lazy('English')),
+]
+LOCALE_PATHS = [BASE_DIR / 'locale']
+LANGUAGE_COOKIE_NAME = 'nav_lang'
+LANGUAGE_COOKIE_AGE = 365 * 24 * 3600
 
 
 # ---------------------------------------------------------------------------

@@ -502,18 +502,18 @@ class RadiusTokenTests(TestCase):
         self.assertFalse(bad, '这些圆角还是裸数值,请换成 --nav-r-*:\n' + '\n'.join(bad))
 
     def test_same_object_shares_one_radius(self):
-        """#9:退役 mag/min/cols 档规则已删;保留档 card/icon/list 圆角档位仍在;老 localStorage 值由 JS 归并。"""
+        """六档布局(2026-11-23 回迁):card/icon/list/mag/min/cols 圆角档位都在。"""
         css = static_text('css/nav-sites.css')
         js = static_text('js/nav-sites.js')
         self.assertIn('.site-card { border: 1px solid var(--bs-border-color); border-radius: var(--nav-r-md)', css)
         self.assertIn('.nav-hub.lyr-icon .site-card { border-color: transparent; background: transparent; text-align: center; padding: 14px 10px 12px; border-radius: var(--nav-r-lg)', css)
         self.assertIn('.nav-hub.lyr-list .site-card {', css)
-        for legacy in ('lyr-mag', 'lyr-min', 'lyr-cols'):
-            self.assertNotIn(legacy, css)
-        self.assertIn('NAV_LAYOUT_LEGACY', js)
-        self.assertIn("mag: 'card'", js)
-        self.assertIn("min: 'list'", js)
-        self.assertIn("cols: 'card'", js)
+        # 回迁的三档也使用同一套圆角 token(不再写裸数值)
+        for restored in ('lyr-mag', 'lyr-min', 'lyr-cols'):
+            self.assertIn(restored, css)
+        self.assertIn('.nav-hub.lyr-mag .site-card { padding: 16px 18px; border-radius: var(--nav-r-lg)', css)
+        self.assertIn('NAV_LAYOUT_SURVIVORS', js)
+        self.assertIn("['card', 'icon', 'list', 'mag', 'min', 'cols']", js)
 
     def test_icon_layout_puts_icon_above_name(self):
         """2026-11-19 修「大图标:白方块大小不一、站名跑到块外」:
@@ -779,12 +779,10 @@ class DGroupStructureTests(TestCase):
         self.assertIn('管理员系统维护', owner)
 
     # ---- D3 入口瘦身:排列只留三档;导入导出归一个菜单 ----
-    def test_layout_group_keeps_three_presets(self):
+    def test_layout_group_keeps_six_presets(self):
         owner = self.client.get(reverse('nav_sites')).content.decode('utf-8')
-        for preset in ('card', 'icon', 'list'):
+        for preset in ('card', 'icon', 'list', 'mag', 'min', 'cols'):
             self.assertIn('data-layout="%s"' % preset, owner)
-        for retired in ('mag', 'min', 'cols'):
-            self.assertNotIn('data-layout="%s"' % retired, owner)
 
     def test_import_export_one_menu(self):
         owner = self.client.get(reverse('nav_sites')).content.decode('utf-8')

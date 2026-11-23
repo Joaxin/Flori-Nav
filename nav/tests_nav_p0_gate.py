@@ -38,7 +38,8 @@ BASELINE_HASH = {
 }
 
 PRESET_IDS = ['classic', 'compact', 'portal', 'gallery', 'app-first']
-ALLOWED_LAYOUTS = ['card', 'icon', 'list']
+# 2026-11-23:六档布局回迁后,模板 data-layout 白名单同步恢复六值。
+ALLOWED_LAYOUTS = ['card', 'icon', 'list', 'mag', 'min', 'cols']
 ALLOWED_TOC_STYLES = ['default', 'seeseed', 'timeline', 'pill', 'soft', 'ribbon']
 KEY_PRESET = 'navLayoutPreset'
 KEY_MIGRATED = 'navPresetMigrated'
@@ -180,7 +181,7 @@ def _root_var_value(rules, var_name):
 
 
 class P0LayoutTocRegressionTests(TestCase):
-    """防回归:既有三档布局 / 六档目录白名单不许被 preset 改造放宽。"""
+    """防回归:布局六档 / 目录六档白名单不许被 preset 改造放宽或回退。"""
 
     def setUp(self):
         self.html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
@@ -188,15 +189,13 @@ class P0LayoutTocRegressionTests(TestCase):
         self.sites_js = _strip_js_comments(static_text('js/nav-sites.js'))
         self.css = _strip_css_comments(static_text('css/nav-sites.css'))
 
-    def test_layout_whitelist_still_three(self):
-        """契约 §7.2b:模板 data-layout 取值 ⊆ {card,icon,list},三档按钮仍齐全。"""
+    def test_layout_whitelist_still_six(self):
+        """2026-11-23 六档布局:模板 data-layout 取值 ⊆ 六值,六档按钮齐全。"""
         values = set(re.findall(r'data-layout="([^"]+)"', self.html))
         self.assertTrue(values.issubset(set(ALLOWED_LAYOUTS)),
                         'data-layout 越值: %s' % sorted(values - set(ALLOWED_LAYOUTS)))
         for v in ALLOWED_LAYOUTS:
             self.assertIn('data-layout="%s"' % v, self.html)
-        for retired in ('mag', 'min', 'cols'):
-            self.assertNotIn('data-layout="%s"' % retired, self.html)
 
     def test_toc_style_whitelist_still_six(self):
         """契约防回归:data-toc-style 仍六档,不得出现新值或 cards 回潮。"""
