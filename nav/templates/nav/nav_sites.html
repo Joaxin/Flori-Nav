@@ -1169,6 +1169,11 @@ document.documentElement.classList.add('nav-guest-mode');
                         <button type="button" class="btn btn-outline-secondary" data-ui-mode="browse" title="时钟/目录/搜索框/最近使用都露出，卡片网址与操作按钮藏起来(和刚装好时一样)">浏览</button>
                         <button type="button" class="btn btn-outline-secondary" data-ui-mode="zen" title="只留卡片本身：时钟、目录、顶部搜索框、最近使用全部收起">专注</button>
                     </div>
+                    {# 2026-11-23:内置网站分组开关放在「显示内容」一级,不埋进逐项微调;只存本机 #}
+                    <div class="form-check form-switch mb-1">
+                        <input class="form-check-input" type="checkbox" id="setShowBuiltinCat">
+                        <label class="form-check-label small" for="setShowBuiltinCat">显示「内置网站」分类</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="内置站点那一组（ChatGPT、Claude 等）。关掉后首页、左侧目录、分类条都不再出现；站点本身仍在库里，随时可以再打开。" aria-label="说明"></i>
+                    </div>
                     <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
                         <button type="button" class="btn btn-sm btn-link nav-fine-link p-0 text-decoration-none small" id="setFineTuneToggle" title="展开逐个调整这些显隐开关"><i class="fas fa-chevron-right me-1" style="font-size:.65em"></i>逐项微调<span class="text-muted ms-1">(9 项)</span></button>
                         <span class="form-text small" id="navUiModeNow"></span>
@@ -1238,10 +1243,6 @@ document.documentElement.classList.add('nav-guest-mode');
                             <label class="form-check-label small" for="setGuestCardBtns">显示卡片编辑 / 删除小按钮</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="默认不显示卡片右上角的 ✎ / ×；打开后才显示。右键或长按菜单一直可用，不影响本机书签按钮。" aria-label="说明"></i>
                         </div>
                         {% endif %}
-                        <div class="form-check form-switch mb-1">
-                            <input class="form-check-input" type="checkbox" id="setShowBuiltinCat">
-                            <label class="form-check-label small" for="setShowBuiltinCat">显示「内置网站」分类</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="内置站点那一组（ChatGPT、Claude 等）。关掉后首页、左侧目录、分类条都不再出现；站点本身仍在库里，随时可以再打开。" aria-label="说明"></i>
-                        </div>
                         <div class="form-check form-switch mb-1">
                             <input class="form-check-input" type="checkbox" id="setShowTags">
                             <label class="form-check-label small" for="setShowTags">显示站点标签</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="卡片底部那排站点标签（国产、免费、编程…）；关掉后卡片更清爽，标签筛选和已经打好的标签都不受影响。" aria-label="说明"></i>
