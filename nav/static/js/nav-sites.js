@@ -609,6 +609,32 @@ $(function() {
     }
     bindShowSwitch('#setShowTags', 'hide-tags', 'navShowTags');
     bindShowSwitch('#setShowHealth', 'hide-health', 'navShowHealth');
+    // 内置网站分组显隐(2026-11-23 用户要求「选项里可以打开和关闭」):
+    // 只加一个 body 级 class,整组(卡片区 + 左侧目录 + 分类条/tab)一起收起,站点本身不动。
+    function navSyncBuiltinTip() {
+        const tip = document.getElementById('navBuiltinTip');
+        if (!tip) return;
+        const hub = document.querySelector('.nav-hub');
+        const hide = !!(hub && hub.classList.contains('hide-builtin'));
+        const visibleCats = Array.prototype.filter.call(
+            document.querySelectorAll('#navGroups .nav-cat'),
+            function(el) { return el.getClientRects().length > 0; }
+        ).length;
+        // 只在「关掉了 + 页面上再没有别的分类」时提示,否则提示条反而添乱
+        tip.classList.toggle('d-none', !(hide && visibleCats === 0));
+    }
+    window.navSyncBuiltinTip = navSyncBuiltinTip;
+    bindShowSwitch('#setShowBuiltinCat', 'hide-builtin', 'navShowBuiltinCat');
+    $('#setShowBuiltinCat').on('change', function() {
+        // 可见分组数变了:分类条 / 吸顶 tabs 要重算,否则会留下一条空导航
+        if (window.navRefreshCatNav) window.navRefreshCatNav();
+        navSyncBuiltinTip();
+    });
+    $('#navBuiltinTipShow').on('click', function() {
+        $('#setShowBuiltinCat').prop('checked', true).trigger('change');
+        navSyncBuiltinTip();
+    });
+    navSyncBuiltinTip();
     // 卡片操作按钮总开关(2026-11-19 用户要求「常驻的这两个按钮支持关闭」):
     // 原来的开关只管"悬停出还是常显",关掉仍会悬停冒出 ✎ / ×;这一项关掉后彻底不出,
     // 编辑/删除改走卡片右键菜单(card-menu.js),功能不丢。
@@ -883,6 +909,9 @@ $(function() {
     let navColsRaf = 0;   // 窗口拖动时每次 resize 都改 CSS 变量会抖,合并到一帧
     // P1 新增的量宽类(R-12 分类溢出条)挂到这条既有 rAF resize 链路里,不再另起第二个全局 resize 监听。
     const navResizeHooks = [];
+    // 2026-11-23:分类导航(分类条 / 吸顶 tabs)显隐重算。设置里开关「内置网站」后不触发 resize,
+    // 但可见分组数变了,必须让两套导航重新判断自己该不该出现。
+    const navCatNavRefreshHooks = [];
     window.addEventListener('resize', function() {
         if (navColsRaf) return;
         navColsRaf = requestAnimationFrame(function() {
@@ -2251,13 +2280,17 @@ $(function() {
         function inMenu(el) { return $menu.length && $.contains($menu[0], el); }
         function measure() {
             const chips = queryChips();
-            if (!chips.length) { $strip.addClass('d-none'); return; }
+            // 2026-11-23:分类条只服务窄屏。桌面上它和吸顶 #navGroupTabs 会并排出现,
+            // 分类标题上方因此叠了两条一模一样的分类名;单分类时两套都没有导航价值。
+            const narrow = window.matchMedia('(max-width: 991.98px)').matches;
+            const visible = chips.filter(function(el) { return el.getClientRects().length > 0; });
+            if (!narrow || visible.length < 2) { $strip.addClass('d-none'); return; }
             $strip.removeClass('d-none');
             const avail = $scroll[0].clientWidth;
             const gap = parseFloat(getComputedStyle($scroll[0]).columnGap) ||
                         parseFloat(getComputedStyle($scroll[0]).gap) || 8;
             let used = 0, overflow = false;
-            const plan = chips.map(function(el) {
+            const plan = visible.map(function(el) {
                 const w = el.getBoundingClientRect().width; // 每帧实测,避免尺寸变化后读陈旧缓存
                 if (!overflow && used + w > avail) overflow = true;
                 if (!overflow) used += w + gap;
@@ -2289,6 +2322,7 @@ $(function() {
         $scroll.on('click', '.nav-cat-chip', function() { jump(this); });
         $menu.on('click', '.nav-cat-chip, .dropdown-item', function() { jump(this); });
         navResizeHooks.push(measure);
+        navCatNavRefreshHooks.push(measure);
         // 运行时增删 chip:子树 childList 变化经 rAF 合并后重算;自家移动幂等 + 签名比对,不构成循环。
         if (window.MutationObserver) {
             let raf = 0;
@@ -2308,8 +2342,8 @@ $(function() {
         const $tabs = $('#navGroupTabs');
         if (!$tabs.length) return;
         const $slider = $('#groupTabsSlider');
-        if (!$tabs.find('.group-tab').length) return;
-        $tabs.removeClass('d-none');
+        const $allTabs = $tabs.find('.group-tab');
+        if (!$allTabs.length) return;
         function moveSlider(tabEl) {
             if (!$slider.length) return;
             if (!tabEl) { $slider.css('transform', 'translateX(0px)'); return; }
@@ -2341,6 +2375,18 @@ $(function() {
         }
         syncFromSpy();
         navSpyDependentSync.push(syncFromSpy);
+        // 2026-11-23:只在桌面且可见分组 ≥2 时露出;窄屏由分类条负责,避免两套分类名叠加
+        function refresh() {
+            const wide = window.matchMedia('(min-width: 992px)').matches;
+            const visible = $allTabs.filter(function() { return this.getClientRects().length > 0; });
+            if (!wide || visible.length < 2) { $tabs.addClass('d-none'); return; }
+            $tabs.removeClass('d-none');
+            const $active = $tabs.find('.group-tab.active');
+            if ($active.length) moveSlider($active[0]);
+        }
+        refresh();
+        navResizeHooks.push(refresh);
+        navCatNavRefreshHooks.push(refresh);
     }
 
     // ----- R-09 二级胶囊:按当前一级分类的二级分类填充;点击 / 横滚联动 + aria-current -----
@@ -2661,6 +2707,11 @@ $(function() {
     initNavLoadRing();
     initP1TestHooks();
     initSpyDependentSync();
+    // 供设置面板「显示内置网站」开关调用:可见分组数变了,两套分类导航重算显隐
+    window.navRefreshCatNav = function() {
+        navCatNavRefreshHooks.forEach(function(fn) { try { fn(); } catch (e) {} });
+        if (window.navSyncBuiltinTip) window.navSyncBuiltinTip();
+    };
 
     // ===== D7 多选模式:计数 / 禁用态 / 全选范围 / 二次确认 行为层 =====
     // 主操作条 DOM 由 batch.js 渲染(选中集合在它闭包内),这里只经 DOM 状态做外层收口:

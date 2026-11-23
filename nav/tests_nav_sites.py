@@ -192,6 +192,25 @@ class NavSiteTests(TestCase):
         self.assertContains(response, '内置网站')
         self.assertContains(response, 'ChatGPT')
 
+    def test_builtin_category_is_toggleable(self):
+        """2026-11-23:内置分类带 data-builtin 标记,设置里有显隐开关,关掉后有空态提示。
+
+        同时锁住分类导航的分工:窄屏用分类条(≤991.98)、桌面用吸顶 tabs(≥992),
+        两套不能同时出现(那是「三个内置网站」重复的直接原因)。
+        """
+        response = self.client.get(reverse('nav_sites'))
+        html = response.content.decode('utf-8')
+        self.assertIn('data-builtin="1"', html)
+        self.assertIn('id="setShowBuiltinCat"', html)
+        self.assertIn('id="navBuiltinTip"', html)
+        css = static_text('css/nav-sites.css')
+        self.assertIn('.nav-hub.hide-builtin [data-builtin="1"]', css)
+        js = static_text('js/nav-sites.js')
+        self.assertIn("bindShowSwitch('#setShowBuiltinCat', 'hide-builtin', 'navShowBuiltinCat')", js)
+        self.assertIn('navCatNavRefreshHooks', js)
+        self.assertIn("matchMedia('(max-width: 991.98px)')", js)
+        self.assertIn("matchMedia('(min-width: 992px)')", js)
+
     def test_page_renders_toc_and_sort_buttons(self):
         # 内置站点现在平铺(无二级分类),目录里的 toc-sub 需要一个带小分类的站点
         NavSite.objects.create(name='测试', url='https://toc.example', category='测试分类', subcat='子类')

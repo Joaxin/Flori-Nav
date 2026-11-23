@@ -4100,3 +4100,17 @@ body.bulk-mode .site-card-box .site-del { display: none !important; }
     #navSettingsWrap.nav-settings-dock--bl { left: 60px; }
     #navSettingsWrap.nav-settings-dock--br { right: 16px; bottom: calc(16px + 42px + 8px); }
 }
+
+/* 2026-11-23:内置网站分组开关(只影响本机浏览器)。
+   data-builtin 由 views_nav_sites 打在 .nav-cat / 目录项 / 分类条 chip / 吸顶 tab 上,
+   class 打在 .nav-hub 上,一处规则同时收起四处,不用 JS 逐个 find。 */
+.nav-hub.hide-builtin [data-builtin="1"] { display: none !important; }
+
+/* 2026-11-23:内置网站分组关掉后的空态提示条(带「重新显示」) */
+.nav-builtin-tip {
+    display: flex; align-items: center; gap: .45rem;
+    padding: 10px 14px; margin-bottom: 12px;
+    border: 1px dashed var(--bs-border-color); border-radius: var(--nav-r-md);
+    background: var(--bs-tertiary-bg); color: var(--bs-secondary-color);
+    font-size: .86rem;
+}

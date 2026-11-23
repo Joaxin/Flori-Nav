@@ -12,7 +12,7 @@ from .views_nav_check import NAV_MOVED_READ_MAX, NAV_SUBCAT_SEPS, _nav_split_sub
 
 from .models import NavSite, NavCategory, NavTool, NavAiConfig, NavPublicConfig
 from .nav_access import nav_is_owner, nav_render_guest, nav_token_enabled
-from .nav_data import DEFAULT_SITES
+from .nav_data import DEFAULT_SITES, NAV_BUILTIN_CATEGORY
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import F
@@ -132,6 +132,9 @@ def nav_sites(request):
                 [(s, subs[s]) for s in sorted(k for k in subs if k)]
         group = {'category': c, 'count': sum(len(v) for v in subs.values()),
                  'items': items,
+                 # 2026-11-23:内置站点分类标记。模板据此输出 data-builtin,
+                 # 让「显示内置网站」开关能精确隐藏这一组(含目录项/分类条/tab),改名也不误伤
+                 'builtin': c == NAV_BUILTIN_CATEGORY,
                  # 左侧目录二级条目:idx 与模板 navSub{组号}_{idx} 锚点对应(items 的 forloop.counter)
                  'sub_links': [(i, s, len(v)) for i, (s, v) in enumerate(items, 1) if s and v],
                  'tree': None}
