@@ -2,6 +2,9 @@
 /* 颜色全部走主题变量,和宿主页面的主题风格一致;
        --nav-accent 定义在 :root 上,弹窗(在 .nav-hub 外)也能吃到同一主题色 */
      :root { --nav-accent: var(--app-primary, #635bff); }
+/* 2026-11-23:滚动条两端的箭头方块(Windows Chrome 的上下小三角)在窄容器里特别碍眼,
+   用户两次点名。这里统一不画那两颗按钮,滚动能力不变。 */
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 /* ===== 圆角体系(2026-11-13) ==================================================
    背景:此前全站共存 11 个圆角值(3/4/6/7/8/9/10/12/14/16px + 999px),同一个
    视觉对象在不同页面各用各的 —— 同一张卡片在 卡片/列表/杂志/大图标 四种布局里
@@ -38,7 +41,7 @@
     --nav-drawer-w: min(400px, 92vw); /* 右侧抽屉(体检篮)共享宽度 */
     --nav-toc-sticky-top: 20px;       /* R-05 目录粘性吸顶偏移:唯一变量,不再散落硬编码 */
     --nav-desc-lines: 2;              /* R-10 简介行数档(1/2/3),JS navCardDescLines 写入覆盖;默认两行 */
-    --nav-toc-w-narrow: 80px;         /* R-14 目录窄栏档:仅图标/首字 */
+    --nav-toc-w-narrow: 104px;        /* R-14 目录窄栏档:首字徽章 + 齿轮(80px 时中文分类名全被截成"文…") */
     --nav-toc-w-card: 180px;          /* R-14 目录白卡档:180px 表面变体 */
 }
     .nav-hub { --accent: var(--nav-accent); position: relative; z-index: 1; }
@@ -355,6 +358,7 @@
     .nav-toc.hide-nums .toc-num { display: none; }
     .nav-toc.hide-subs .toc-subs, .nav-toc.hide-subs .toc-cheve { display: none; }
     .nav-toc .toc-title { font-weight: 600; color: var(--bs-secondary-color); font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; padding: 0 .4rem .25rem; margin-bottom: .15rem; }
+    .nav-toc .toc-title-label { display: inline-flex; align-items: center; }
     /* 目录项:参照 Nav Hub 的 .nav-item —— 圆角行、悬停浅灰底、图标与文字分开留白 */
     .nav-toc a {
         color: var(--bs-body-color); text-decoration: none; padding: 7px 10px;
@@ -598,8 +602,11 @@
         color: #6b4433;
         text-shadow: 0 1px 8px rgba(255, 255, 255, .65);
     }
-    body[data-nav-theme="sunset"] .nav-cat-title, body[data-nav-theme="sunset"] .nav-sub-title,
-    body[data-nav-theme="sunset"] .nav-sub2-title {
+    /* 2026-11-23:这层白光晕在纯色底(尤其没铺壁纸时)会把分类标题糊成一片虚边,
+       用户专门报了「字体很模糊」。只有真的坐在壁纸上才保留,纯色底不加任何 shadow。 */
+    body[data-nav-theme="sunset"][data-nav-wall="1"] .nav-cat-title,
+    body[data-nav-theme="sunset"][data-nav-wall="1"] .nav-sub-title,
+    body[data-nav-theme="sunset"][data-nav-wall="1"] .nav-sub2-title {
         text-shadow: 0 1px 6px rgba(255, 255, 255, .5);
     }
     body[data-nav-theme="sunset"] #toolsEmpty {
@@ -1426,6 +1433,16 @@
     body[data-nav-wall="1"] #navNoResult {
         background: color-mix(in srgb, var(--bs-body-bg) 88%, transparent);
         border-radius: var(--nav-r-md); padding: .6rem 1rem; width: max-content; margin: 0 auto;
+    }
+    /* 2026-11-23:壁纸上的分类标题原来直接坐在花纹上(对比低显糊)。补一层同底色衬底,
+       只在壁纸态生效;纯色底不加,避免无壁纸时反而出现一块灰底。 */
+    body[data-nav-wall="1"] .nav-cat-title,
+    body[data-nav-wall="1"] .nav-sub-title,
+    body[data-nav-wall="1"] .nav-sub2-title {
+        background: color-mix(in srgb, var(--bs-body-bg) 82%, transparent);
+        border-radius: var(--nav-r-sm);
+        padding-top: .18rem; padding-bottom: .18rem;
+        backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
     }
     /* 壁纸层(可模糊,负 z 在 body 背景之上、内容之下;inset 负值吃掉 blur 边缘白边)与遮罩层 */
     #navWallLayer {
@@ -3574,9 +3591,34 @@ body.bulk-mode .site-card-box .site-del { display: none !important; }
    档位类挂 <aside id="navToc">;仅 ≥768 桌面侧栏生效,<768 仍退回 offcanvas
    抽屉宽度(:3183 --bs-offcanvas-width),窄栏/白卡宽度不参与抽屉,不溢出。 */
 @media (min-width: 768px) {
-    .nav-toc.toc-width-narrow { width: var(--nav-toc-w-narrow); }
-    .nav-toc.toc-width-narrow .toc-num { display: none; }
-    .nav-toc.toc-width-narrow .toc-row > a { justify-content: center; padding-left: .3rem; padding-right: .3rem; }
+    /* 窄栏档(2026-11-23 返工):80px 时分类名只剩「文…」「编…」,信息量归零。改成
+       「首字徽章」形态 —— 每个分类一颗圆角字块(取名称首字),整名进 title,
+       二级/计数/折叠一律收起;宽度给到 104px,truncate 不再出现。
+       data-ini 由 nav-sites.js 的 tocPaintIni() 写(中英文切换后重算)。 */
+    .nav-toc.toc-width-narrow { width: var(--nav-toc-w-narrow); padding: .5rem .35rem; }
+    .nav-toc.toc-width-narrow .toc-num,
+    .nav-toc.toc-width-narrow .toc-subs,
+    .nav-toc.toc-width-narrow .toc-cheve { display: none; }
+    .nav-toc.toc-width-narrow .toc-scroll { gap: .25rem; }
+    .nav-toc.toc-width-narrow .toc-title { justify-content: center; }
+    .nav-toc.toc-width-narrow .toc-title-word { display: none; }
+    .nav-toc.toc-width-narrow .toc-scroll > a,
+    .nav-toc.toc-width-narrow .toc-row > a {
+        display: flex; align-items: center; justify-content: center;
+        padding: .3rem .2rem; overflow: hidden;
+    }
+    .nav-toc.toc-width-narrow .toc-scroll > a > span,
+    .nav-toc.toc-width-narrow .toc-row > a > span { display: none; }
+    .nav-toc.toc-width-narrow .toc-scroll > a::before,
+    .nav-toc.toc-width-narrow .toc-row > a::before {
+        content: attr(data-ini);
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px; border-radius: var(--nav-r-md);
+        font-weight: 700; font-size: .92rem; line-height: 1;
+        color: var(--accent, var(--bs-body-color));
+        background: color-mix(in srgb, var(--accent, var(--bs-body-color)) 13%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent, var(--bs-body-color)) 22%, transparent);
+    }
     /* 白卡档:外层正文灰底圆角包裹,内层 .toc-scroll 托白卡;表面/边框全走 bs 变量,不写硬编码色 */
     .nav-toc.toc-width-card {
         width: var(--nav-toc-w-card);
@@ -4114,3 +4156,9 @@ body.bulk-mode .site-card-box .site-del { display: none !important; }
     background: var(--bs-tertiary-bg); color: var(--bs-secondary-color);
     font-size: .86rem;
 }
+
+/* 2026-11-23:多站点表单的 tab 条只允许横向滚动。
+   原来用 overflow-auto,容器高度一紧就长出纵向滚动条 —— Windows 上就是那一对
+   碍眼的上下小箭头。这里锁死 overflow-y,并隐藏横向滚动条(和目录/分类条同一手法)。 */
+.sf-tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.sf-tabs::-webkit-scrollbar { display: none; }

@@ -358,13 +358,13 @@ document.documentElement.classList.add('nav-guest-mode');
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button>
         </div>
         <div class="toc-title d-flex justify-content-between align-items-center">
-            <span><i class="fas fa-list me-1"></i>目录</span>
+            <span class="toc-title-label"><i class="fas fa-list me-1"></i><span class="toc-title-word">目录</span></span>
             <div class="d-flex align-items-center gap-1">
                 <button type="button" class="toc-pin" id="navTocPin" data-tip="固定到左侧(退出抽屉)" aria-label="固定到左侧"><i class="fas fa-thumbtack"></i></button>
                 <div class="dropdown">
                     {# 2026-11-23:按用户要求把常改的三项放回目录齿轮;详细设置仍在「全部设置 → 布局 → 目录与页面」,这里不重复控件 ID。 #}
                     <button type="button" class="toc-gear" id="tocGearBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-tip="分类与目录管理&#10;形态 / 展开折叠 / 列表样式" aria-label="目录设置"><i class="fas fa-gear"></i></button>
-                    <div class="dropdown-menu dropdown-menu-end p-2 shadow" id="tocGearMenu" style="width: min(232px, calc(100vw - 24px));">
+                    <div class="dropdown-menu p-2 shadow" id="tocGearMenu" style="width: min(232px, calc(100vw - 24px));">
                         <div class="form-text small mb-1">形态</div>
                         <div class="btn-group btn-group-sm w-100 mb-2" role="group" id="tocGearModeGroup" aria-label="目录形态">
                             <button type="button" class="btn btn-outline-secondary" data-toc-mode="dock" title="固定在左侧，一直显示">常驻侧栏</button>
@@ -373,6 +373,11 @@ document.documentElement.classList.add('nav-guest-mode');
                         <div class="d-flex gap-1 mb-2">
                             <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="tocGearExpand" title="展开目录里所有下级分类"><i class="fas fa-angles-down me-1"></i>展开全部</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="tocGearCollapse" title="折叠目录里所有下级分类"><i class="fas fa-angles-up me-1"></i>折叠全部</button>
+                        </div>
+                        <div class="form-text small mb-1">页面分类</div>
+                        <div class="d-flex gap-1 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="navExpandAll" title="展开页面里所有大类和小分类"><i class="fas fa-angles-down me-1"></i>全部展开</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="navCollapseAll" title="折叠页面里所有大类和小分类"><i class="fas fa-angles-up me-1"></i>全部折叠</button>
                         </div>
                         <div class="form-text small mb-1">列表样式</div>
                         <div class="d-flex flex-wrap gap-1 mb-1" id="tocGearStyleGroup" role="group" aria-label="目录列表样式">
@@ -458,10 +463,7 @@ document.documentElement.classList.add('nav-guest-mode');
         {% endif %}
     </div>
 
-    <div class="nav-groups-bar d-flex gap-1 mb-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="navExpandAll" title="展开所有大类和小分类"><i class="fas fa-angles-down me-1"></i>全部展开</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="navCollapseAll" title="折叠所有大类和小分类"><i class="fas fa-angles-up me-1"></i>全部折叠</button>
-    </div>
+    {# 2026-11-23:页面级「全部展开/折叠」原在内容区顶部很碍眼,整组搬进左侧目录齿轮 #tocGearMenu「页面分类」,id 保留给既有 hooks #}
     {# R-16:面包屑由当前激活目录项(tocSpy active)派生;初始空态隐藏,JS 填入层级项后取消 d-none。项 .nav-crumb-item,当前项 aria-current="page" #}
     <nav id="navCrumb" class="d-none" aria-label="面包屑" aria-hidden="true">
         <ol></ol>
@@ -557,7 +559,8 @@ document.documentElement.classList.add('nav-guest-mode');
             {% for subcat, sites in group.items %}{% if sites %}
             {% if subcat %}
             <div class="nav-sub mb-2" id="navSub{{ forloop.parentloop.counter }}_{{ forloop.counter }}" data-collapse-id="{{ group.category }}/{{ subcat }}">
-                <div class="nav-sub-title collapsible" title="点击折叠/展开"><i class="fas fa-chevron-down cheve"></i>{{ subcat }} <span class="text-muted fw-normal small">{{ sites|length }}</span><button type="button" class="nav-sub-enter" data-sub-enter="#navSub{{ forloop.parentloop.counter }}_{{ forloop.counter }}" aria-label="只看 {{ subcat }}" data-tip="只看该二级分类"><i class="fas fa-arrow-right"></i></button></div>
+                {# 2026-11-23:只有一个二级分类时不再显示二级标题(它只是把分类名复述一遍);节点保留(d-none)供面包屑读取 #}
+                <div class="nav-sub-title collapsible{% if group.sub_links|length < 2 %} d-none{% endif %}" title="点击折叠/展开"><i class="fas fa-chevron-down cheve"></i>{{ subcat }} <span class="text-muted fw-normal small">{{ sites|length }}</span><button type="button" class="nav-sub-enter" data-sub-enter="#navSub{{ forloop.parentloop.counter }}_{{ forloop.counter }}" aria-label="只看 {{ subcat }}" data-tip="只看该二级分类"><i class="fas fa-arrow-right"></i></button></div>
                 <div class="cat-body row g-2">
                     {% for site in sites %}{% include 'nav/components/_nav_site_card.html' %}{% endfor %}
                 </div>
@@ -662,7 +665,7 @@ document.documentElement.classList.add('nav-guest-mode');
             <div class="modal-header"><h5 class="modal-title" id="addSiteModalTitle">添加站点</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>
             <div class="modal-body">
                 <div class="d-flex align-items-end gap-1 mb-3">
-                    <ul class="nav nav-tabs small flex-nowrap overflow-auto" id="siteFormTabs" role="tablist"></ul>
+                    <ul class="nav nav-tabs small flex-nowrap sf-tabs" id="siteFormTabs" role="tablist"></ul>
                     <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0" id="sfAddTab" title="再加一个站点表单(批量添加，最多 20 个)"><i class="fas fa-plus"></i></button>
                     <datalist id="navCategoryList">{% for c in all_categories %}<option value="{{ c }}">{% endfor %}</datalist>
                 </div>
@@ -1394,7 +1397,7 @@ document.documentElement.classList.add('nav-guest-mode');
         <!-- 休眠区：挂在「🩺 保养」页签下方(不新开第四个页签)。休眠站不进分类,
              名称/网址/子页/备用/星标/体检记录一律原样留着，唤醒即回原来的分类。 -->
         <div id="navArchiveWrap" class="d-none">
-            <div class="small fw-bold mt-2" id="navArchiveTitle"><i class="fas fa-moon me-1"></i>休眠中({{ archived|length }})</div>
+            <div class="small fw-bold mt-2" id="navArchiveTitle"><i class="fas fa-moon me-1"></i>{% if nav_lang == 'en' %}Dormant ({{ archived|length }}){% else %}休眠中({{ archived|length }}){% endif %}</div>
             <div class="small text-muted mb-1">收起来的站不在分类里，但数据一条没动；点「唤醒」就回到原来的分类。</div>
             <input type="search" class="form-control form-control-sm mb-1" id="navArchiveQ" placeholder="在休眠里搜名称/网址/分类…" aria-label="搜索休眠站点">
             <div id="navArchiveList">{% for s in archived %}<div class="basket-row mp-row arch-row" data-arch-search="{{ s.name }} {{ s.url }} {{ s.category }} {{ s.subcat }}" data-id="{{ s.pk }}" data-url="{{ s.url }}" data-name="{{ s.name }}" data-cat="{{ s.category }}">
@@ -3277,11 +3280,11 @@ document.documentElement.classList.add('nav-guest-mode');
         if (subs) {
             var b1 = document.createElement('span'); b1.className = 'badge site-tag';
             b1.setAttribute('data-tip', '含 ' + subs + ' 个子网页\n左键点卡片先选子页');
-            b1.textContent = '子页 ' + subs; row.appendChild(b1);
+            b1.textContent = {% if nav_lang == 'en' %}(subs + ' subs'){% else %}('子页 ' + subs){% endif %}; row.appendChild(b1);
         }
         if (alts) {
             var b2 = document.createElement('span'); b2.className = 'badge site-tag';
-            b2.setAttribute('data-tip', '备用网址'); b2.textContent = '备用 ' + alts; row.appendChild(b2);
+            b2.setAttribute('data-tip', '备用网址'); b2.textContent = {% if nav_lang == 'en' %}(alts + ' alt'){% else %}('备用 ' + alts){% endif %}; row.appendChild(b2);
         }
         tags.forEach(function (t) {
             var chip = document.createElement('span'); chip.className = 'site-tagchip';

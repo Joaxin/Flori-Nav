@@ -796,12 +796,16 @@ class DGroupStructureTests(TestCase):
         theme_js = static_text('js/theme.js')
         self.assertIn('window.navClearWallpaper', theme_js)
 
-    # ---- D5 设置布局:展开折叠移到主页面;目录子项 data 钩子;拖拽手柄;无源码黑话 ----
-    def test_expand_collapse_moved_to_main_page(self):
+    # ---- D5 设置布局:展开折叠收进目录齿轮;目录子项 data 钩子;拖拽手柄;无源码黑话 ----
+    def test_expand_collapse_in_toc_gear(self):
         owner = self.client.get(reverse('nav_sites')).content.decode('utf-8')
-        self.assertIn('nav-groups-bar', owner)
         self.assertIn('id="navExpandAll"', owner)
         self.assertIn('id="navCollapseAll"', owner)
+        # 2026-11-23:用户嫌内容区顶部那排按钮碍眼,整组搬进目录齿轮;主区不再有 bar
+        self.assertNotIn('nav-groups-bar', owner)
+        gear_seg = owner.split('id="tocGearMenu"', 1)[1].split('id="tocGearMore"', 1)[0]
+        self.assertIn('id="navExpandAll"', gear_seg)
+        self.assertIn('id="navCollapseAll"', gear_seg)
         # 不在「布局」设置页内
         content_seg = owner.split('id="setTabContent"', 1)[1].split('id="setTabSort"', 1)[0]
         self.assertNotIn('id="navExpandAll"', content_seg)

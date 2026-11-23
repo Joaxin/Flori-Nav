@@ -503,6 +503,30 @@ $(function() {
     });
     // ===== R-14 目录宽度档(auto|narrow|card):档位类挂 #navToc,与六档 tocStyle 叠加并存 =====
     // 存储键 navTocWidth,默认 auto;applyTocStyle 只摘/挂 toc-style-* 类,不碰宽度类,互不覆盖。
+    // 窄栏档(2026-11-23 返工):每个目录链接的首字写进 data-ini,CSS 用它渲染字块;
+    // 整名写进 title,悬停仍可读全称。中英切换后由 MutationObserver 重算。
+    function tocPaintIni() {
+        const toc = document.getElementById('navToc');
+        if (!toc) return;
+        toc.querySelectorAll('.toc-scroll > a, .toc-row > a').forEach(function (a) {
+            const label = a.querySelector('.text-truncate') || a.querySelector('span');
+            let txt = (label ? label.textContent : a.textContent) || '';
+            txt = txt.replace(/\s+/g, ' ').trim();
+            a.setAttribute('data-ini', txt ? Array.from(txt)[0] : '·');
+            if (txt) a.setAttribute('title', txt);
+        });
+    }
+    // 目录条目会随筛选/翻译重画;用轻量观察器兜住,不额外挂钩子
+    (function watchTocIni() {
+        const toc = document.getElementById('navToc');
+        if (!toc || !window.MutationObserver) return;
+        let timer = 0;
+        new MutationObserver(function () {
+            clearTimeout(timer);
+            timer = setTimeout(tocPaintIni, 120);
+        }).observe(toc, { childList: true, subtree: true, characterData: true });
+    })();
+    window.navTocPaintIni = tocPaintIni;
     function paintTocWidth(v) {
         v = ['auto', 'narrow', 'card'].indexOf(String(v)) >= 0 ? String(v) : 'auto';
         const toc = document.getElementById('navToc');
@@ -515,6 +539,7 @@ $(function() {
             $(this).toggleClass('btn-secondary', on)
                    .toggleClass('btn-outline-secondary', !on);
         });
+        tocPaintIni();
     }
     function initTocWidth() {
         const key = 'navTocWidth', def = 'auto';
@@ -1390,10 +1415,18 @@ $(function() {
     $(document).on('input change', '.sf-form .f-subcat', function() {
         sfRefreshSubcats($(this).closest('.sf-form'));
     });
+    // 表单区的动态文案(站点 1 / 最多 N 个表单)不在词条表的纯文本替换范围内,这里按当前语言现取
+    function sfI18n(zh) {
+        return (window.NavI18n && NavI18n.getLang && NavI18n.getLang() === 'en')
+            ? ((NavI18n.dict && NavI18n.dict[zh]) || zh) : zh;
+    }
     function sfAddForm(prefill) {
-        if ($('#siteFormPanes .tab-pane').length >= SF_MAX) { showToast('最多 ' + SF_MAX + ' 个表单'); return null; }
+        if ($('#siteFormPanes .tab-pane').length >= SF_MAX) {
+            showToast(sfI18n('最多') + ' ' + SF_MAX + ' ' + sfI18n('个表单'));
+            return null;
+        }
         const id = 'sfPane-' + (++sfSeq);
-        const $btn = sfTabButton(id, '站点 ' + sfSeq);
+        const $btn = sfTabButton(id, sfI18n('站点') + ' ' + sfSeq);
         $('#siteFormTabs').append($btn);
         const $pane = $('<div class="tab-pane fade" id="' + id + '" role="tabpanel">').append(SF_TPL);
         $('#siteFormPanes').append($pane);
@@ -2616,6 +2649,12 @@ $(function() {
             const clone = src.cloneNode(true);
             clone.querySelectorAll('.toc-num, .badge, .toc-count, .count, [class*="count"]').forEach(function(n) { n.remove(); });
             return clone.textContent.trim();
+        }
+        // 2026-11-23:只有一层时面包屑只是把当前分类名重复一遍(且贴着分类标题,像多了个副标题),
+        // 用户直接点名碍眼;≥2 层才显示。
+        if (levels.length < 2) {
+            $crumb.addClass('d-none').attr('aria-hidden', 'true');
+            return;
         }
         levels.forEach(function(link, i) {
             const li = document.createElement('li');
