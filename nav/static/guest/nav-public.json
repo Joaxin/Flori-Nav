@@ -1,14 +1,15 @@
 {
  "format": "nav-public",
  "version": 1,
- "generatedAt": "2026-11-21T08:25:22.814733+00:00",
- "scope": "builtin",
+ "generatedAt": "2026-11-23T11:09:25.869071+00:00",
+ "scope": "public",
  "brand": {
   "name": "寻花集",
   "tagline": "网址导航"
  },
  "categories": [
-  "内置网站"
+  "内置网站",
+  "自定义"
  ],
  "sites": [
   {
@@ -30,6 +31,14 @@
     {
      "name": "Codex",
      "url": "https://platform.openai.com/codex"
+    },
+    {
+     "name": "API 文档",
+     "url": "https://platform.openai.com/docs"
+    },
+    {
+     "name": "服务状态",
+     "url": "https://status.openai.com"
     }
    ],
    "alternates": [],
@@ -59,6 +68,14 @@
     {
      "name": "Anthropic 控制台",
      "url": "https://console.anthropic.com"
+    },
+    {
+     "name": "开发者文档",
+     "url": "https://docs.anthropic.com"
+    },
+    {
+     "name": "价格方案",
+     "url": "https://claude.com/pricing"
     }
    ],
    "alternates": [],
@@ -88,6 +105,14 @@
     {
      "name": "Google Flow",
      "url": "https://flow.google.com"
+    },
+    {
+     "name": "Gemini API",
+     "url": "https://ai.google.dev"
+    },
+    {
+     "name": "Google Labs",
+     "url": "https://labs.google"
     }
    ],
    "alternates": [],
@@ -113,6 +138,14 @@
     {
      "name": "xAI 控制台",
      "url": "https://console.x.ai"
+    },
+    {
+     "name": "Grok Imagine",
+     "url": "https://grok.com/imagine"
+    },
+    {
+     "name": "xAI 文档",
+     "url": "https://docs.x.ai"
     }
    ],
    "alternates": [],
@@ -138,6 +171,14 @@
     {
      "name": "DeepSeek 开放平台",
      "url": "https://platform.deepseek.com"
+    },
+    {
+     "name": "API 文档",
+     "url": "https://api-docs.deepseek.com"
+    },
+    {
+     "name": "服务状态",
+     "url": "https://status.deepseek.com"
     }
    ],
    "alternates": [],
@@ -161,12 +202,20 @@
    "icon_size": 0,
    "children": [
     {
+     "name": "Qwen 官网",
+     "url": "https://qwen.ai"
+    },
+    {
      "name": "通义",
      "url": "https://tongyi.aliyun.com"
     },
     {
      "name": "阿里云百炼",
      "url": "https://bailian.console.aliyun.com"
+    },
+    {
+     "name": "Qwen 文档",
+     "url": "https://qwen.readthedocs.io"
     }
    ],
    "alternates": [],
@@ -192,6 +241,14 @@
     {
      "name": "火山方舟",
      "url": "https://console.volcengine.com/ark"
+    },
+    {
+     "name": "扣子 Coze",
+     "url": "https://www.coze.cn"
+    },
+    {
+     "name": "即梦 Dreamina",
+     "url": "https://dreamina.jianying.com"
     }
    ],
    "alternates": [],
@@ -221,6 +278,10 @@
     {
      "name": "智谱开放平台",
      "url": "https://bigmodel.cn"
+    },
+    {
+     "name": "大模型文档",
+     "url": "https://docs.bigmodel.cn"
     }
    ],
    "alternates": [],
@@ -246,6 +307,10 @@
     {
      "name": "Moonshot 开放平台",
      "url": "https://platform.moonshot.cn"
+    },
+    {
+     "name": "API 文档",
+     "url": "https://platform.moonshot.cn/docs"
     }
    ],
    "alternates": [],
@@ -271,6 +336,18 @@
     {
      "name": "海螺 AI",
      "url": "https://hailuoai.com"
+    },
+    {
+     "name": "海螺视频 H3",
+     "url": "https://hailuoai.video"
+    },
+    {
+     "name": "MiniMax 官网",
+     "url": "https://www.minimaxi.com"
+    },
+    {
+     "name": "MiniMax 开放平台",
+     "url": "https://platform.minimaxi.com"
     }
    ],
    "alternates": [],
@@ -279,6 +356,22 @@
     "免费",
     "语音"
    ],
+   "order": null
+  },
+  {
+   "name": "百度一下，你就知道",
+   "url": "https://www.baidu.com",
+   "category": "自定义",
+   "subcat": "",
+   "description": "全球领先的中文搜索引擎、致力于让网民更便捷地获取信息，找到所求。百度超过千亿的中文网页数据库，可以瞬间找到相关的搜索结果。",
+   "site_title": "百度一下，你就知道",
+   "favicon": "https://www.baidu.com/favicon.ico",
+   "icon_text": "",
+   "icon_color": "",
+   "icon_size": 0,
+   "children": [],
+   "alternates": [],
+   "tags": [],
    "order": null
   }
  ]
