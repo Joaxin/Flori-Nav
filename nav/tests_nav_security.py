@@ -217,3 +217,26 @@ class NavWriteTokenTests(TestCase):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop('NAV_WRITE_TOKEN', None)
             self.assertEqual(200, self._add('https://sec-unset.example').status_code)
+
+
+class NavDeployHardeningTests(TestCase):
+    """只读文件系统(Serverless)与测活入口硬化:失败要降级提示,不能 500。"""
+
+    def test_link_check_rejects_get(self):
+        """GET 不再能触发并发出站请求 + 写入体检记录。"""
+        self.assertEqual(405, self.client.get(reverse('nav_link_check')).status_code)
+
+    def test_icon_upload_readonly_returns_503(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        up = SimpleUploadedFile('i.png', b'\x89PNG\r\n\x1a\nreadonly', content_type='image/png')
+        with override_settings(MEDIA_ROOT='/proc/nav-readonly-media'):
+            resp = self.client.post(reverse('api_nav_icon_upload'), data={'file': up})
+        self.assertEqual(503, resp.status_code)
+        self.assertEqual('error', resp.json()['status'])
+
+    def test_snapshot_write_readonly_returns_false(self):
+        from django.test import override_settings
+        from .signals import write_public_snapshot
+        with override_settings(BASE_DIR='/proc/nav-readonly-base'):
+            self.assertFalse(write_public_snapshot(force=True))

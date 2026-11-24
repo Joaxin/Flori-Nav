@@ -334,6 +334,18 @@
                     uiFire(toggle, 'shown.bs.tab');
                 }
             }
+            else if (type === 'collapse') {
+                // 2026-11-24:垫片原先没实现 collapse,任何 data-bs-toggle="collapse"
+                // (访客 AI「手动粘贴 AI 回复」)点了完全没反应,面板永久 display:none。
+                e.preventDefault();
+                const pane = getTarget(toggle, 'data-bs-target');
+                if (pane) {
+                    const opening = !pane.classList.contains('show');
+                    pane.classList.toggle('show', opening);
+                    toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+                    uiFire(pane, opening ? 'shown.bs.collapse' : 'hidden.bs.collapse');
+                }
+            }
             /* type === 'tooltip':原生 title 兜底,忽略 */
         }
         // 关闭按钮(data-bs-dismiss)

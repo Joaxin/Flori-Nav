@@ -538,8 +538,11 @@ class NavLinkAiPanelTests(TestCase):
 
     def _template(self):
         from pathlib import Path
-        return (Path(__file__).resolve().parent / 'templates' / 'nav' /
-                'nav_sites.html').read_text(encoding='utf-8')
+        root = Path(__file__).resolve().parent / 'templates' / 'nav'
+        main = (root / 'nav_sites.html').read_text(encoding='utf-8')
+        # 2026-11-24:模板拆了 partials,静态断言要连拆出去的弹层一起看
+        parts = sorted((root / 'partials').glob('*.html')) if (root / 'partials').is_dir() else []
+        return main + '\n' + '\n'.join(p.read_text(encoding='utf-8') for p in parts)
 
     def test_template_mounts_modal_island_script_and_entries(self):
         tpl = self._template()

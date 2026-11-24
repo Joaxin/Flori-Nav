@@ -59,7 +59,8 @@ class NavCardMarkupTests(TestCase):
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
         self.assertIn('hide-sub3', html)          # aside 首帧即带收起类
         js = static_text('js/nav-sites.js')
-        self.assertIn("bindTocSwitch('#tocShowSub3', 'navTocSub3', 'hide-sub3', false)", js)
+        # 2026-11-24:齿轮菜单也放了同一个开关,绑定改成 id 数组
+        self.assertIn("bindTocSwitch(['#tocShowSub3', '#tocGearShowSub3'], 'navTocSub3', 'hide-sub3', false)", js)
 
     def test_toc_has_six_style_options(self):
         """2026-11-19:「卡片」删掉后,再新增「柔光 / 缎带」两种,目录共 6 档。"""

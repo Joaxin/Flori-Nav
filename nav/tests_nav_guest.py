@@ -407,7 +407,8 @@ class GuestLocalAiTests(TestCase):
         # 体检篮只做浏览器探测,不请求本站写接口
         self.assertIn('no-cors', self.ai_js)
         self.assertIn('window.navGuestProbeUrl', self.mg_js)
-        self.assertNotIn('/api/nav/', self.mg_js)
+        # 同上:只读抓取 fetch-meta 是唯一例外
+        self.assertNotIn('/api/nav/', self.mg_js.replace('/api/nav/fetch-meta/', ''))
         # 标签快筛与编辑:标签进入卡片搜索串
         self.assertIn('applyTagFilter', self.mg_js)
         self.assertIn('nav-guest-tagbar', self.mg_js)
@@ -598,7 +599,9 @@ class GuestCareLineTests(TestCase):
 
     def test_care_and_manage_are_local_only_no_native_popup(self):
         for js in (self.care_js, self.mg_js):
-            self.assertNotIn('/api/nav/', js)
+            # 2026-11-24:游客本机管理里唯一放行的是只读抓取 /api/nav/fetch-meta/
+            # (不写库,后端 @require_POST + _guard_public_url/_safe_get 已挡内网),其余 /api/nav/ 仍禁。
+            self.assertNotIn('/api/nav/', js.replace('/api/nav/fetch-meta/', ''))
             self.assertNotIn('window.confirm(', js)
             self.assertNotIn('window.alert(', js)
             self.assertNotIn('window.prompt(', js)
@@ -667,7 +670,8 @@ class GuestMetadataLineTests(TestCase):
             self.assertIn(token, self.template)
 
     def test_metadata_line_local_only_no_native_popup(self):
-        self.assertNotIn('/api/nav/', self.mg_js)
+        # 只读抓取 fetch-meta 是唯一例外(游客端「识别标题/图标」),其余接口仍然不许出现
+        self.assertNotIn('/api/nav/', self.mg_js.replace('/api/nav/fetch-meta/', ''))
         self.assertNotIn('window.confirm(', self.mg_js)
         self.assertNotIn('window.alert(', self.mg_js)
         self.assertNotIn('window.prompt(', self.mg_js)

@@ -621,9 +621,11 @@
     function buildPanel() {
         panel = document.createElement('div');
         panel.id = 'navGuestAiPanel';
-        panel.style.cssText = 'position:fixed;right:16px;bottom:96px;z-index:1060;width:370px;max-width:calc(100vw - 32px);'
+        // 2026-11-24:原先贴右下角(right:16px/bottom:96px),与主人端 #navAiModal 的居中弹窗观感差一截,
+        // 还正好压在右侧快捷工具条上;统一成居中浮层(宽度/最大高度保持原口径)。
+        panel.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1060;width:440px;max-width:calc(100vw - 32px);'
             + 'max-height:min(86vh,720px);background:var(--bs-body-bg);border:1px solid var(--bs-border-color);'
-            + 'border-radius:var(--nav-r-lg,16px);box-shadow:0 10px 32px rgba(0,0,0,.22);display:none;'
+            + 'border-radius:var(--nav-r-lg,16px);box-shadow:0 18px 48px rgba(0,0,0,.28);display:none;'
             + 'flex-direction:column;overflow:hidden';
 
         var head = document.createElement('div');
@@ -824,6 +826,15 @@
         body.appendChild(logWrap);
         panel.appendChild(head); panel.appendChild(body); panel.appendChild(msgsBox); panel.appendChild(foot);
         document.body.appendChild(panel);
+        // 2026-11-24:拖动/缩放交给共享模块 nav-modal-move.js(主人端 .modal 走同一份),
+        // 标题栏拖动,右下角缩放;不再两端各造一套。
+        if (window.NavModalMove) {
+            window.NavModalMove.enable(panel, head);
+            var moveCorner = document.createElement('span');
+            moveCorner.className = 'nav-resize-corner';
+            panel.appendChild(moveCorner);
+            window.NavModalMove.resize(panel, moveCorner);
+        }
 
         btnModels.addEventListener('click', function () {
             modelStatusLine('正在拉取模型列表…', 'muted');

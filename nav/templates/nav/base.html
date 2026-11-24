@@ -32,11 +32,29 @@
             function read() {
                 try {
                     var v = localStorage.getItem(KEY);
-                    return (v === 'light' || v === 'dark' || v === 'auto') ? v : 'auto';
+                    // 2026-11-24:三档(自动/浅/深)压成一档「跟随系统」。manual = 不跟随、固定浅色;
+                    // 想要深色交给皮肤(水墨/书房)。旧值 light/dark 由下面的 migrate 处理。
+                    return v === 'manual' ? 'manual' : 'auto';
                 } catch (e) { return 'auto'; }
             }
+            // 老用户迁移:存过 dark/light 的,按用户口径落到对应皮肤,再统一记 auto。
+            (function migrate() {
+                try {
+                    var old = localStorage.getItem(KEY);
+                    if (old === 'dark') {
+                        // 极光是唯一「常驻深色」的皮肤(ink 是宣纸米白,study 只在 dark 下才转深)
+                        localStorage.setItem('navTheme', 'aurora');
+                        localStorage.setItem(KEY, 'auto');
+                    } else if (old === 'light') {
+                        localStorage.setItem('navTheme', 'plain');
+                        localStorage.setItem(KEY, 'auto');
+                    } else if (old !== 'auto' && old !== 'manual') {
+                        localStorage.setItem(KEY, 'auto');
+                    }
+                } catch (e) {}
+            })();
             function apply(mode) {
-                var dark = mode === 'dark' || (mode === 'auto' && !!(mq && mq.matches));
+                var dark = (mode === 'auto' && !!(mq && mq.matches));
                 document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
                 if (window.applyNavAccent) window.applyNavAccent(localStorage.getItem('navAccent') || '');
                 syncThemeColor();

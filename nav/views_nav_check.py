@@ -274,6 +274,7 @@ def _nav_link_param(value, default, lo, hi, label):
     return ivalue, None
 
 
+@require_POST
 def nav_link_check(request):
     """链接测活:POST {urls:[...], proxy:'', timeout?, total_timeout?},服务器端并发 GET,
     返回逐条 {url,ok,status,error};text/html 页面还会解析内容中的"可能新地址",

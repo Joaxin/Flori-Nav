@@ -498,9 +498,15 @@ class NavUiModeTests(TestCase):
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
         # 快捷下拉
         self.assertIn('id="navQuickSettingsMenu"', html)
-        for frag in ('data-nav-color-mode="auto"', 'data-nav-color-mode="light"',
-                     'data-nav-color-mode="dark"'):
-            self.assertIn(frag, html)
+        # 2026-11-24:明暗三档(自动/浅/深)压成一档「跟随系统」——深色需求交给「极光」皮肤
+        # (aurora 是唯一常驻深色;ink 是宣纸米白,study 只在 dark 下才转深)。
+        # 老值 dark/light 迁移到对应皮肤再记 auto(迁移脚本必须早于首帧 apply)。
+        self.assertIn('id="setColorModeAuto"', html)
+        self.assertIn('跟随系统明暗', html)
+        self.assertNotIn('data-nav-color-mode="light"', html)
+        self.assertNotIn('data-nav-color-mode="dark"', html)
+        self.assertIn("localStorage.setItem('navTheme', 'aurora')", html)
+        self.assertIn("return v === 'manual' ? 'manual' : 'auto'", html)
         self.assertIn('id="navQuickLayoutGroup"', html)
         self.assertIn('id="navQuickUiModeGroup"', html)
         # 全部设置入口 -> 抽屉

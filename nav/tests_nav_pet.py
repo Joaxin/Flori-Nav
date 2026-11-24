@@ -667,13 +667,17 @@ class PetMenuConsolidationTests(SimpleTestCase):
     def test_four_frequent_actions_sit_on_top(self):
         body = self._js().split('petMenu.innerHTML =', 1)[1].split("document.body.appendChild(petMenu)", 1)[0]
         # 顶层 = 不缩进在 petSub(...) 参数里的那些:行首 8 空格 + petMenuItem(
+        # 2026-11-24:用户要求「设置」不再走二级 —— 顶层多了 设置 / 再见(=4 常用 + 2)
         direct = [ln for ln in body.splitlines() if ln.startswith('        petMenuItem(')]
-        self.assertEqual(4, len(direct), direct)
+        self.assertEqual(6, len(direct), direct)
+        self.assertIn("petMenuItem('settings'", body)
+        self.assertIn("petMenuItem('off'", body)
 
     def test_four_submenus_with_expected_labels(self):
         js = self._js()
-        self.assertEqual(4, js.count("petSub('"))
-        for label in ('演出与声音', '互动与聊天', '导航帮手', '设置'):
+        # 2026-11-24:「设置」提成一级直达,子菜单剩三组
+        self.assertEqual(3, js.count("petSub('"))
+        for label in ('演出与声音', '互动与聊天', '导航帮手'):
             self.assertIn(label, js)
 
     def test_no_action_was_lost(self):

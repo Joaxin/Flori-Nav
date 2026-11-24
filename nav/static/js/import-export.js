@@ -75,18 +75,30 @@ jQuery(function ($) {
         };
         reader.readAsText(file);
     }
-    function _legacy_json_import(file) {
+    function _legacy_json_import(file, wipe) {
         const fd = new FormData();
         fd.append('nav_file', file);
+        if (wipe) fd.append('wipe', '1');
         $.ajax({
             url: IE_URLS.import, type: 'POST', data: fd,
             processData: false, contentType: false,
             beforeSend: xhr => xhr.setRequestHeader('X-CSRFToken', csrf()),
-            success: function(data) { try { sessionStorage.setItem('navPetWelcome', '导入的 ' + data.created + ' 个新伙伴'); } catch (e) {} showToast(`导入完成：新增 ${data.created}，更新 ${data.updated}`); setTimeout(() => location.reload(), 900); },
+            success: function(data) { try { sessionStorage.setItem('navPetWelcome', '导入的 ' + data.created + ' 个新伙伴'); } catch (e) {} showToast(`导入完成：新增 ${data.created}，更新 ${data.updated}` + (data.wiped ? `，已清空 ${data.wiped}` : '')); setTimeout(() => location.reload(), 900); },
             error: function(xhr) { showToast((xhr.responseJSON && xhr.responseJSON.message) || '导入失败'); }
         });
     }
     const bmExcluded = new Set();   // 预览里被取消勾选的 bmItems 下标
+    // 导入方式(2026-11-24):合并 = 保留现有、同网址 upsert;覆盖 = 先清空现有站点再导入。
+    // 只作用于 NavSite;分类显隐/排序与工具不动。
+    let bmMode = 'merge';
+    let bmWipeOK = false;   // 覆盖模式已确认过清库(同一次弹窗只问一次)
+    $('#bmModeGroup').on('click', '[data-bm-mode]', function () {
+        bmMode = String($(this).attr('data-bm-mode')) === 'replace' ? 'replace' : 'merge';
+        bmWipeOK = false;
+        $('#bmModeGroup [data-bm-mode]').removeClass('btn-secondary').addClass('btn-outline-secondary');
+        $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
+        $('#bmReplaceWarn').toggleClass('d-none', bmMode !== 'replace');
+    });
 
     // ===== 浏览器书签导入:前端解析 Netscape HTML → 预览 → 复用 nav_import 端点 =====
     const BM_BATCH = 200;   // 前端分批大小:每批 POST 到 nav_import;大书签集(实测 Firefox 2154 条)逐批全量入库,不再有单次上限
@@ -438,10 +450,24 @@ jQuery(function ($) {
     // 大书签集(实测 Firefox 导出 2154 条)不再被 500 条单次上限截断;逐批落库 + 进度条。
     // 单批失败不中断后续(导入是 upsert 幂等,重跑安全),最后汇总失败批数。
     $('#bmImportConfirm').on('click', function() {
+        // 覆盖是破坏性且不可撤销的:先走站内确认遮罩(navConfirm),确认后再进原流程
+        if (bmMode === 'replace' && !bmWipeOK) {
+            if (!window.navConfirm) return;
+            window.navConfirm({
+                title: '覆盖导入会先清空站点',
+                body: '当前全部站点(含内置与休眠)会被删除,只保留这次导入的内容;分类顺序与快捷工具不受影响。',
+                confirmLabel: '清空并导入', danger: true
+            }).then(function (ok) {
+                if (!ok) return;
+                bmWipeOK = true;
+                $('#bmImportConfirm').trigger('click');
+            });
+            return;
+        }
         if (bmJsonFile) {   // JSON 导入:原文件原样上传(勾选只过滤站点展示,工具随文件走)
             const f = bmJsonFile;
             bmJsonFile = null;
-            _legacy_json_import(f);
+            _legacy_json_import(f, bmMode === 'replace');
             return;
         }
         const bmBatch = bmItems.filter(function(s, i) { return !bmExcluded.has(i); });   // ⚠️ 别叫 bmItems:const 与外层 let 同名会形成 TDZ,上一行就会 ReferenceError
@@ -483,6 +509,8 @@ jQuery(function ($) {
                 const blob = new Blob([JSON.stringify(payload)], {type: 'application/json'});
                 const fd = new FormData();
                 fd.append('nav_file', new File([blob], 'bookmarks.json', {type: 'application/json'}));
+                // 覆盖模式只让第一批清库,否则每批都会把上一批删掉
+                if (bmMode === 'replace' && k === 0) fd.append('wipe', '1');
                 $.ajax({
                     url: IE_URLS.import, type: 'POST', data: fd,
                     processData: false, contentType: false,

@@ -15,6 +15,8 @@ jQuery(function ($) {
     let checkRows = [];              // { site, result:null|{ok,status,error,ms,skipped} }
     let nailSelected = {};           // 勾选表:site.id → true,独立于批量栏 selected
     let linkFilter = 'all';
+    let linkQuery = '';              // 名称 / 网址 / 分类 关键字(2026-11-24)
+    let nailCat = '';                // 分类筛选:空=全部分类(2026-11-24,站点上千时按分类收窄)
     let checkBusy = false;
     let promptMode = 'alt';
     let linkPreview = [];
@@ -120,10 +122,40 @@ jQuery(function ($) {
             const p = prev[s.url];
             return { site: s, result: p ? p.result : null };
         });
+        fillNailCats();
         renderCheckRows();
     }
 
+    function siteCat(site) {
+        return site.cat || (site.archived ? '休眠' : '未分类');
+    }
+
+    // 分类下拉:按当前站点集重算选项(带条数),保留用户已选分类
+    function fillNailCats() {
+        const sel = document.getElementById('nailCatFilter');
+        if (!sel) return;
+        const counts = {};
+        checkRows.forEach(function (r) {
+            const c = siteCat(r.site);
+            counts[c] = (counts[c] || 0) + 1;
+        });
+        const t = window.NavI18n && NavI18n.t ? NavI18n.t : function (s) { return s; };
+        const cur = nailCat;
+        let html = '<option value="">' + esc(t('全部分类')) + ' (' + checkRows.length + ')</option>';
+        Object.keys(counts).sort(function (a, b) { return a.localeCompare(b, 'zh-Hans-CN'); }).forEach(function (c) {
+            html += '<option value="' + esc(c) + '">' + esc(t(c)) + ' (' + counts[c] + ')</option>';
+        });
+        sel.innerHTML = html;
+        sel.value = counts[cur] ? cur : '';
+        nailCat = sel.value;
+    }
+
     function matchesFilter(r) {
+        if (nailCat && siteCat(r.site) !== nailCat) return false;
+        if (linkQuery) {
+            const hay = ((r.site.name || '') + ' ' + (r.site.url || '') + ' ' + (r.site.cat || '')).toLowerCase();
+            if (hay.indexOf(linkQuery) < 0) return false;
+        }
         if (linkFilter === 'all') return true;
         if (linkFilter === 'archived') return r.site.archived;
         if (!r.result) return linkFilter === 'untested';
@@ -132,29 +164,52 @@ jQuery(function ($) {
         return true;
     }
 
+    $(document).on('click', '#nailSelectAll', function () {
+        // 只作用于当前筛选后可见的行:3000 个站点靠一个一个点不现实
+        const $btn = $(this);
+        const T = function (s) { return (window.NavI18n && NavI18n.t) ? NavI18n.t(s) : s; };
+        const $cbs = $('#nailRows [data-nail-check]');
+        if (!$cbs.length) return;
+        const allOn = $cbs.toArray().every(function (el) { return el.checked; });
+        $cbs.each(function () {
+            const id = $(this).attr('data-site-id');
+            this.checked = !allOn;
+            if (id != null) nailSelected[id] = !allOn;
+        });
+        $btn.toggleClass('btn-secondary', !allOn).toggleClass('btn-outline-secondary', allOn)
+            .text(allOn ? T('全选可见') : T('取消全选'));
+    });
+
     function renderCheckRows() {
         const $box = $('#nailRows').empty();
-        let nOk = 0, nDead = 0, nUntested = 0;
+        const T = function (s) { return (window.NavI18n && NavI18n.t) ? NavI18n.t(s) : s; };
+        const en = !!(window.NavI18n && NavI18n.getLang() === 'en');
+        let nOk = 0, nDead = 0, nUntested = 0, shown = 0;
+        // 状态计数按全量算,不然切到「失败」后汇总会显示成 0 可连/0 未测,看着像数据丢了
+        checkRows.forEach(function (r) {
+            if (r.result) { if (r.result.ok) nOk++; else nDead++; } else nUntested++;
+        });
         checkRows.forEach(function (r) {
             if (!matchesFilter(r)) return;
+            shown++;
             let codeTxt, msTxt, note, codeCls;
             if (r.result) {
-                if (r.result.ok) { nOk++; codeTxt = r.result.status != null ? 'HTTP ' + r.result.status : '—'; note = ''; codeCls = 'nail-badge-ok'; }
-                else { nDead++; codeTxt = '打不开'; note = r.result.error || ''; codeCls = 'nail-badge-dead'; }
+                if (r.result.ok) { codeTxt = r.result.status != null ? 'HTTP ' + r.result.status : '—'; note = ''; codeCls = 'nail-badge-ok'; }
+                else { codeTxt = T('打不开'); note = r.result.error || ''; codeCls = 'nail-badge-dead'; }
                 msTxt = r.result.ms ? r.result.ms + ' ms' : '';
             } else {
-                nUntested++;
-                codeTxt = r.site.old.at ? (r.site.old.code ? 'HTTP ' + r.site.old.code : '—') : '未测';
+                codeTxt = r.site.old.at ? (r.site.old.code ? 'HTTP ' + r.site.old.code : '—') : T('未测');
                 msTxt = r.site.old.at && r.site.old.ms ? r.site.old.ms + ' ms' : '';
                 note = ''; codeCls = 'nail-badge-muted';
             }
             const $row = $('<div class="nail-row">');
             const $cb = $('<input type="checkbox" class="form-check-input" data-nail-check>')
+                .attr('data-site-id', r.site.id)
                 .prop('checked', !!nailSelected[r.site.id]);
             $cb.on('change', function () { nailSelected[r.site.id] = this.checked; });
             const $name = $('<div class="nail-name fw-bold">').text(r.site.name || r.site.url);
             const $url = $('<div class="nail-url">').text(r.site.url);
-            const $cat = $('<div class="nail-meta">').text(r.site.cat || (r.site.archived ? '休眠' : ''));
+            const $cat = $('<div class="nail-meta">').text(r.site.cat || (r.site.archived ? T('休眠') : ''));
             const $code = $('<div class="nail-code">').addClass(codeCls).text(codeTxt);
             const $ms = $('<div class="nail-meta">').text(msTxt);
             const $note = $('<div class="nail-note">').text(note);
@@ -162,7 +217,20 @@ jQuery(function ($) {
             $box.append($row);
         });
         const sum = $('#nailCheckSummary');
-        if (sum) sum.text('共 ' + checkRows.length + ' 条 · 可连 ' + nOk + ' · 失败 ' + nDead + ' · 未测 ' + nUntested);
+        if (sum) {
+            sum.text(en
+                ? 'Total ' + checkRows.length + ' · OK ' + nOk + ' · Failed ' + nDead + ' · Untested ' + nUntested
+                  + (shown !== checkRows.length ? ' · Showing ' + shown : '')
+                : '共 ' + checkRows.length + ' 条 · 可连 ' + nOk + ' · 失败 ' + nDead + ' · 未测 ' + nUntested
+                  + (shown !== checkRows.length ? ' · 当前筛选 ' + shown + ' 条' : ''));
+        }
+        const $sa = $('#nailSelectAll');
+        if ($sa.length) {
+            const $cs = $('#nailRows [data-nail-check]');
+            const allOn = !!$cs.length && $cs.toArray().every(function (el) { return el.checked; });
+            $sa.toggleClass('btn-secondary', allOn).toggleClass('btn-outline-secondary', !allOn)
+                .text(allOn ? T('取消全选') : T('全选可见'));
+        }
     }
 
     function runLinkCheck(onlySelected) {
@@ -473,6 +541,17 @@ jQuery(function ($) {
     $('#nailRetestSelected').on('click', function () { runLinkCheck(true); });
     $('#nailFilters').on('click', '[data-nail-filter]', function () {
         linkFilter = $(this).attr('data-nail-filter');
+        // 点击给了视觉反馈,否则看不出筛选是否生效
+        $('#nailFilters [data-nail-filter]').removeClass('btn-secondary').addClass('btn-outline-secondary');
+        $(this).removeClass('btn-outline-secondary').addClass('btn-secondary');
+        renderCheckRows();
+    });
+    $('#nailSearch').on('input', function () {
+        linkQuery = this.value.trim().toLowerCase();
+        renderCheckRows();
+    });
+    $('#nailCatFilter').on('change', function () {
+        nailCat = this.value;
         renderCheckRows();
     });
     $('#nailPromptPane').on('click', '[data-nail-prompt]', function () {

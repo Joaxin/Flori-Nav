@@ -75,8 +75,14 @@ def api_nav_favicon_localize(request):
             failed += 1
             continue
         name = 'fav_' + uuid.uuid4().hex + ext
-        dest.mkdir(parents=True, exist_ok=True)
-        (dest / name).write_bytes(bytes(buf))
+        try:
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / name).write_bytes(bytes(buf))
+        except OSError as exc:
+            # 只读部署 / 磁盘满:算「这张本地化失败」,不能让整批变 500(2026-11-24 复核)
+            logger.debug('图标落盘失败 %s:%s', name, exc)
+            failed += 1
+            continue
         local_by_url[url] = '/nav-fav/' + name
         NavSite.objects.filter(id=row['id']).update(favicon=local_by_url[url])
         done += 1
@@ -150,8 +156,15 @@ def api_nav_icon_upload(request):
     data = f.read()
     name = 'fav_' + hashlib.md5(data).hexdigest() + '.' + ext
     d = Path(dj_settings.MEDIA_ROOT) / 'nav_favicons'
-    d.mkdir(parents=True, exist_ok=True)
-    (d / name).write_bytes(data)
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        (d / name).write_bytes(data)
+    except OSError as exc:
+        # Serverless 部署目录只读:写不进去就明确报"用外链图标",不要 500。
+        logger.warning('本地图标写入失败(部署目录可能只读):%s', exc)
+        return JsonResponse({'status': 'error',
+                             'message': '当前部署为只读文件系统,无法保存本地图标,请改用外链图标地址'},
+                            status=503)
     return JsonResponse({'status': 'ok', 'url': f'/nav-fav/{name}'})
 
 

@@ -286,14 +286,14 @@ $(function() {
     // D5 父子开关联动:「显示左侧目录」关掉时,目录形态/样式/二级三级显隐/展开折叠这些
     // 子项一并置灰禁用;主开关恢复后子项解锁。复用 navShowToc 同一本机键,不新增存储。
     function navSyncTocChildren(on) {
-        const $groups = $('#navTocModeGroup, #tocStyleGroup, #tocGearModeGroup, #tocGearStyleGroup');
+        const $groups = $('#navTocModeGroup, #tocStyleGroup, #tocGearModeGroup');
         $groups.toggleClass('nav-child-locked', !on);
         $groups.find('button').prop('disabled', !on)
             .attr('aria-disabled', !on ? 'true' : 'false');
         $('#tocExpandSubs, #tocCollapseSubs, #tocGearExpand, #tocGearCollapse').prop('disabled', !on)
             .attr('aria-disabled', !on ? 'true' : 'false')
             .toggleClass('opacity-50', !on);
-        ['#tocShowNums', '#tocShowSubs', '#tocShowSub3'].forEach(function (sel) {
+        ['#tocShowNums', '#tocShowSubs', '#tocShowSub3', '#tocGearShowSubs', '#tocGearShowSub3'].forEach(function (sel) {
             const $i = $(sel);
             if (!$i.length) return;
             $i.prop('disabled', !on)
@@ -455,21 +455,25 @@ $(function() {
 
     // 目录齿轮:目录专属设置(与右上角页面设置分开),均存本机
     // defOn:localStorage 里还没写过这个键时的默认值(不传=开,保持原有二级开关行为)
-    function bindTocSwitch(btnId, prefKey, hubCls, defOn) {
+    function bindTocSwitch(btnIds, prefKey, hubCls, defOn) {
+        const idList = Array.isArray(btnIds) ? btnIds : [btnIds];
+        const sel = idList.join(',');
         const fallback = (defOn === undefined) ? true : !!defOn;
         const saved = localStorage.getItem(prefKey);
         const on = (saved === null) ? fallback : (saved !== '0');
-        $(btnId).prop('checked', on);
+        $(sel).prop('checked', on);
         $('#navToc').toggleClass(hubCls, !on);
-        $(btnId).on('change', function() {
-            $('#navToc').toggleClass(hubCls, !this.checked);
-            localStorage.setItem(prefKey, this.checked ? '1' : '0');
+        $(sel).on('change', function() {
+            const next = this.checked;
+            $('#navToc').toggleClass(hubCls, !next);
+            localStorage.setItem(prefKey, next ? '1' : '0');
+            $(sel).prop('checked', next);   // 齿轮菜单与总设置两个开关同步
         });
     }
     bindTocSwitch('#tocShowNums', 'navTocNums', 'hide-nums');
-    bindTocSwitch('#tocShowSubs', 'navTocSubs', 'hide-subs');
+    bindTocSwitch(['#tocShowSubs', '#tocGearShowSubs'], 'navTocSubs', 'hide-subs');
     // 三级分类默认收起:展开时目录会一口气列出几十条三级,滚动条直接翻倍;设置里仍可打开
-    bindTocSwitch('#tocShowSub3', 'navTocSub3', 'hide-sub3', false);
+    bindTocSwitch(['#tocShowSub3', '#tocGearShowSub3'], 'navTocSub3', 'hide-sub3', false);
     // 目录列表样式:默认 / 极简 / 时间轴 / 胶囊 / 柔光 / 缎带(存本机;「卡片」样式 2026-11-19 按用户要求删除)
     function applyTocStyle(v) {
         const toc = document.getElementById('navToc');
@@ -484,7 +488,7 @@ $(function() {
             ribbon: 'toc-style-ribbon'
         }[v];
         if (styleClass) toc.classList.add(styleClass);
-        $('#tocStyleGroup .btn, #tocGearStyleGroup .btn').each(function() {
+        $('#tocStyleGroup .btn').each(function() {
             const on = String($(this).data('toc-style')) === (v || 'default');
             $(this).toggleClass('btn-secondary', on).toggleClass('btn-outline-secondary', !on);
         });
@@ -496,7 +500,7 @@ $(function() {
         localStorage.setItem('navTocStyle', 'default');
     }
     applyTocStyle(tocStyleSaved);
-    $('#tocStyleGroup, #tocGearStyleGroup').on('click', '.btn', function() {
+    $('#tocStyleGroup').on('click', '.btn', function() {
         const v = String($(this).data('toc-style'));
         localStorage.setItem('navTocStyle', v);
         applyTocStyle(v);
@@ -787,6 +791,8 @@ $(function() {
         const layout = v || localStorage.getItem(navLayoutKey) || 'card';
         $('#setIconBlock').toggleClass('d-none', layout !== 'icon');
         $('#setColsBlock').toggleClass('d-none', layout !== 'cols');
+        // 2026-11-24:快捷下拉里也放一份分栏细节,选「分栏」就地可调,不用再去完整设置里翻
+        $('#navQuickColsBlock').toggleClass('d-none', layout !== 'cols');
         $('#setShowUrl').closest('.form-check').toggleClass('d-none', layout === 'min');
     }
     navSyncLayoutDeps();
@@ -866,6 +872,10 @@ $(function() {
         $('.nav-hub').toggleClass('hide-tags', localStorage.getItem('navShowTags') === '0');
         $('.nav-hub').toggleClass('hide-health', localStorage.getItem('navShowHealth') === '0');
         $('.nav-hub').toggleClass('url-wrap', localStorage.getItem('navUrlMode') === 'wrap');
+        // 2026-11-24 修「开关关了绿点还在」:预设会写 navShowTags / navShowHealth,
+        // 原来只同步了 hub 类、没同步复选框 —— 于是面板显示"关"、页面上点还在(或反过来)。
+        $('#setShowTags').prop('checked', localStorage.getItem('navShowTags') !== '0');
+        $('#setShowHealth').prop('checked', localStorage.getItem('navShowHealth') !== '0');
         // 4b. R-17:gallery / portal 预设 hub 标记类(纯类名、无新节点);其余档摘类。只加这一步,不重排原有顺序。
         $('.nav-hub').toggleClass('nav-preset-gallery', id === 'gallery');
         $('.nav-hub').toggleClass('nav-preset-portal', id === 'portal');
@@ -915,11 +925,15 @@ $(function() {
         }
     })();
     // 分栏细节:齐列 / 流入(默认)。只在分栏布局下露出,值存本机
+    function navColsEvenChanged(on) {
+        localStorage.setItem(navColsEvenKey, on ? '1' : '0');
+        $('#setColsEven, #qcColsEven').prop('checked', on);
+        $('.nav-hub').toggleClass('cols-even', on);
+    }
     $('#setColsEven').prop('checked', localStorage.getItem(navColsEvenKey) === '1')
-        .on('change', function() {
-            localStorage.setItem(navColsEvenKey, this.checked ? '1' : '0');
-            $('.nav-hub').toggleClass('cols-even', this.checked);
-        });
+        .on('change', function() { navColsEvenChanged(this.checked); });
+    $('#qcColsEven').prop('checked', localStorage.getItem(navColsEvenKey) === '1')
+        .on('change', function() { navColsEvenChanged(this.checked); });
     // 分栏列数:设置里选 2/3/4,这里按窗口宽度封顶后写 --cols-count
     // (≥1200 用所选值;992–1199 最多 2;992 以下 1)。流入与齐列共用这一个数。
     function navApplyColsCount() {
@@ -946,11 +960,15 @@ $(function() {
             navResizeHooks.forEach(function(fn) { if (typeof fn === 'function') fn(); });
         });
     });
+    function navColsCountChanged(v) {
+        localStorage.setItem(navColsCountKey, String(v));
+        $('#setColsCount, #qcColsCount').val(String(v));
+        navApplyColsCount();
+    }
     $('#setColsCount').val(localStorage.getItem(navColsCountKey) || '3')
-        .on('change', function() {
-            localStorage.setItem(navColsCountKey, String(this.value));
-            navApplyColsCount();
-        });
+        .on('change', function() { navColsCountChanged(this.value); });
+    $('#qcColsCount').val(localStorage.getItem(navColsCountKey) || '3')
+        .on('change', function() { navColsCountChanged(this.value); });
     // 每栏条目:分栏布局下每个分类内部一行放 1 条还是 2 条(0 = 交给容器宽度自适应)
     const navCardsColsKey = 'navCardsCols';
     function navApplyCardsCols() {
@@ -959,11 +977,15 @@ $(function() {
         if (v === '1' || v === '2') $hub.attr('data-cards-cols', v);
         else $hub.removeAttr('data-cards-cols');
     }
+    function navCardsColsChanged(v) {
+        localStorage.setItem(navCardsColsKey, String(v));
+        $('#setCardsCols, #qcCardsCols').val(String(v));
+        navApplyCardsCols();
+    }
     $('#setCardsCols').val(localStorage.getItem(navCardsColsKey) || '0')
-        .on('change', function() {
-            localStorage.setItem(navCardsColsKey, String(this.value));
-            navApplyCardsCols();
-        });
+        .on('change', function() { navCardsColsChanged(this.value); });
+    $('#qcCardsCols').val(localStorage.getItem(navCardsColsKey) || '0')
+        .on('change', function() { navCardsColsChanged(this.value); });
     navApplyCardsCols();
     // 主题色:预设均为明暗双档(data-accent / data-accent-dark),自定义色在暗色下自动提亮
     function navIsDark() {
@@ -2161,24 +2183,21 @@ $(function() {
     } catch (err) {}
     window.siteMap = siteMap; window.catUrls = catUrls; window.catChildUrls = catChildUrls;   // linktest.js 取用
 
-    // 齿轮快捷下拉:明暗三档(自动/浅色/深色)。只存本机;「自动」档跟随系统,系统切换时 base.html 会实时跟上。
+    // 齿轮快捷下拉:明暗只留一档「跟随系统」(2026-11-24 用户点名:三档和皮肤重叠)。
+    // manual = 不跟随、固定浅色;想要深色去选「水墨」「书房」皮肤。
+    // 老值 light/dark 的迁移写在 base.html 的早期脚本里(必须早于首帧 apply),这里只兜底。
     const NAV_CM_KEY = 'navColorMode';
     function navCmGet() {
-        const v = localStorage.getItem(NAV_CM_KEY);
-        return (v === 'auto' || v === 'light' || v === 'dark') ? v : 'auto';
+        return localStorage.getItem(NAV_CM_KEY) === 'manual' ? 'manual' : 'auto';
     }
     function navPaintColorMode() {
-        const now = navCmGet();
-        $('#navColorModeGroup .btn').each(function() {
-            const on = String($(this).data('nav-color-mode')) === now;
-            $(this).toggleClass('btn-secondary', on).toggleClass('btn-outline-secondary', !on);
-        });
+        $('#setColorModeAuto').prop('checked', navCmGet() === 'auto');
     }
-    $('#navColorModeGroup').on('click', '.btn', function() {
-        const mode = String($(this).data('nav-color-mode'));
-        localStorage.setItem(NAV_CM_KEY, (mode === 'light' || mode === 'dark') ? mode : 'auto');
-        if (window.navSetColorMode) window.navSetColorMode(navCmGet());   // 真正切 data-bs-theme 在 base.html 的早期脚本里
-        applyNavAccent(localStorage.getItem('navAccent') || '');          // 主题色是明暗双档,切完要重算
+    $('#setColorModeAuto').on('change', function() {
+        const on = this.checked;
+        localStorage.setItem(NAV_CM_KEY, on ? 'auto' : 'manual');
+        if (window.navSetColorMode) window.navSetColorMode(on ? 'auto' : 'manual');   // 真正切 data-bs-theme 在 base.html 的早期脚本里
+        applyNavAccent(localStorage.getItem('navAccent') || '');                      // 主题色是明暗双档,切完要重算
         navPaintColorMode();
     });
     navPaintColorMode();
@@ -2211,35 +2230,20 @@ $(function() {
         bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('navSettingsMenu')).show();
     });
 
-    // ===== 设置入口位置:顶栏 / 左下 / 右下(2026-11-23) =====
-    // 只搬同一个 dropdown 容器(#navSettingsWrap),不复制按钮与菜单 ——
-    // 复制菜单会出现两套同名 ID 与两份状态,后面必然对不上。
+    // ===== 快捷工具条位置:顶部 / 左下 / 右下(2026-11-24 按用户口径改) =====
+    // 管的是左下那组圆按钮(回顶 / 皮肤 / 明暗 / 收起),不是顶栏齿轮;
+    // 齿轮固定顶栏,不再跟着三档搬动。
     const SETTINGS_DOCK_KINDS = ['top', 'bottom-left', 'bottom-right'];
-    let settingsWrapHome = null;
-    (function rememberSettingsHome() {
-        const wrap = document.getElementById('navSettingsWrap');
-        if (!wrap) return;
-        settingsWrapHome = { parent: wrap.parentNode, next: wrap.nextSibling };
-    })();
     function settingsDockValue() {
         try {
             const v = localStorage.getItem('navSettingsDock');
-            return SETTINGS_DOCK_KINDS.indexOf(v) >= 0 ? v : 'top';
-        } catch (e) { return 'top'; }
+            return SETTINGS_DOCK_KINDS.indexOf(v) >= 0 ? v : 'bottom-left';
+        } catch (e) { return 'bottom-left'; }
     }
     function navApplySettingsDock(v) {
-        const wrap = document.getElementById('navSettingsWrap');
-        if (!wrap) return;
-        const kind = SETTINGS_DOCK_KINDS.indexOf(v) >= 0 ? v : 'top';
-        wrap.classList.remove('nav-settings-dock--bl', 'nav-settings-dock--br');
-        wrap.classList.toggle('nav-settings-dock', kind !== 'top');
-        if (kind === 'top') {
-            if (settingsWrapHome && settingsWrapHome.parent && wrap.parentNode !== settingsWrapHome.parent) {
-                settingsWrapHome.parent.insertBefore(wrap, settingsWrapHome.next);
-            }
-        } else {
-            wrap.classList.add(kind === 'bottom-left' ? 'nav-settings-dock--bl' : 'nav-settings-dock--br');
-            if (wrap.parentNode !== document.body) document.body.appendChild(wrap);
+        const kind = SETTINGS_DOCK_KINDS.indexOf(v) >= 0 ? v : 'bottom-left';
+        if (window.NavFixbar && typeof NavFixbar.setDock === 'function') {
+            try { NavFixbar.setDock(kind); } catch (e) {}
         }
         $('#navSettingsDockGroup .btn').each(function() {
             const on = String($(this).data('settings-dock')) === kind;
@@ -2252,6 +2256,94 @@ $(function() {
         navApplySettingsDock(v);
     });
     navApplySettingsDock(settingsDockValue());
+
+    // ===== 快捷设置:分段折叠 + 低频段默认收起(2026-11-24) =====
+    // 现状是三段全展开近 700px,顶到屏幕底;这里把「外观/排列/显隐」改成可点标题,
+    // 并把外观里的「背景」拆成子段(背景特效 + 壁纸提示 + 背景皮肤),默认收起。
+    function navQuickSecCollapseInit() {
+        const MENU = document.getElementById('navQuickSettingsMenu');
+        if (!MENU) return;
+        const KEY = 'navQuickSecCollapsed';
+        const DEFAULT_COLLAPSED = ['bg', 'preset'];
+        const T = function (zh) { return (window.NavI18n && NavI18n.t) ? NavI18n.t(zh) : zh; };
+        function readSet() {
+            try {
+                const raw = localStorage.getItem(KEY);
+                if (raw === null) return new Set(DEFAULT_COLLAPSED);
+                const arr = JSON.parse(raw);
+                return new Set(Array.isArray(arr) ? arr : DEFAULT_COLLAPSED);
+            } catch (e) { return new Set(DEFAULT_COLLAPSED); }
+        }
+        function saveSet(s) { try { localStorage.setItem(KEY, JSON.stringify([...s])); } catch (e) {} }
+        const collapsed = readSet();
+        function makeHead(text, cls) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = cls;
+            b.innerHTML = '<span></span><i class="fas fa-chevron-down"></i>';
+            b.firstChild.textContent = T(text);
+            return b;
+        }
+        function bindFold(host, head, key) {
+            head.addEventListener('click', function () {
+                const on = !host.classList.contains('is-collapsed');
+                host.classList.toggle('is-collapsed', on);
+                if (on) collapsed.add(key); else collapsed.delete(key);
+                saveSet(collapsed);
+            });
+            if (collapsed.has(key)) host.classList.add('is-collapsed');
+        }
+        const secs = Array.prototype.slice.call(MENU.querySelectorAll('.nav-quick-sec'));
+        const SEC_KEYS = ['look', 'layout', 'preset', 'showhide'];
+        secs.forEach(function (sec, i) {
+            if (sec.dataset.quickFold === '1') return;
+            const h = sec.querySelector('.form-text.small.mb-1');
+            if (!h) return;
+            const key = SEC_KEYS[i] || ('sec' + i);
+            const head = makeHead(h.textContent.trim(), 'nav-quick-sec-h');
+            h.replaceWith(head);
+            const body = document.createElement('div');
+            body.className = 'nav-quick-sec-body';
+            while (head.nextSibling) body.appendChild(head.nextSibling);
+            sec.appendChild(body);
+            sec.dataset.quickFold = '1';
+            bindFold(sec, head, key);
+        });
+        // 外观里的「背景」子段:背景特效 + 壁纸提示 + 背景皮肤(nav-skins 动态挂的那块)
+        const look = secs[0];
+        if (!look) return;
+        let sub = look.querySelector('.nav-quick-sub[data-quick-sub="bg"]');
+        let sb = sub && sub.querySelector('.nav-quick-sub-body');
+        if (!sub) {
+            const fx = look.querySelector('#navFxToggle');
+            if (!fx) return;
+            sub = document.createElement('div');
+            sub.className = 'nav-quick-sub';
+            sub.setAttribute('data-quick-sub', 'bg');
+            const sh = makeHead('背景', 'nav-quick-sub-h');
+            sb = document.createElement('div');
+            sb.className = 'nav-quick-sub-body';
+            sub.appendChild(sh);
+            sub.appendChild(sb);
+            fx.parentNode.insertBefore(sub, fx);
+            sb.appendChild(fx);
+            bindFold(sub, sh, 'bg');
+        }
+        // nav-skins 的控件可能晚一拍挂载:每轮把它收进子段(已在内则不动)
+        const hint = look.querySelector('#navWallLockHintQuick');
+        if (hint && hint.parentNode !== sb) sb.appendChild(hint);
+        const skin = look.querySelector('.nav-skin-box');
+        if (skin && skin.parentNode !== sb) sb.appendChild(skin);
+    }
+    navQuickSecCollapseInit();
+    [0, 600, 1500].forEach(function (t) { setTimeout(navQuickSecCollapseInit, t); });
+
+    // 旧版本曾把齿轮挪到角落;模板每页重建 #navSettingsWrap,这里只清残留定位类。
+    (function resetSettingsWrap() {
+        const wrap = document.getElementById('navSettingsWrap');
+        if (!wrap) return;
+        wrap.classList.remove('nav-settings-dock', 'nav-settings-dock--bl', 'nav-settings-dock--br');
+    })();
 
     // ===== P1 · R-12 / R-13 / R-16 / R-09 新增导航链路 =====
     // 边界:只消费模板已渲染的 DOM 与既有上下文;零网络请求;不另建第二套滚动监听 / 存储层。
@@ -2650,9 +2742,9 @@ $(function() {
             clone.querySelectorAll('.toc-num, .badge, .toc-count, .count, [class*="count"]').forEach(function(n) { n.remove(); });
             return clone.textContent.trim();
         }
-        // 2026-11-23:只有一层时面包屑只是把当前分类名重复一遍(且贴着分类标题,像多了个副标题),
-        // 用户直接点名碍眼;≥2 层才显示。
-        if (levels.length < 2) {
+        // 2026-11-24 按用户口径:面包屑就是「我现在在哪」,只显示当前分类(一层)也要给;
+        // 只有真的拿不到任何层级时才隐藏。
+        if (!levels.length) {
             $crumb.addClass('d-none').attr('aria-hidden', 'true');
             return;
         }

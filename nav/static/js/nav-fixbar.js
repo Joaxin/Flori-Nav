@@ -13,8 +13,11 @@
     'use strict';
 
     var THEME_FALLBACK = ['default', 'aurora', 'paper', 'sunset', 'ink', 'plain', 'study'];
-    var COLOR_ORDER = ['auto', 'light', 'dark'];
+    // 2026-11-24:明暗压成一档「跟随系统」,工具条这颗按钮从三态循环改成开关式切换。
+    var COLOR_ORDER = ['auto', 'manual'];
     var BULK_SELECTORS = ['#navMsBar', '#ngSnapBulkBar', '#navBulkBar'];
+    var DOCK_KINDS = ['top', 'bottom-left', 'bottom-right'];
+    var dockKind = 'bottom-left';
 
     var root = null;
     var mounted = false;
@@ -58,8 +61,8 @@
 
     function cycleColorMode() {
         var cur = storageGet('navColorMode');
-        if (COLOR_ORDER.indexOf(cur) < 0) cur = 'auto';
-        var next = COLOR_ORDER[(COLOR_ORDER.indexOf(cur) + 1) % COLOR_ORDER.length];
+        if (cur !== 'manual') cur = 'auto';
+        var next = cur === 'manual' ? 'auto' : 'manual';
         storageSet('navColorMode', next);
         if (typeof window.navSetColorMode === 'function') {
             try { window.navSetColorMode(next); } catch (e) {}
@@ -87,10 +90,11 @@
             themeBtn.title = locked ? '壁纸模式:皮肤暂不可调' : '切换皮肤(当前:' + curTheme + ')';
         }
         var curColor = storageGet('navColorMode');
-        if (COLOR_ORDER.indexOf(curColor) < 0) curColor = 'auto';
+        if (curColor !== 'manual') curColor = 'auto';
         if (colorBtn) {
             colorBtn.disabled = locked;
-            colorBtn.title = locked ? '壁纸模式:明暗暂不可调' : '切换明暗(当前:' + curColor + ')';
+            colorBtn.title = locked ? '壁纸模式:明暗暂不可调'
+                : ('明暗(当前:' + (curColor === 'auto' ? '跟随系统' : '固定浅色') + ')');
         }
     }
 
@@ -110,6 +114,12 @@
 
     function syncAvoid() {
         if (!root) return;
+        if (dockKind === 'top') {
+            // 顶部横排,不受底部多选条影响
+            if (root.style.bottom !== '') root.style.bottom = '';
+            if (root.classList.contains('nav-fixbar-dodging')) root.classList.remove('nav-fixbar-dodging');
+            return;
+        }
         var bar = visibleBar();
         var bottom = '';
         var dodging = false;
@@ -193,6 +203,20 @@
         }
     }
 
+    /* ---------- 位置档:顶部 / 左下 / 右下(2026-11-24) ----------
+       设置里「快捷工具条位置」三档只管这一组圆按钮;顶栏齿轮不再跟着搬。 */
+    function readDock() {
+        var v = storageGet('navSettingsDock');
+        return DOCK_KINDS.indexOf(v) >= 0 ? v : 'bottom-left';
+    }
+    function applyDock(kind) {
+        dockKind = DOCK_KINDS.indexOf(kind) >= 0 ? kind : 'bottom-left';
+        if (!root) return;
+        root.classList.toggle('nav-fixbar--top', dockKind === 'top');
+        root.classList.toggle('nav-fixbar--br', dockKind === 'bottom-right');
+        syncAvoid();
+    }
+
     /* ---------- 挂载 / 卸载 ---------- */
     function mount() {
         if (mounted) return;
@@ -219,6 +243,7 @@
         });
 
         document.body.appendChild(root);
+        applyDock(readDock());
 
         bindAvoidObservers();
         // 移动端默认收起为小圆钮;桌面端默认展开
@@ -255,6 +280,13 @@
 
     // 暴露描述符供测试/集成层 drain 与核对;不做网络请求。
     window.__navFixbarDescriptor = descriptor;
+
+    // 设置面板「快捷工具条位置」三档的唯一入口(顶栏齿轮不再搬动)
+    window.NavFixbar = {
+        setDock: applyDock,
+        getDock: function () { return dockKind; },
+        mount: mount
+    };
 
     // 兜底自启:若页面始终没有注册表(独立加载/老页面),队列没人 drain 时也保证组件可用;
     // 后续注册表再 drain 调 mount,幂等守卫拦住重复挂载。

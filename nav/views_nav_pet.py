@@ -4,7 +4,7 @@
 公共常量与站点字段工具在 `views_nav_base`;`views.py` 只是回填门面。
 """
 
-from .views_nav_base import _NAV_META_UA, _json_body, logger
+from .views_nav_base import owner_only, _NAV_META_UA, _json_body, logger
 from django.views.decorators.http import require_POST, require_http_methods
 
 from . import ai as ai_pipeline
@@ -263,8 +263,12 @@ def api_nav_pet_whisper(request):
     return JsonResponse({'status': 'ok', 'text': text, 'meme': meme})
 
 
+@require_http_methods(['GET'])
+@owner_only
 def api_nav_pet_balance(request):
-    """DeepSeek 账户余额(仅官方 https://api.deepseek.com 支持)。缓存 5 分钟。"""
+    """DeepSeek 账户余额(仅官方 https://api.deepseek.com 支持)。缓存 5 分钟。
+
+    2026-11-24 复核:这个端点原来连方法限制都没有,任何访客 GET 就能问出余额。"""
     from django.core.cache import cache
     if not NavAiConfig.is_configured():
         return JsonResponse({'status': 'error', 'configured': False,

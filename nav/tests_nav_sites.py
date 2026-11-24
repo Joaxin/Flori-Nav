@@ -65,11 +65,11 @@ class NavSiteTests(TestCase):
 
     def test_settings_view_tab_is_grouped(self):
         """全部设置按 tab 分段:
-        外观=语言/配色/主题皮肤/壁纸,布局=卡片布局/卡片密度/卡片排序/显示内容/目录与页面/设置按钮/交互,
+        外观=语言/配色/主题皮肤/壁纸,布局=卡片布局/卡片密度/卡片排序/显示内容/目录与页面/快捷工具条位置/交互,
         效果=页面效果,维护=图标资产/内置站点 —— 共 15 段。"""
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
         for label in ('语言', '配色', '主题皮肤', '壁纸', '卡片布局', '卡片密度', '卡片排序', '显示内容', '目录与页面',
-                      '设置按钮', '交互', '页面效果', '图标资产', '内置站点'):
+                      '快捷工具条位置', '交互', '页面效果', '图标资产', '内置站点'):
             self.assertIn('class="nav-set-h">' + label, html)
         self.assertEqual(15, html.count('class="nav-set-h"'))
 

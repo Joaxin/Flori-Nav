@@ -23,7 +23,8 @@
     // ---- 链接检测 / AI 提示词 / 粘贴导入(线 C 第二轮) ----
     var linkRows = [];            // {url, name, ok, note, ms}
     var linkSelected = {};        // 勾选表,独立于批量栏 selected
-    var linkFilter = 'all';       // all | dead | untested | ok
+    var linkFilter = 'all';       // all | dead | untested | ok | selected
+    var linkQuery = '';           // 名称/网址 关键字筛选(2026-11-24)
     var linkBusy = false;
     var linkPreview = [];         // 解析后的导入预览行
     var promptMode = 'alt';       // alt | fix | info
@@ -677,11 +678,13 @@
             + '<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">'
             + '<button type="button" class="btn btn-sm btn-primary" id="ngcLinkRun">检测全部书签</button>'
             + '<span class="small text-muted">浏览器直连,只判能否连上;403/404 也可能算可连,不记状态码</span>'
-            + '<div class="ms-auto d-flex gap-1">'
-            + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-link-filter="all">全部</button>'
+            + '<div class="ms-auto d-flex gap-1 align-items-center flex-wrap">'
+            + '<input type="search" id="ngcLinkSearch" class="form-control form-control-sm ngc-link-search" placeholder="筛名称 / 网址">'
+            + '<button type="button" class="btn btn-sm btn-outline-secondary active" data-ngc-link-filter="all">全部</button>'
             + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-link-filter="dead">失败</button>'
             + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-link-filter="untested">未测</button>'
             + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-link-filter="ok">可连</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-link-filter="selected">只看勾选</button>'
             + '</div></div>'
             + '<div id="ngcLinkRows"></div>'
             + '<hr class="my-3">'
@@ -712,8 +715,17 @@
         document.getElementById('ngcPromptCopy').addEventListener('click', copyPrompt);
         document.getElementById('ngcImportParse').addEventListener('click', parseImport);
         document.getElementById('ngcImportApply').addEventListener('click', applyLinkFix);
+        var search = document.getElementById('ngcLinkSearch');
+        if (search) search.addEventListener('input', function () { linkQuery = this.value; renderLinkRows(); });
         document.getElementById('ngcLinkView').querySelectorAll('[data-ngc-link-filter]').forEach(function (b) {
-            b.addEventListener('click', function () { linkFilter = b.getAttribute('data-ngc-link-filter'); renderLinkRows(); });
+            b.addEventListener('click', function () {
+                linkFilter = b.getAttribute('data-ngc-link-filter');
+                var wrap = b.parentNode;
+                wrap.querySelectorAll('[data-ngc-link-filter]').forEach(function (x) {
+                    x.classList.toggle('active', x === b);
+                });
+                renderLinkRows();
+            });
         });
         document.getElementById('ngcLinkView').querySelectorAll('[data-ngc-prompt]').forEach(function (b) {
             b.addEventListener('click', function () { switchPromptMode(b.getAttribute('data-ngc-prompt')); });
@@ -734,7 +746,10 @@
         var box = document.getElementById('ngcLinkRows');
         if (!box) return;
         initLinkRows();
+        var q = (linkQuery || '').trim().toLowerCase();
         var list = linkRows.filter(function (r) {
+            if (q && ((r.name || '') + ' ' + (r.url || '')).toLowerCase().indexOf(q) < 0) return false;
+            if (linkFilter === 'selected') return !!linkSelected[r.url];
             if (linkFilter === 'dead') return r.ok === false;
             if (linkFilter === 'untested') return r.ok == null;
             if (linkFilter === 'ok') return r.ok === true;

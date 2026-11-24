@@ -203,11 +203,12 @@ USE_TZ = True
 # - 语言存在 cookie `nav_lang`(不是 django_language),LocaleMiddleware 直接吃这个值,
 #   这样前端切语言和后端 gettext 是同一份状态,不会出现「页面英文、接口中文」。
 # ---------------------------------------------------------------------------
-from django.utils.translation import gettext_lazy as _lazy
-
+# 语言名用普通字符串,不要在这里用 gettext_lazy:
+# Vercel 构建探测阶段会在 app registry 就绪前导入 settings,
+# lazy 求值会触发 apps.get_app_configs() -> AppRegistryNotReady。
 LANGUAGES = [
-    ('zh-hans', _lazy('简体中文')),
-    ('en', _lazy('English')),
+    ('zh-hans', '简体中文'),
+    ('en', 'English'),
 ]
 LOCALE_PATHS = [BASE_DIR / 'locale']
 LANGUAGE_COOKIE_NAME = 'nav_lang'

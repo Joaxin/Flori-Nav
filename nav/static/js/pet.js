@@ -1732,9 +1732,11 @@ jQuery(function ($) {
             petMenuItem('meme', '🖼 来张表情包') +
             petMenuItem('noise-wave', '🌊 海浪声', 'id="navPetNoiseWave"') +
             petMenuItem('noise-rain', '🌧 雨声', 'id="navPetNoiseRain"') +
+            petMenuItem('whisper', '🔕 碎碎念:开', 'id="navPetWhisperItem"') +
             petMenuItem('notifytest', '🔔 通知测试') +
             petMenuItem('cmdhelp', '⌨️ 指令列表')) +
         petSub('🧸 互动与聊天',
+            petMenuItem('home', '🏠 回初始位') +
             petMenuItem('walk', '🚶 散步一会儿') +
             petMenuItem('baifan', '🍱 吃白饭(玩法)') +
             petMenuItem('sleep', '😴 打个盹') +
@@ -1753,11 +1755,10 @@ jQuery(function ($) {
             petMenuItem('dailyen', '📖 每日英语') +
             petMenuItem('balance', '💰 查看余额(AI)', 'id="navPetBalanceItem"') +
             petMenuItem('stats', '📊 报家底')) +
-        petSub('⚙️ 设置',
-            petMenuItem('home', '🏠 回初始位') +
-            petMenuItem('settings', '⚙️ 宠物设置…') +
-            petMenuItem('whisper', '🔕 碎碎念:开', 'id="navPetWhisperItem"') +
-            petMenuItem('off', '👋 再见(隐藏桌宠)'));
+        // 2026-11-24 按用户口径:设置不再走二级子菜单 —— 顶层「设置」点一下直接开宠物设置窗;
+        // 回初始位/碎碎念/隐藏桌宠原来挤在这个二级里,分别归到互动与聊天、演出与声音、顶层末项。
+        petMenuItem('settings', '⚙️ 设置') +
+        petMenuItem('off', '👋 再见(隐藏桌宠)');
     document.body.appendChild(petMenu);
     function petMenuShow(x, y) {
         petMenu.style.display = 'block';
@@ -2098,7 +2099,7 @@ jQuery(function ($) {
     petSetModal.tabIndex = -1;
     petSetModal.innerHTML =
         '<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">' +
-        '<div class="modal-header"><h6 class="modal-title">⚙️ 宠物设置</h6>' +
+        '<div class="modal-header"><h6 class="modal-title"><i class="fas fa-gear me-1"></i>宠物设置</h6>' +
         '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
         // 单页长列表(要滚一屏半、找一项得翻半天)按用途拆成 5 个页签(2026-11-18)。
         // 切换交给垫片的 data-bs-toggle="tab" 委托(active / show 由它维护),这里不 new Tab 实例;
@@ -3733,12 +3734,17 @@ jQuery(function ($) {
         win.id = 'navPetChatWin';
         win.innerHTML =
             '<div class="nav-pet-chat-head" id="navPetChatDrag">' +
-            '<span class="nav-pet-chat-avatar">🐳</span>' +
+            '<span class="nav-pet-chat-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none">'
+            + '<path d="M2.6 13.4c0-2.9 2.3-5.2 5.2-5.2h6.4c2.9 0 5.2 2 5.7 4.6l.4 2.1-2.1-.6c-.7-.2-1.5 0-2 .5l-1 1c-.5.5-1.2.8-1.9.8H7.8c-2.9 0-5.2-2.3-5.2-5.2z" fill="#38bdf8" stroke="#0f172a" stroke-width="1.5" stroke-linejoin="round"/>'
+            + '<circle cx="8.2" cy="12" r=".95" fill="#0f172a"/>'
+            + '<path d="M12.2 11.2c1 .3 1.7 1 2 2" stroke="#0284c7" stroke-width="1" stroke-linecap="round"/>'
+            + '<path d="M16.6 8.6c.6-1.2 1.8-1.7 3-1.3" stroke="#0f172a" stroke-width="1.2" stroke-linecap="round"/>'
+            + '</svg></span>' +
             '<div><div class="nav-pet-chat-title">小鲸鱼</div>' +
             '<div class="nav-pet-chat-sub" id="navPetChatSub">AI 桌宠</div></div>' +
             '<div class="nav-pet-chat-headbtns">' +
-            '<button type="button" id="navPetChatGear" title="聊天设置">⚙️</button>' +
-            '<button type="button" id="navPetChatClose" title="关闭">✕</button></div></div>' +
+            '<button type="button" id="navPetChatGear" title="聊天设置"><i class="fas fa-gear"></i></button>' +
+            '<button type="button" id="navPetChatClose" title="关闭"><i class="fas fa-xmark"></i></button></div></div>' +
             '<div id="navPetChatSetPop">' +
             '<div class="nav-pet-set-row"><b>点桌宠默认打开</b></div>' +
             '<div class="nav-pet-set-row"><button type="button" data-chat-mode="quick">快捷气泡</button>' +

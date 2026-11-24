@@ -223,26 +223,38 @@ def api_nav_guest_scope(request):
     # 切到内置模式前，先留一份完整快照；已有缓存不覆盖，避免第二次切换把完整版冲掉。
     if scope == NavPublicConfig.SCOPE_BUILTIN and snapshot.exists():
         if not full_cache.exists():
-            full_cache.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(snapshot, full_cache)
+            try:
+                full_cache.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(snapshot, full_cache)
+            except OSError as exc:
+                logger.warning('备份完整游客快照失败(部署目录可能只读):%s', exc)
     # public 模式下库里没有可见站点：恢复上次完整快照，而不是写空。
     elif scope == NavPublicConfig.SCOPE_PUBLIC and not payload.get('sites'):
         if full_cache.exists():
             cfg = NavPublicConfig.current()
             cfg.scope = scope
             cfg.save()
-            shutil.copy2(full_cache, snapshot)
+            snapshot_stale = False
+            try:
+                shutil.copy2(full_cache, snapshot)
+            except OSError as exc:
+                logger.warning('恢复完整游客快照失败(部署目录可能只读):%s', exc)
+                snapshot_stale = True
             try:
                 cached = json.loads(full_cache.read_text(encoding='utf-8'))
             except Exception:
                 cached = {}
-            return JsonResponse({
+            body = {
                 'status': 'success',
                 'scope': scope,
                 'sites': len(cached.get('sites') or []),
                 'categories': len(cached.get('categories') or []),
                 'restored': True,
-            })
+            }
+            if snapshot_stale:
+                body['snapshot_stale'] = True
+                body['message'] = '已保存，但当前部署为只读文件系统，访客快照未能写入'
+            return JsonResponse(body)
         return JsonResponse({
             'status': 'error',
             'message': '当前范围没有可公开的站点，已保留现有访客快照',
@@ -257,24 +269,33 @@ def api_nav_guest_scope(request):
     cfg.scope = scope
     cfg.save()
 
+    snapshot_stale = False
     try:
         from .signals import write_public_snapshot
-        write_public_snapshot(force=True)
+        if not write_public_snapshot(force=True):
+            snapshot_stale = True
     except Exception as exc:
         logger.warning('切换游客页范围后生成快照失败:%s', exc)
-        return JsonResponse({'status': 'error', 'message': f'快照生成失败：{exc}'}, status=500)
+        snapshot_stale = True
 
-    if scope == NavPublicConfig.SCOPE_PUBLIC:
-        full_cache.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(snapshot, full_cache)
+    if scope == NavPublicConfig.SCOPE_PUBLIC and not snapshot_stale:
+        try:
+            full_cache.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(snapshot, full_cache)
+        except OSError as exc:
+            logger.warning('保存完整游客快照缓存失败(部署目录可能只读):%s', exc)
 
-    return JsonResponse({
+    body = {
         'status': 'success',
         'scope': scope,
         'sites': len(payload.get('sites') or []),
         'categories': len(payload.get('categories') or []),
         'restored': False,
-    })
+    }
+    if snapshot_stale:
+        body['snapshot_stale'] = True
+        body['message'] = '已保存，但当前部署为只读文件系统，访客快照未能刷新'
+    return JsonResponse(body)
 
 
 @require_POST

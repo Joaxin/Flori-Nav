@@ -4,7 +4,7 @@
 公共常量与站点字段工具在 `views_nav_base`;`views.py` 只是回填门面。
 """
 
-from .views_nav_base import NAV_AI_IMPORT_MAX, _NAV_META_UA, _clean_nav_tags, _json_body, _normalize_nav_url, _parse_site_meta, _safe_get, logger
+from .views_nav_base import NAV_AI_IMPORT_MAX, owner_only, _NAV_META_UA, _clean_nav_tags, _json_body, _normalize_nav_url, _parse_site_meta, _safe_get, logger
 from django.views.decorators.http import require_POST, require_http_methods
 from .views_nav_check import NAV_LINK_TOTAL_TIMEOUT, _nav_check_links, _nav_is_same_site, _nav_site_key
 
@@ -61,6 +61,7 @@ def api_nav_ai_config(request):
 
 
 @require_http_methods(['GET'])
+@owner_only
 def api_nav_ai_logs(request):
     """最近 AI 调用记录(只读):排查「刚才那一下为什么失败」用。
 

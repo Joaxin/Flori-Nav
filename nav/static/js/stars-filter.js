@@ -828,12 +828,19 @@ jQuery(function ($) {
         try { return new Set(JSON.parse(localStorage.getItem(collapsedKey) || '[]')); }
         catch (e) { return new Set(); }
     }
+    function collapsibleHead($w) {
+        return $w.children('.collapsible').first();
+    }
     (function applyCollapsed() {
         const s = collapsedSet();
         $('[data-collapse-id]').each(function() {
+            // 单二级分类的标题被去重成 d-none(模板注释:节点留给面包屑),折了就没有
+            // 可点开的入口 —— 存量 localStorage 里的这类 id 在这里顺手清掉。
+            const $head = collapsibleHead($(this));
+            if ($head.hasClass('d-none')) { $(this).removeClass('is-collapsed'); return; }
             if (!s.has(String($(this).data('collapse-id')))) return;
             $(this).addClass('is-collapsed');
-            $(this).children('.collapsible').children('.cheve').addClass('rot');
+            $head.children('.cheve').addClass('rot');
         });
     })();
     $('.nav-hub').on('click', '.collapsible', function(e) {
@@ -853,7 +860,10 @@ jQuery(function ($) {
         $('[data-collapse-id] .collapsible .cheve').removeClass('rot');
     });
     $('#navCollapseAll').on('click', function() {
-        const $w = $('[data-collapse-id]');
+        // 只折「标题可见」的块;单二级那种 d-none 头折了就再也点不回来了(2026-11-24)
+        const $w = $('[data-collapse-id]').filter(function() {
+            return !collapsibleHead($(this)).hasClass('d-none');
+        });
         localStorage.setItem(collapsedKey, JSON.stringify($w.map(function() {
             return String($(this).data('collapse-id'));
         }).get()));
@@ -901,17 +911,30 @@ jQuery(function ($) {
             if (!url) return;
             $body.append(subItem('备用', String($(this).data('name') || url), url, 'fa-shield-halved'));
         });
-        const autoTip = (window.NavI18n && NavI18n.getLang && NavI18n.getLang() === 'en')
-            ? 'Opens the main site automatically if nothing is picked in 30 s'
-            : '30 秒内未选择,将自动打开主站';
-        $body.append($('<div class="small text-muted px-2 pt-1 pb-0">').text(autoTip));
+        const isEn = !!(window.NavI18n && NavI18n.getLang && NavI18n.getLang() === 'en');
+        const $tip = $('<div class="small text-muted px-2 pt-1 pb-0">');
+        if (mainUrl) {
+            // 30 s 后在 setTimeout 里 window.open 不算用户手势,Chrome 会当弹窗拦掉(静默失效)。
+            // 改成常驻按钮 + 到点只改提示文案;点按钮才是合法手势(2026-11-24)。
+            $tip.text(isEn ? 'Pick a sub-page, or open the main site.' : '选一个子页,或直接打开主站。');
+            const $open = $('<button type="button" class="btn btn-sm btn-outline-primary mt-2 sub-open-main">')
+                .text(isEn ? 'Open main site' : '打开主站');
+            $open.on('click', function() {
+                cancelSubAuto();
+                bootstrap.Modal.getOrCreateInstance($('#subModal')[0]).hide();
+                window.open(mainUrl, '_blank', 'noopener');
+            });
+            $body.append($tip, $('<div class="px-2 pb-2">').append($open));
+        } else {
+            $body.append($tip);
+        }
         bootstrap.Modal.getOrCreateInstance($('#subModal')[0]).show();
         cancelSubAuto();
         if (mainUrl) {
             subAutoTimer = setTimeout(function() {
                 subAutoTimer = null;
-                bootstrap.Modal.getOrCreateInstance($('#subModal')[0]).hide();
-                window.open(mainUrl, '_blank', 'noopener');
+                $tip.text(isEn ? 'Still nothing picked — use the “Open main site” button above.'
+                               : '还没选?点上面的「打开主站」即可。');
             }, 30000);
         }
     });

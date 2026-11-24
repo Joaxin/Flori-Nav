@@ -4,7 +4,7 @@
 公共常量与站点字段工具在 `views_nav_base`;`views.py` 只是回填门面。
 """
 
-from .views_nav_base import _nav_payload, _nav_real_description, _normalize_nav_url, _parse_category_order_items, _save_category_order, _seed_nav_sites, _site_defaults, logger
+from .views_nav_base import owner_only, _nav_payload, _nav_real_description, _normalize_nav_url, _parse_category_order_items, _save_category_order, _seed_nav_sites, _site_defaults, logger
 from django.views.decorators.http import require_POST, require_http_methods
 from .views_nav_tools import _nav_tool_sanitize_text
 
@@ -20,7 +20,9 @@ import uuid
 
 
 @require_http_methods(["GET"])
+@owner_only
 def nav_export(request):
+    # 2026-11-24 复核:全量导出含全部站点/子页/备用地址,配了令牌时不能再让访客直接下走
     response = HttpResponse(content_type='application/json; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="nav_sites.json"'
     response.write(json.dumps(_nav_payload(), ensure_ascii=False, indent=2))
@@ -146,6 +148,10 @@ def nav_import(request):
         return JsonResponse({'status': 'error', 'message': 'JSON 中没有可导入的站点、工具或排序'}, status=400)
     created_count = 0
     updated_count = 0
+    wiped_count = 0
+    # 覆盖导入(2026-11-24 用户点名):先清空现有站点再导入,和默认的「合并/upsert」二选一。
+    # 只删 NavSite,分类显隐/排序(NavCategory)与工具保留 —— 那些是配置不是书签内容。
+    wipe = request.POST.get('wipe') == '1'
     # 预先取现有简介:原来在循环里逐条查(每行一次 SELECT),400 条导入就是 400 次往返。
     # 只有"简介为空/是书签兜底文案"的行才用到它,但一次 IN 查询就能全给。
     _need = []
@@ -156,6 +162,10 @@ def nav_import(request):
                 _need.append(_u)
     old_desc = dict(NavSite.objects.filter(url__in=_need).values_list('url', 'description')) if _need else {}
     with transaction.atomic():
+        if wipe:
+            wiped_count = NavSite.objects.count()
+            NavSite.objects.all().delete()
+            old_desc = {}
         for item in sites:
             if not isinstance(item, dict):
                 continue
@@ -217,7 +227,7 @@ def nav_import(request):
             pairs = _parse_category_order_items(category_order[:200])
             if pairs:
                 _save_category_order(pairs)
-    return JsonResponse({'status': 'success', 'created': created_count, 'updated': updated_count})
+    return JsonResponse({'status': 'success', 'created': created_count, 'updated': updated_count, 'wiped': wiped_count})
 
 
 @require_POST

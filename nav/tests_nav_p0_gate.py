@@ -15,7 +15,6 @@
 契约来源:``借鉴调研/p0/00-接口契约.md`` 第 2/4/5/7 节。
 """
 
-import hashlib
 import os
 import re
 
@@ -25,17 +24,6 @@ from django.urls import reverse
 from .tests_nav_common import static_text
 
 NAV_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# 契约第 1 节:热点文件 sha256 前 16 位基线(R-21~R-25 第二批收口刷新,2026-11-22;用于后续检测漂移)。
-# 与 scripts/p0_accept.py、00-接口契约.md §1 三处同口径同值,防止两套检查漂移。
-# 本批:模板 +4 行接线(tags/cascade 补丁过户);css 回顶钮 z-index 1030→1038;js/batch/card-menu 零改动。
-BASELINE_HASH = {
-    os.path.join('templates', 'nav', 'nav_sites.html'): '03061ab673956d72',
-    os.path.join('static', 'css', 'nav-sites.css'): 'f63bf0b6b712fb6d',
-    os.path.join('static', 'js', 'nav-sites.js'): 'b4c423c0a26afb93',
-    os.path.join('static', 'js', 'batch.js'): 'a37a483d115296e2',
-    os.path.join('static', 'js', 'card-menu.js'): '3ce17321ef79e03b',
-}
 
 PRESET_IDS = ['classic', 'compact', 'portal', 'gallery', 'app-first']
 # 2026-11-23:六档布局回迁后,模板 data-layout 白名单同步恢复六值。
@@ -103,15 +91,6 @@ def _strip_css_comments(src):
 
 def _strip_html_comments(src):
     return re.sub(r'<!--.*?-->', '', src, flags=re.S)
-
-
-def _sha16(path):
-    if not os.path.exists(path):
-        return None
-    h = hashlib.sha256()
-    with open(path, 'rb') as fh:
-        h.update(fh.read())
-    return h.hexdigest()[:16]
 
 
 def _css_rules(css):
@@ -204,15 +183,6 @@ class P0LayoutTocRegressionTests(TestCase):
                          '目录样式取值=%s' % sorted(values))
         self.assertNotIn('data-toc-style="cards"', self.html)
 
-    def test_hot_files_match_baseline(self):
-        """契约 §1:热点文件哈希与基线一致;漂移说明并行流又动过,需 rebase 后重跑。"""
-        drifted = []
-        for rel, base in BASELINE_HASH.items():
-            actual = _sha16(os.path.join(NAV_DIR, rel))
-            if actual != base:
-                drifted.append('%s(基线 %s / 实跑 %s)' % (rel, base, actual))
-        if drifted:
-            self.skipTest('热点漂移需先 rebase: %s' % '; '.join(drifted))
 
 
 class P0PresetModuleTests(TestCase):

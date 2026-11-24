@@ -10,6 +10,7 @@ from .nav_data import DEFAULT_SITES
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
+from functools import wraps
 from html import unescape as _html_unescape, escape as _html_escape
 from urllib.parse import urlparse, urljoin
 import base64
@@ -144,10 +145,29 @@ def _safe_get(url, max_hops=None, **kwargs):
     raise ValueError('重定向层数过多')
 
 
+def owner_only(view):
+    """只读端点里的「主人数据」守卫(2026-11-24)。
+
+    未配 NAV_WRITE_TOKEN 时 nav_is_owner 恒为真(本地自用,不给自己找麻烦);
+    配了令牌就要求 header/cookie/query 命中,否则 403 —— 全量导出、AI 调用日志、
+    账户余额这类 GET 不该对访客开放。
+    """
+    @wraps(view)
+    def _inner(request, *args, **kwargs):
+        from .nav_access import nav_is_owner   # 延迟导入:nav_access 也依赖本模块的常量
+        if not nav_is_owner(request):
+            return JsonResponse({'status': 'error', 'code': 'owner_only',
+                                 'message': '仅主人可用'}, status=403)
+        return view(request, *args, **kwargs)
+    return _inner
+
+
 def _json_body(request):
     try:
         data = json.loads(request.body)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        # 非法 UTF-8 字节抛的是 UnicodeDecodeError,不是 JSONDecodeError;
+        # 只捕后者会让一个随便构造的 body 变成 500(2026-11-24 复核)。
         return None, JsonResponse({'status': 'error', 'message': '无效的请求数据'}, status=400)
     if not isinstance(data, dict):
         # 合法 JSON 但非对象(如 "null"/"[]")会让下游 data.get 直接 500

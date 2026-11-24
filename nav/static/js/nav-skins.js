@@ -122,6 +122,9 @@
 
     function resolveTarget(container) {
         if (container && container.appendChild) return container;
+        // 快捷设置里「背景」子段收着皮肤选择(2026-11-24),优先挂进去
+        var subBody = document.querySelector('#navQuickSettingsMenu .nav-quick-sub[data-quick-sub="bg"] .nav-quick-sub-body');
+        if (subBody) return subBody;
         var themeMenu = document.getElementById('navThemeMenu');
         if (themeMenu && themeMenu.closest) {
             var sec = themeMenu.closest('.nav-quick-sec');

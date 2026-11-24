@@ -1,0 +1,91 @@
+            <div class="dropdown-menu dropdown-menu-end p-2 shadow" id="navQuickSettingsMenu" style="width: min(292px, calc(100vw - 24px));">
+                    <div class="nav-quick-sec">
+                        <div class="form-text small mb-1">外观</div>
+                        <div class="form-text small mb-1 text-muted">明暗</div>
+                        <div class="d-flex align-items-center gap-2 mb-2" id="navColorModeGroup">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="setColorModeAuto">
+                                <label class="form-check-label small" for="setColorModeAuto">跟随系统明暗</label>
+                            </div>
+                            <span class="small text-muted" data-tip="关掉就固定浅色；想要深色请选「极光」皮肤">?</span>
+                        </div>
+                        <div class="form-text small mb-1 text-muted">皮肤</div>
+                        <div id="navThemeMenu" class="nav-quick-theme-grid mb-2" role="group" aria-label="主题皮肤">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-theme="default" title="默认蓝灰">默认</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-theme="aurora" title="冷色渐变、轻发光">极光</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-theme="paper" title="米白纸感、柔边框">纸质</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-theme="sunset" title="暖橙紫、低饱和">日落</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-theme="ink" title="黑白墨色、强对比">水墨</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-theme="plain" title="纯白极简、去装饰">简白</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-theme="study" title="深木色、暖黄光">书房</button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 d-flex align-items-center justify-content-between" id="navFxToggle" data-tip="每个主题配的轻动效，关掉只是不再动">
+                            <span>背景特效</span><i class="fas fa-check"></i>
+                        </button>
+                        <div class="form-text small text-muted d-none" id="navWallLockHintQuick">壁纸模式：背景特效暂不可调（会和壁纸叠在一起）；明暗与皮肤照常可切。</div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="nav-quick-sec">
+                        <div class="form-text small mb-1">排列</div>
+                        <div class="nav-quick-layout-grid mb-2" role="group" id="navQuickLayoutGroup">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="card" title="三列卡片 + 简介(默认)">卡片</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="icon" title="无边框大图标，悬停浮起(类 Flame)">大图标</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="list" title="左图标 + 站名/简介两行(类音乐播放器列表)">媒体行</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="mag" title="两列宽卡，大图标 + 完整简介(杂志风)">杂志</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="min" title="纯文字一行一项，超紧凑">极简</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-layout="cols" title="分类成列，条目单行图标 + 名称(类 booky)">分栏</button>
+                        </div>
+                        {# 2026-11-24:选「分栏」后这里直接给分栏细节,不再让人去完整设置面板里翻 #}
+                        <div id="navQuickColsBlock" class="d-none">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small mb-0" for="qcColsCount">分几栏</label>
+                                    <select class="form-select form-select-sm" id="qcColsCount">
+                                        <option value="2">2 栏</option>
+                                        <option value="3">3 栏(默认)</option>
+                                        <option value="4">4 栏</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0" for="qcCardsCols">每栏几列</label>
+                                    <select class="form-select form-select-sm" id="qcCardsCols">
+                                        <option value="0">跟着宽度走(默认)</option>
+                                        <option value="1">一列</option>
+                                        <option value="2">两列</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="qcColsEven">
+                                <label class="form-check-label small" for="qcColsEven">每个分类对齐顶部</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="nav-quick-sec">
+                        <div class="form-text small mb-1">布局预设</div>
+                        <div class="nav-quick-layout-grid mb-2" role="group" id="navPresetQuickGroup" aria-label="布局预设">
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-preset="classic" aria-pressed="false" title="分类深、桌面主导的常规浏览">经典目录</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-preset="compact" aria-pressed="false" title="一屏更多的高频工具型浏览">紧凑效率</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-preset="portal" aria-pressed="false" title="分类行标签 + 多列密排，参考 0x3 门户">门户密度</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-preset="gallery" aria-pressed="false" title="封面/视觉导向橱窗浏览">橱窗展示</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary preset-btn" data-preset="app-first" aria-pressed="false" title="手机端为主、两层导航分离">移动优先</button>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="nav-quick-sec">
+                        <div class="form-text small mb-1">显隐</div>
+                        <div class="btn-group btn-group-sm w-100 mb-2" role="group" id="navQuickUiModeGroup">
+                            <button type="button" class="btn btn-outline-secondary" data-ui-mode="browse" title="时钟/目录/搜索框/最近使用全露出，卡片网址与操作按钮收起">浏览</button>
+                            <button type="button" class="btn btn-outline-secondary" data-ui-mode="zen" title="只留卡片本身">专注</button>
+                        </div>
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" id="navQuickShowToc">
+                            <label class="form-check-label small" for="navQuickShowToc">左侧目录</label>
+                            <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="和设置里的「显示左侧目录」是同一个开关；关掉目录后，这个入口也会一起隐藏。" aria-label="说明"></i>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary w-100" id="navOpenAllSettings" title="主题色、图标布局细节、壁纸、页面宽度、逐项微调、分类排序、内置站点维护">
+                        <i class="fas fa-sliders me-1"></i>全部设置<i class="fas fa-arrow-right ms-1" style="font-size:.8em"></i>
+                    </button>
+                </div>

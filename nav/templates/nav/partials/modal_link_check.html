@@ -1,0 +1,68 @@
+<div class="modal fade" id="navAiLinkModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title"><i class="fas fa-link me-2" style="color: var(--bs-primary);"></i>链接检测 / AI 提示词 <small class="text-muted fw-normal fs-6">批量测活 · 复制提示词 · 粘贴回复预览后写库</small></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs small mb-2" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2 active" id="nailTabCheck" data-bs-toggle="tab" data-bs-target="#nailCheckPane" type="button" role="tab">链接检测</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="nailTabPrompt" data-bs-toggle="tab" data-bs-target="#nailPromptPane" type="button" role="tab">AI 提示词</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="nailTabImport" data-bs-toggle="tab" data-bs-target="#nailImportPane" type="button" role="tab">粘贴导入</button></li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="nailCheckPane" role="tabpanel">
+                        <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
+                            <button type="button" class="btn btn-sm btn-primary" id="nailRunCheck"><i class="fas fa-heart-pulse me-1"></i>检测全部</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="nailRetestSelected"><i class="fas fa-rotate-right me-1"></i>只重测勾选</button>
+                            <div class="form-check form-check-inline align-self-center mb-0">
+                                <input class="form-check-input" type="checkbox" id="nailIncludeArchived">
+                                <label class="form-check-label small" for="nailIncludeArchived">含休眠站</label>
+                            </div>
+                            <select id="nailCatFilter" class="form-select form-select-sm nail-cat" aria-label="分类筛选"><option value="">全部分类</option></select>
+                            <input type="search" id="nailSearch" class="form-control form-control-sm nail-search" placeholder="筛名称 / 网址">
+                            <div class="d-flex gap-1 flex-wrap" id="nailFilters">
+                                <button type="button" class="btn btn-sm btn-secondary" data-nail-filter="all">全部</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-nail-filter="dead">失败</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-nail-filter="untested">未测</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-nail-filter="ok">可连</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-nail-filter="archived">休眠</button>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="nailSelectAll">全选可见</button>
+                            <span class="small text-muted ms-auto" id="nailCheckSummary"></span>
+                        </div>
+                        <div id="nailRows" class="nail-rows"></div>
+                    </div>
+                    <div class="tab-pane fade" id="nailPromptPane" role="tabpanel">
+                        <div class="d-flex gap-2 mb-2 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-nail-prompt="alt">找替代网址</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-nail-prompt="fix">规范化网址</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" data-nail-prompt="info">补全分类标签</button>
+                            <button type="button" class="btn btn-sm btn-primary ms-auto" id="nailCopyPrompt"><i class="fas fa-copy me-1"></i>复制提示词与清单</button>
+                        </div>
+                        <textarea class="form-control font-monospace" id="nailPromptInput" rows="12" style="font-size:.78rem"></textarea>
+                        <div class="small text-muted mt-1">把清单发给任意 AI,再把整段回复粘回「粘贴导入」页签;提示词可直接在上方文本框里改。</div>
+                    </div>
+                    <div class="tab-pane fade" id="nailImportPane" role="tabpanel">
+                        <textarea class="form-control font-monospace mb-2" id="nailImportInput" rows="5" style="font-size:.78rem" placeholder="粘贴 AI 的整段回复(JSON 数组,或每行 原网址 -> 新网址)"></textarea>
+                        <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="nailParseImport"><i class="fas fa-clipboard-list me-1"></i>解析预览</button>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="nailFillMode" id="nailFillModeFill" checked>
+                                <label class="form-check-label small" for="nailFillModeFill">仅补空字段</label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="nailFillMode" id="nailFillModeOverwrite">
+                                <label class="form-check-label small" for="nailFillModeOverwrite">覆盖已有</label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary ms-auto" id="nailApplyFix"><i class="fas fa-check me-1"></i>应用勾选条目</button>
+                        </div>
+                        <div id="nailImportRows" class="nail-rows mb-2"></div>
+                        <div class="small text-muted" id="nailResult"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>

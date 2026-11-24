@@ -76,6 +76,10 @@
             '<input id="ngeSiteTitle" class="form-control form-control-sm" maxlength="80" placeholder="浏览器标签页标题,留空用名称"></div>' +
             '<div class="mb-2"><label class="small text-muted mb-0" for="ngeUrl">网址</label>' +
             '<input id="ngeUrl" class="form-control form-control-sm font-monospace" placeholder="https://example.com"></div>' +
+            '<div class="mb-2 d-flex align-items-center gap-2 flex-wrap">' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngeFetchMeta" title="按网址抓取对方的页面标题、favicon 和简介">' +
+            '<i class="fas fa-wand-magic-sparkles me-1"></i>识别标题/图标</button>' +
+            '<span id="ngeFetchStatus" class="small text-muted"></span></div>' +
             '<div class="row g-2 mb-2"><div class="col-6"><label class="small text-muted mb-0" for="ngeCat">大类</label>' +
             '<input id="ngeCat" class="form-control form-control-sm" list="ngeCatList" placeholder="我的导入">' +
             '<datalist id="ngeCatList"></datalist></div>' +
@@ -110,6 +114,40 @@
             '</div></div>';
         document.body.appendChild(editModal);
         document.getElementById('ngeSave').addEventListener('click', saveEdit);
+        // 2026-11-24:游客端补「识别标题/图标」——主人端添加表单早有 .f-meta,游客只能手填;
+        // 这里走同一个 /api/nav/fetch-meta/(后端 _guard_public_url 已挡内网/非法 scheme)。
+        document.getElementById('ngeFetchMeta').addEventListener('click', function () {
+            var btn = this;
+            var st = document.getElementById('ngeFetchStatus');
+            var url = (document.getElementById('ngeUrl').value || '').trim();
+            if (!url) { st.textContent = '先填写网址'; return; }
+            var tok = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1] || '';
+            btn.disabled = true;
+            st.textContent = '识别中…';
+            fetch('/api/nav/fetch-meta/', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': tok },
+                body: JSON.stringify({ url: url })
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; })
+                    .then(function (d) { return { ok: r.ok, d: d || {} }; });
+            }).then(function (res) {
+                if (!res.ok) throw new Error(res.d.message || '识别失败');
+                var nameEl = document.getElementById('ngeName');
+                var titleEl = document.getElementById('ngeSiteTitle');
+                var descEl = document.getElementById('ngeDesc');
+                var favEl = document.getElementById('ngeFavicon');
+                if (res.d.title && !nameEl.value.trim()) nameEl.value = res.d.title.slice(0, 80);
+                if (res.d.title && !titleEl.value.trim()) titleEl.value = res.d.title.slice(0, 80);
+                if (res.d.description && !descEl.value.trim()) descEl.value = res.d.description.slice(0, 200);
+                if (res.d.favicon && !favEl.value.trim()) favEl.value = res.d.favicon;
+                st.textContent = (res.d.title || res.d.favicon || res.d.description)
+                    ? '已识别,可修改' : '没解析到标题/图标/简介,可手动填写';
+            }).catch(function (err) {
+                st.textContent = (err && err.message) || '识别失败,可手动填写';
+            }).finally(function () { btn.disabled = false; });
+        });
         document.getElementById('ngeAddChild').addEventListener('click', function () { addLinkRow('ngeChildren', 'child', null); });
         document.getElementById('ngeAddAlt').addEventListener('click', function () { addLinkRow('ngeAlts', 'alt', null); });
         document.getElementById('ngeLocalize').addEventListener('click', localizeCurrent);

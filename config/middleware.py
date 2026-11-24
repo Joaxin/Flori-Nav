@@ -35,6 +35,11 @@ NAV_WRITE_METHODS = ('POST', 'PUT', 'PATCH', 'DELETE')
 
 NAV_WRITE_PATH_PREFIX = '/api/nav/'
 
+# 2026-11-24:只读型抓取豁免 —— 游客端给本机书签点「识别标题/图标」时也要用这个端点。
+# 它不写库,且视图自带 @require_POST + _guard_public_url / _safe_get(挡内网与 302 内网),
+# 不放开的话游客只能手填标题/图标。
+NAV_WRITE_EXEMPT_PATHS = ('/api/nav/fetch-meta/',)
+
 NAV_WRITE_TOKEN_MAX_AGE = 30 * 24 * 3600   # 浏览器里记 30 天,省得每次开机都要重设
 
 WRITE_OPEN_WARNED = [False]   # 只在进程内提醒一次,避免每个请求刷一条日志
@@ -80,7 +85,9 @@ class WriteTokenMiddleware:
                                 samesite='Lax')
             return response
 
-        if request.method in NAV_WRITE_METHODS and request.path.startswith(NAV_WRITE_PATH_PREFIX):
+        if (request.method in NAV_WRITE_METHODS
+                and request.path.startswith(NAV_WRITE_PATH_PREFIX)
+                and request.path not in NAV_WRITE_EXEMPT_PATHS):
             supplied = (request.headers.get(NAV_WRITE_TOKEN_HEADER)
                         or request.COOKIES.get(NAV_WRITE_TOKEN_COOKIE) or '').strip()
             # 常量时间比较:避免按字节猜令牌

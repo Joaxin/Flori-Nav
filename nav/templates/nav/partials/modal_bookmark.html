@@ -1,0 +1,51 @@
+<div class="modal fade" id="bookmarkModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="bmModalTitle"><i class="fas fa-bookmark me-2 acc-ico"></i>导入浏览器书签 <small class="text-muted fw-normal fs-6">解析收藏夹 HTML,预览后入库</small></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="bmPickFile"><i class="fas fa-folder-open me-1"></i>选择书签文件(.html)</button>
+                    <span class="small text-muted">文件夹 → 大类/小分类；没有文件夹的书签进「未分类」;与导航里已有的网址相同会走更新不新建</span>
+                </div>
+                <div class="mb-3" id="bmModeWrap">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="small">导入方式</span>
+                        <div class="btn-group btn-group-sm" id="bmModeGroup" role="group" aria-label="导入方式">
+                            <button type="button" class="btn btn-secondary" data-bm-mode="merge">合并(保留现有)</button>
+                            <button type="button" class="btn btn-outline-secondary" data-bm-mode="replace">覆盖(先清空现有站点)</button>
+                        </div>
+                        <span class="small text-danger d-none" id="bmReplaceWarn">覆盖会删除当前全部站点(含内置与休眠),只保留这次导入的内容</span>
+                    </div>
+                </div>
+                <div class="d-none mb-3" id="bmMergeWrap">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="small" id="bmMergeText"></span>
+                        <div class="btn-group btn-group-sm" id="bmMergeGroup" role="group">
+                            <button type="button" class="btn btn-outline-secondary" data-merge="1">合并为一个站点</button>
+                            <button type="button" class="btn btn-outline-secondary" data-merge="0">分别导入</button>
+                        </div>
+                    </div>
+                    <div class="form-text">合并后分类以第一次出现的那条为准，其余网址作为它的子网页；库里已经单独存在的同类站点不会自动删除</div>
+                </div>
+                <div class="d-none mb-3" id="bmMetaWrap">
+                    <div class="form-check form-switch small mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="bmFetchMeta">
+                        <label class="form-check-label" for="bmFetchMeta">导入时抓取网站简介(meta description)</label>
+                    </div>
+                    <div class="form-text"><span id="bmMetaCount"></span>逐条访问每个网址读简介，条数多时要等几分钟；有些站会拒抓(403)或超时，失败就保留书签原有简介</div>
+                </div>
+                <div id="bmSummary" class="small mb-2"></div>
+                <div class="d-none mb-2" id="bmProgressWrap">
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar" id="bmProgressBar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                <div id="bmPreview" class="border rounded p-2 font-monospace small" style="height: 300px; overflow:auto; display:none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="bmImportConfirm" disabled>导入</button>
+            </div>
+        </div>
+    </div>
+</div>

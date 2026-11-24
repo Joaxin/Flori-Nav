@@ -16,7 +16,15 @@ from django.conf import settings
 from django.test import TestCase
 
 NAV_DIR = pathlib.Path(settings.BASE_DIR) / 'nav'
-TPL = (NAV_DIR / 'templates' / 'nav' / 'nav_sites.html').read_text(encoding='utf-8')
+# 2026-11-24:模板已拆 partials。这里做静态断言,必须看"全部模板",只看主文件会漏掉拆出去的弹层。
+def _all_template():
+    root = NAV_DIR / 'templates' / 'nav'
+    main = (root / 'nav_sites.html').read_text(encoding='utf-8')
+    partials = sorted((root / 'partials').glob('*.html')) if (root / 'partials').is_dir() else []
+    return main + '\n' + '\n'.join(p.read_text(encoding='utf-8') for p in partials)
+
+
+TPL = _all_template()
 CSS = (NAV_DIR / 'static' / 'css' / 'nav-sites.css').read_text(encoding='utf-8')
 
 

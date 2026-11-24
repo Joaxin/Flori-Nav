@@ -26,6 +26,28 @@
     border: 0;
 }
 
+/* 位置档(设置 → 快捷工具条):管这一组圆按钮,与顶栏齿轮无关 */
+#navFixbar.nav-fixbar--br {
+    left: auto;
+    right: 14px;
+    /* 抬高避开右下角的 #navBackTop 回顶钮(24px + 42px) */
+    bottom: max(78px, env(safe-area-inset-bottom, 0px));
+}
+
+#navFixbar.nav-fixbar--top {
+    left: auto;
+    right: 14px;
+    top: 68px;
+    bottom: auto;
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+#navFixbar.nav-fixbar--top .nav-fixbar-main {
+    flex-direction: row;
+    align-items: center;
+}
+
 #navFixbar .nav-fixbar-btn {
     width: 40px;
     height: 40px;

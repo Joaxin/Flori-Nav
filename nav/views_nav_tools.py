@@ -64,7 +64,14 @@ def nav_tool_upload(request):
                    favicon=meta['favicon'],
                    original_filename=file.name[:200], size=len(content))
     from django.core.files.base import ContentFile
-    tool.file.save(f'{uuid.uuid4().hex}.html', ContentFile(content), save=True)
+    try:
+        tool.file.save(f'{uuid.uuid4().hex}.html', ContentFile(content), save=True)
+    except OSError as exc:
+        # 只读文件系统(Serverless)下 FileField 落盘会抛 OSError,明确提示而不是 500。
+        logger.warning('工具文件写入失败(部署目录可能只读):%s', exc)
+        return JsonResponse({'status': 'error',
+                             'message': '当前部署为只读文件系统,无法保存上传的工具文件'},
+                            status=503)
     return JsonResponse({'status': 'success', 'id': tool.id})
 
 

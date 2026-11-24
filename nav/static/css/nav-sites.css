@@ -239,6 +239,8 @@
     .nav-cat-name { display: inline; }
     .nav-cat-title.collapsible, .nav-sub-title.collapsible, .nav-sub2-title.collapsible { cursor: pointer; user-select: none; }
     .nav-sub-title { font-size: .85rem; font-weight: 600; color: var(--bs-secondary-color); border-left: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); padding-left: .55rem; margin: .65rem 0 .5rem; }
+    /* 分类名单独包一层 span:给 i18n 留 data-i18n-skip 挂点(用户自定义名不翻),排版随父级 */
+    .nav-sub-name { display: inline; }
     /* 三级小分类(小分类名含「 / 」或「 > 」):比二级再缩进一档、字号小一点、左边条更淡 */
     .nav-sub2 { margin-left: .7rem; }
     .nav-sub2-title { font-size: .8rem; font-weight: 600; color: var(--bs-secondary-color); border-left: 3px solid color-mix(in srgb, var(--accent) 26%, transparent); padding-left: .5rem; margin: .5rem 0 .4rem; }
@@ -396,6 +398,23 @@
     .toc-cheve i { transition: transform .15s ease; }
     .toc-cheve.rot i { transform: rotate(-90deg); }
     .toc-gear { font-size: .8rem; }
+    /* 目录齿轮菜单比按钮本身宽得多,若相对 .dropdown(只有按钮宽)右对齐会向左溢出目录栏;
+       改成相对整行定位(2026-11-24) */
+    .toc-title { position: relative; }
+    .toc-title .dropdown { position: static; }
+    #tocGearMenu {
+        left: auto; right: 8px;
+        max-width: calc(100% - 8px);
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    /* 窄栏(抽屉/窄目录)下列表式按钮会横向挤出去:收紧内边距与字号,让六档样式仍能排两行 */
+    #tocGearMenu .btn { padding-inline: .4rem; font-size: .74rem; }
+    #tocGearMenu .form-check-label { font-size: .74rem; }
+    /* 窄栏下「展开全部 / 折叠全部」两按钮行会横向挤出菜单(实测超 10px):放不下就换行 */
+    #tocGearMenu .d-flex.gap-1 { flex-wrap: wrap; }
+    #tocGearMenu .d-flex.gap-1 > .btn { flex: 1 1 78px; min-width: 0; }
     .toc-cheve:hover, .toc-gear:hover { color: var(--accent); }
     .nav-cat[id], .nav-sub[id], .nav-sub2[id], #toolsSection { scroll-margin-top: 84px; }
         /* 日落主题下,描边按钮给半实心底保证可读(纯描边在渐变上发灰) */
@@ -1310,7 +1329,13 @@
         border-bottom: 1px solid var(--bs-border-color); cursor: move; user-select: none;
         background: var(--bs-tertiary-bg);
     }
-    #navPetChatWin .nav-pet-chat-avatar { font-size: calc(1.35rem * var(--pet-ui-scale)); line-height: 1; }
+    #navPetChatWin .nav-pet-chat-avatar {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: calc(26px * var(--pet-ui-scale)); height: calc(26px * var(--pet-ui-scale));
+        border-radius: 50%; background: linear-gradient(160deg, #e0f2fe, #bae6fd);
+        flex-shrink: 0;
+    }
+    #navPetChatWin .nav-pet-chat-avatar svg { width: 76%; height: 76%; }
     #navPetChatWin .nav-pet-chat-title { font-weight: 600; font-size: calc(.9rem * var(--pet-ui-scale)); }
     #navPetChatWin .nav-pet-chat-sub { font-size: calc(.68rem * var(--pet-ui-scale)); color: var(--bs-secondary-color); }
     #navPetChatWin .nav-pet-chat-headbtns { margin-left: auto; display: flex; gap: .2rem; }
@@ -1425,10 +1450,27 @@
         backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
         border-radius: var(--nav-r-md); padding: .5rem .65rem;
     }
-    body[data-nav-wall="1"] #navClockLine,
+    /* 2026-11-24:壁纸态原来用三层同底色 shadow 把字从花纹里"抠"出来 —— 观感就是一圈发光,
+       用户嫌难看。改成给整块问候语铺一条半透明底板(一块药丸包住 greeting/日期/倒计时),
+       字本身不再发光。 */
+    body[data-nav-wall="1"] .nav-greet {
+        background: color-mix(in srgb, var(--bs-body-bg) 76%, transparent);
+        -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+        border-radius: var(--nav-r-md);
+        padding: .35rem .9rem .3rem;
+        width: fit-content;
+        margin-left: auto; margin-right: auto;
+    }
+    body[data-nav-wall="1"] .nav-greet, body[data-nav-wall="1"] .nav-greet * {
+        text-shadow: none !important;
+    }
     body[data-nav-wall="1"] #navQuickRow .mini-title {
         color: var(--bs-body-color);
-        text-shadow: 0 1px 3px var(--bs-body-bg), 0 0 10px var(--bs-body-bg), 0 0 16px var(--bs-body-bg);
+        text-shadow: none;
+        background: color-mix(in srgb, var(--bs-body-bg) 72%, transparent);
+        border-radius: var(--nav-r-sm);
+        padding: 1px 6px;
+        width: fit-content;
     }
     body[data-nav-wall="1"] #navNoResult {
         background: color-mix(in srgb, var(--bs-body-bg) 88%, transparent);
@@ -1718,6 +1760,12 @@
     background-color: color-mix(in srgb, var(--nav-accent, #635bff) 10%, transparent);
     border-radius: var(--nav-r-sm);
 }
+/* 但实心按钮(btn-primary / btn-danger)本身就是 accent 底色,10% 同色叠底等于看不见,
+   键盘用户找不到焦点。这里只给非 link 按钮补一圈外描边(2026-11-24) */
+.modal .btn:not(.btn-link):focus-visible {
+    outline: 2px solid var(--nav-accent, #635bff);
+    outline-offset: 2px;
+}
 /* 7) 顶栏按钮统一圆角字重(配色在「顶栏」一节统一处理,这里不再叠内高光) */
 .nav-topbar .btn { border-radius: var(--nav-r-sm); font-weight: 500; letter-spacing: .01em; }
 /* ==========================================================================
@@ -1916,6 +1964,9 @@ html[data-nav-fs="xl"] { --nav-fs: 1.3; }
 }
 #navBackTop.show { opacity: .95; visibility: visible; transform: none; }
 #navBackTop:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+/* 2026-11-24:快捷工具条 #navFixbar 切到右下(--br)时自带回顶钮,与右下角这枚重复 →
+   展开态隐藏独立回顶;折叠(只剩展开钮)、或在左下/顶部 dock 时保留。 */
+body:has(#navFixbar.nav-fixbar--br:not(.is-collapsed)) #navBackTop { display: none !important; }
 
 /* 最近 7 天新增:名字后的小绿点,不占版面、不干扰已有徽标 */
 .site-new-dot {
@@ -1925,6 +1976,35 @@ html[data-nav-fs="xl"] { --nav-fs: 1.3; }
 
 /* 快捷设置 → 布局按钮组:3 列网格,避免 btn-group flex-wrap 下第 6 个按钮独行断角 */
 .nav-quick-layout-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+
+/* 快捷设置限高 + 分段折叠(2026-11-24):整块不再顶满屏幕,低频段默认收起 */
+#navQuickSettingsMenu {
+    max-height: calc(100vh - 76px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.nav-quick-sec-h, .nav-quick-sub-h {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .4rem;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: var(--bs-secondary-color);
+    font-size: .75rem;
+    letter-spacing: .02em;
+    text-align: left;
+    cursor: pointer;
+}
+.nav-quick-sec-h i, .nav-quick-sub-h i { font-size: .6rem; transition: transform .18s ease; }
+.nav-quick-sec.is-collapsed .nav-quick-sec-h i,
+.nav-quick-sub.is-collapsed .nav-quick-sub-h i { transform: rotate(-90deg); }
+.nav-quick-sec.is-collapsed .nav-quick-sec-body,
+.nav-quick-sub.is-collapsed .nav-quick-sub-body { display: none; }
+.nav-quick-sec-body { display: block; }
+.nav-quick-sub { margin-bottom: .4rem; }
 .nav-quick-layout-grid .btn { border-radius: var(--nav-r-xs) !important; padding: 3px 4px; font-size: .75rem; text-align: center; }
 
 /* 大图标 / 分栏设置面板:居中态不要拉到 980px 满宽 */
@@ -3059,6 +3139,11 @@ body.nav-foot-open { overflow: hidden; }
 .ngc-ops .btn-link { font-size: .72rem; text-decoration: none; }
 .ngc-search { margin-bottom: .5rem; }
 .ngc-hyg-row { display: flex; gap: .5rem; padding: .45rem .55rem; border: 1px solid var(--bs-border-color); border-radius: var(--nav-r-sm,8px); margin-bottom: .4rem; }
+.ngc-link-search { width: 132px; min-width: 96px; }
+#navAiLinkModal .nail-search { width: 140px; min-width: 100px; }
+#navAiLinkModal .nail-cat { width: 158px; }
+/* 站点上千时行区限高:筛选栏固定,列表自己滚,不用整页翻 */
+#navAiLinkModal #nailRows { max-height: min(56vh, 560px); overflow-y: auto; }
 .ngc-hyg-row.is-conflict { border-style: dashed; opacity: .75; }
 .ngc-hyg-check { flex: 0 0 auto; padding-top: .1rem; }
 .ngc-hyg-body { min-width: 0; flex: 1 1 auto; }

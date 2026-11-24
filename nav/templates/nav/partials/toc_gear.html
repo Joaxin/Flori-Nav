@@ -1,0 +1,27 @@
+                    <div class="dropdown-menu dropdown-menu-end p-2 shadow" id="tocGearMenu" style="width: min(232px, calc(100% - 8px)); max-height: calc(100vh - 100px); overflow-y: auto;">
+                        <div class="form-text small mb-1">形态</div>
+                        <div class="btn-group btn-group-sm w-100 mb-2" role="group" id="tocGearModeGroup" aria-label="目录形态">
+                            <button type="button" class="btn btn-outline-secondary" data-toc-mode="dock" title="固定在左侧，一直显示">常驻侧栏</button>
+                            <button type="button" class="btn btn-outline-secondary" data-toc-mode="drawer" title="收进抽屉，点左侧边缘把手才滑出">抽屉</button>
+                        </div>
+                        <div class="d-flex gap-1 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="tocGearExpand" title="展开目录里所有下级分类"><i class="fas fa-angles-down me-1"></i>展开全部</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="tocGearCollapse" title="折叠目录里所有下级分类"><i class="fas fa-angles-up me-1"></i>折叠全部</button>
+                        </div>
+                        <div class="form-text small mb-1">页面分类</div>
+                        <div class="d-flex gap-1 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="navExpandAll" title="展开页面里所有大类和小分类"><i class="fas fa-angles-down me-1"></i>全部展开</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap flex-grow-1" id="navCollapseAll" title="折叠页面里所有大类和小分类"><i class="fas fa-angles-up me-1"></i>全部折叠</button>
+                        </div>
+                        <div class="form-text small mb-1">目录层级</div>
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input" type="checkbox" id="tocGearShowSubs">
+                            <label class="form-check-label small" for="tocGearShowSubs">显示二级分类</label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="tocGearShowSub3">
+                            <label class="form-check-label small" for="tocGearShowSub3">显示三级分类</label>
+                        </div>
+                        <hr class="my-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100" id="tocGearMore">更多目录设置<i class="fas fa-arrow-right ms-1" style="font-size:.8em"></i></button>
+                    </div>

@@ -75,11 +75,20 @@ def write_public_snapshot(force=False) -> bool:
         logger.warning('跳过空快照写入:库里没有可见站点,保留现有快照')
         return False
     path = _snapshot_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, ensure_ascii=False, indent=1) + '\n'
     tmp = path.with_name(path.name + '.tmp')
-    tmp.write_text(text, encoding='utf-8')
-    os.replace(tmp, path)  # 同目录原子替换,避免访客读到写了一半的 JSON
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(text, encoding='utf-8')
+        os.replace(tmp, path)  # 同目录原子替换,避免访客读到写了一半的 JSON
+    except OSError as exc:
+        # Serverless(Vercel)部署包是只读文件系统:快照刷新失败只能跳过,绝不能反噬写库。
+        logger.warning('游客快照写入失败,已跳过(部署目录可能只读):%s', exc)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False
     return True
 
 

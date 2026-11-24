@@ -127,14 +127,15 @@ jQuery(function ($) {
         $('#navWallMaskR').val(mask); $('#navWallMaskV').text(mask + '%');
         $('#navWallBlurR').val(blur); $('#navWallBlurV').text(blur + 'px');
     }
-    // 图片壁纸会盖住主题底色与背景特效层:此时把「明暗 / 皮肤 / 特效」统一禁用并压灰。
-    // 只在 body[data-nav-wall] 为 1 时锁;清除壁纸后 navApplyTheme 会再次调用并解锁。
+    // 图片壁纸会盖住主题底色与背景特效层:原来把「明暗 / 皮肤 / 特效」一起锁死,
+    // 用户明确要求「壁纸模式下也要能设主题」——现在只锁背景特效(它和壁纸叠在一起没有意义),
+    // 明暗与皮肤照常可切:壁纸上换配色仍然生效。只在 data-nav-wall=1 时锁。
     function navApplyWallLocks() {
         const locked = !!(document.body && document.body.dataset.navWall === '1');
         const $groups = $('#navColorModeGroup, #navThemeMenu, #navThemeGroup');
-        $groups.toggleClass('nav-wall-locked', locked)
-            .find('.btn').prop('disabled', locked)
-            .attr('aria-disabled', locked ? 'true' : 'false');
+        $groups.toggleClass('nav-wall-locked', false)
+            .find('.btn').prop('disabled', false)
+            .attr('aria-disabled', 'false');
         $('#navFxToggle').prop('disabled', locked).toggleClass('nav-wall-locked', locked)
             .attr('aria-disabled', locked ? 'true' : 'false');
         $('#setNavFx').prop('disabled', locked)
@@ -371,9 +372,18 @@ jQuery(function ($) {
     // 2026-11-13 重排:原来一行灰小字里塞了「问候 + 月日 + 星期 + 时间」,下面紧跟的日历行
     // 又把月日星期说了一遍,两行同级同色同字号 —— 像系统日志,没有节奏。
     // 现在一行大号时间(唯一主视觉)+ 一行小号辅助信息(日期 / 第几天 / 距下班),字号拉开对比。
+    // 壁纸态问候语整块是一枚半透明药丸底板:时钟/问候/日期全关掉时会剩一个空胶囊,
+    // 看起来像页面上莫名其妙的一个小灰条。三个子项都没内容时整块隐藏(2026-11-24)
+    function navSyncGreet() {
+        const box = document.querySelector('.nav-greet');
+        if (!box) return;
+        const parts = ['navGreetHi', 'navClockLine', 'navClockExtra'].map(function (id) { return document.getElementById(id); });
+        const any = parts.some(function (s) { return s && !s.classList.contains('d-none') && s.textContent.trim(); });
+        box.classList.toggle('d-none', !any);
+    }
     function navTickClock() {
         const el = document.getElementById('navClockLine');
-        if (!el || el.classList.contains('d-none')) return;
+        if (!el || el.classList.contains('d-none')) { navSyncGreet(); return; }
         const now = new Date();
         const h = now.getHours();
         // 2026-11-23 多语言：问候语随 nav_lang 走，英文模式下不再出现中文时段词
@@ -386,6 +396,7 @@ jQuery(function ($) {
         el.textContent = String(h).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
         navRenderCal();
         navRenderCountdowns();
+        navSyncGreet();
     }
     // 辅助信息行(本地时间,不用 toISOString——UTC 坑):
     // 11月13日 星期五 · 今年第 317 天 · 距下班 3 小时 11 分钟(仅工作日 9~18 点)
@@ -475,6 +486,7 @@ jQuery(function ($) {
         $('#navClockExtra').toggleClass('d-none', !this.checked);
         $('#navGreetHi').toggleClass('d-none', !this.checked);
         localStorage.setItem('navShowClock', this.checked ? '1' : '0');
+        navSyncGreet();
         navTickClock();
     });
     navTickClock();
