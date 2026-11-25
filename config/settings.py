@@ -88,6 +88,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # 可选写令牌:NAV_WRITE_TOKEN 为空时完全放行(本地无感);放 CSRF 之后,不干预读请求
     'config.middleware.WriteTokenMiddleware',
+    # 访客准入答题(2026-11-25):读公开快照里的 gate 小节,不查库;未启用时完全放行
+    'config.middleware.QuizGateMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

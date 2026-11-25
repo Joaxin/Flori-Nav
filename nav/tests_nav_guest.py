@@ -9,6 +9,7 @@
 
 import json
 import os
+from unittest.mock import patch
 import re
 import tempfile
 from pathlib import Path
@@ -31,13 +32,17 @@ class GuestPageTests(TestCase):
         # 库里有站,访客页却只能拿公开快照:这条站名/网址绝不能出现在 HTML 里
         NavSite.objects.create(name='库内私密站', url='https://db-only.example.com/',
                                category='工具', description='不该被访客看到')
-        with self.assertNumQueries(0):
-            resp = self.client.get(reverse('nav_guest'))
+        # 2026-11-25 访客准入(答题)默认关闭;这里显式钉住「未启用」,
+        # 确保这条测试验证的仍是「页面渲染零查询」,不被准入配置的一次读取污染
+        with patch('config.middleware.public_gate', return_value={'enabled': False}):
+            with self.assertNumQueries(0):
+                resp = self.client.get(reverse('nav_guest'))
         self.assertEqual(resp.status_code, 200)
         html = resp.content.decode('utf-8')
         # 复用主人页:同一套模板、设置抽屉与桌宠配置岛都在
         self.assertIn('NAV_GUEST_MODE', html)
-        self.assertIn('navGuestLoginBtn', html)
+        # 2026-11-25 按用户要求:访客顶栏不再放「主人登录」按钮,只剩快捷键入口
+        self.assertNotIn('id="navGuestLoginBtn"', html)
         self.assertIn('navSettingsMenu', html)
         self.assertIn('navPetAiUrls', html)
         self.assertIn('setTabFx', html)
@@ -123,23 +128,65 @@ class GuestPageTests(TestCase):
         self.assertContains(resp, reverse('nav_guest'))
 
 
+class DualEndSkeletonParityTests(TestCase):
+    """2026-11-25 双端骨架复核(以主人态为基准,游客直接复用主人模板与类)。
+
+    这里只钉"不会随内容变化的结构计数":顶栏 chip 颗数、设置面板 tab 数、
+    模板注释不得泄漏成正文。位置/宽高的像素级对齐由 tests_nav_modal_geometry
+    与浏览器实测负责,不在这层重复。
+    """
+
+    def _pages(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('NAV_WRITE_TOKEN', None)
+            owner = self.client.get(reverse('nav_sites')).content.decode('utf-8')
+        guest = self.client.get(reverse('nav_guest')).content.decode('utf-8')
+        return owner, guest
+
+    def test_topbar_chip_count_and_settings_tabs_same(self):
+        owner, guest = self._pages()
+        def ctl_slots(html):
+            # 只比顶栏控制区(排除分类胶囊 nav-cat-chip:它随数据多少变化)
+            btns = [m for m in re.findall(r'<button[^>]*class="nav-chip[^"]*"[^>]*>', html)
+                    if 'nav-cat-chip' not in m]
+            return [re.search(r'class="([^"]*)"', m).group(1).replace('nav-chip', '').strip()
+                    for m in btns]
+        owner_slots, guest_slots = ctl_slots(owner), ctl_slots(guest)
+        # 顶栏 6 个槽位:目录开关(仅<768 显示) / AI / 添加 / 体检篮 / 更多 / 齿轮
+        self.assertEqual(len(owner_slots), 6)
+        self.assertEqual(owner_slots, guest_slots)
+        for name, html in (('owner', owner), ('guest', guest)):
+            self.assertEqual(html.count('id="navBasketBtn"'), 1, name)
+            self.assertEqual(html.count('id="navDataMenu"'), 1, name)
+            # 设置面板 4 个 tab,两端都渲染(游客第 4 个是"排序",主人是"维护")
+            self.assertEqual(html.count('data-bs-target="#setTab'), 4, name)
+            # 模板注释不得渲染成正文(2026-11-25 曾泄漏过一次)
+            self.assertNotIn('{#', html, name)
+            self.assertNotIn('#}', html, name)
+
+    def test_fourth_tab_text_differs_but_slot_is_same(self):
+        owner, guest = self._pages()
+        self.assertIn('id="tabBtn-sort"', owner)
+        self.assertIn('id="tabBtn-sort"', guest)
+        self.assertIn('维护', owner)
+        self.assertIn('排序', guest)
+
+
 class GuestParityTests(TestCase):
     """2026-11-19 主客对齐:登录入口快捷键化、必应死路收口、导入书签本地分层与层级。"""
 
-    def test_login_button_visible_shortcut_kept(self):
+    def test_login_shortcut_only_no_button(self):
         html = self.client.get(reverse('nav_guest')).content.decode('utf-8')
-        # C3:顶栏登录按钮在访客态可见(去掉 d-none 与 display:none !important 双隐);
-        # 菜单内「主人登录」项已按拍板删除,菜单内不再出现 data-guest-login。
-        self.assertIn('navGuestLoginBtn', html)
-        self.assertNotIn('#navGuestLoginBtn { display: none', html)
-        self.assertNotIn('d-none" type="button" id="navGuestLoginBtn"', html)
+        # 2026-11-25 改口径:访客顶栏的「主人登录」按钮整颗删掉(用户嫌别扭),
+        # 唯一入口是 Ctrl/Cmd+Shift+L;菜单里的 data-guest-login 早前已删,这里一并守住。
+        self.assertNotIn('id="navGuestLoginBtn"', html)
         self.assertNotIn('data-guest-login', html)
         self.assertIn('openLogin', html)
         self.assertIn('e.shiftKey', html)
         self.assertIn("e.key === 'l' || e.key === 'L'", html)
-        # C8:快捷键在顶栏按钮 tooltip 写明,弹窗正文也保留一句可见提示
+        # 快捷键文案留在输入框 placeholder 里,按快捷键唤起后才知道怎么用
         self.assertIn('Ctrl/Cmd+Shift+L', html)
-        self.assertIn('nav-login-shortcut-hint', html)
+        self.assertNotIn('nav-login-shortcut-hint', html)
 
     def test_bing_wallpaper_open_to_guest(self):
         # 必应壁纸是只读 GET 代理:访客 CSS 不再收起按钮,theme.js 也不再有访客守卫兜底
@@ -1015,10 +1062,10 @@ class S1MenuAndLoginContractTests(TestCase):
             self.assertEqual(1, self.owner.count('id="%s"' % bid))
 
     def test_guest_add_button_copy_says_local(self):
-        # C2:访客「添加站点」可见文案改「添加本机站点」,id/aria-label/tooltip 保留
+        # C2:访客「添加站点」可见文案收短为「添加本机」——与主人「添加站点」等宽,顶栏 chip 位置两端对齐;id/aria-label/tooltip 保留
         self.assertIn('id="navGuestAddBtn"', self.guest)
         self.assertIn('aria-label="添加本机站点"', self.guest)
-        self.assertIn('<span>添加本机站点</span>', self.guest)
+        self.assertIn('<span>添加本机</span>', self.guest)
         self.assertNotIn('<span>添加站点</span>', self.guest)
 
     def test_guest_menu_merged_two_rows(self):

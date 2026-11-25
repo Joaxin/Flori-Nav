@@ -34,23 +34,8 @@
         catch (e) { return Promise.resolve(false); }
     }
 
-    // ===== #3 访客卡片小按钮显隐(仅访客;默认关,本机记忆) =====
-    // 开关 #setGuestCardBtns 只在访客态渲染;开启时 body 加 .nav-guest-cardbtns,
-    // 由 CSS 流恢复快照卡片 .site-edit/.site-del 显示;关闭时隐藏。主人端不渲染此开关,不受影响。
-    var GUEST_CARDBTNS_KEY = 'navGuestCardBtnsV1';
-    (function initGuestCardBtns() {
-        var box = document.getElementById('setGuestCardBtns');
-        function paint(on) {
-            document.body.classList.toggle('nav-guest-cardbtns', !!on);
-            if (box) box.checked = !!on;
-        }
-        storeGet(GUEST_CARDBTNS_KEY, function () { return false; }).then(function (on) { paint(!!on); });
-        if (box) box.addEventListener('change', function () {
-            var on = box.checked;
-            storeSet(GUEST_CARDBTNS_KEY, on);
-            paint(on);
-        });
-    })();
+    // 2026-11-25:访客端卡面 ✎/× 与主人端统一——不再有 navGuestCardBtnsV1 独立开关,
+    // 显隐/常显直接走 nav-sites.js 的 #setCardActions / #setShowActions 两级偏好(同一套 CSS/JS)。
 
     // ===== 书签编辑 / 新增 =====
     var editModal = null, editOldUrl = '', editMode = 'local';

@@ -147,6 +147,9 @@ def nav_sites(request):
                                   if node['parent'] and node['count']]
             group['items'] = []    # 三级模式不再渲染平铺 items,省一份内存
         groups.append(group)
+    # 游客页公开范围与访客准入（主人可在 维护 → 游客页内容 调整）
+    # safe_current:线上少跑一次迁移也照样能开页,准入门回退为关闭
+    guest_cfg = NavPublicConfig.safe_current()
     context = {
         'nav_base_template': getattr(settings, 'NAV_BASE_TEMPLATE', 'nav/base.html'),
         'groups': groups,
@@ -173,7 +176,13 @@ def nav_sites(request):
         # 配了访问令牌才显示「退出主人态」:没配时这个地址本来就是自用版
         'nav_token_enabled': nav_token_enabled(),
         # 游客页公开范围（主人可在 维护 → 游客页内容 切换）
-        'nav_guest_scope': NavPublicConfig.current().scope,
+        'nav_guest_scope': guest_cfg.scope,
+        # 访客准入答题（同一段设置里配；游客页不渲染这些字段）
+        'nav_quiz_enabled': guest_cfg.gate_enabled,
+        'nav_quiz_ready': guest_cfg.gate_ready(),
+        'nav_quiz_question': guest_cfg.quiz_question,
+        'nav_quiz_answers': guest_cfg.quiz_answers,
+        'nav_quiz_hint': guest_cfg.quiz_hint,
     }
     # 2026-11-07 脚本外置:模板里的 {% url %} 在这里统一算好,交给 #navSiteUrls 配置块
     context['nav_site_urls'] = {
@@ -231,7 +240,7 @@ def api_nav_guest_scope(request):
     # public 模式下库里没有可见站点：恢复上次完整快照，而不是写空。
     elif scope == NavPublicConfig.SCOPE_PUBLIC and not payload.get('sites'):
         if full_cache.exists():
-            cfg = NavPublicConfig.current()
+            cfg = NavPublicConfig.safe_current()
             cfg.scope = scope
             cfg.save()
             snapshot_stale = False
@@ -265,9 +274,15 @@ def api_nav_guest_scope(request):
             'message': '当前范围没有可公开的站点，已保留现有访客快照',
         }, status=400)
 
-    cfg = NavPublicConfig.current()
-    cfg.scope = scope
-    cfg.save()
+    try:
+        cfg = NavPublicConfig.current()
+        cfg.scope = scope
+        cfg.save()
+    except Exception as exc:
+        logger.warning('保存游客页范围失败:%s', exc)
+        return JsonResponse({'status': 'error',
+                             'message': '数据库还没迁移:请先执行 python manage.py migrate'},
+                            status=500)
 
     snapshot_stale = False
     try:
@@ -412,8 +427,14 @@ def nav_fetch_meta(request):
     try:
         _guard_public_url(url)   # 用户填什么就取什么,先挡内网/非法 scheme(SSRF)
     except ValueError as exc:
+        reason = str(exc)
+        # 2026-11-25:本机 DNS/代理把域名指到内网段时(如 github.com → 192.168.x.x),
+        # 原话"不允许访问内网地址"对用户没有解释力,换成人话;部署环境 DNS 正常不会命中。
+        if '内网' in reason:
+            reason = ('这个域名在这台机器上被解析到了内网地址(常见于本地代理 / DNS 劫持),'
+                      '换网络环境再试,或手动填写')
         return JsonResponse({'status': 'error',
-                             'message': f'抓取失败:{exc}(可手动填写名称)'}, status=502)
+                             'message': f'抓取失败:{reason}(可手动填写名称)'}, status=502)
     try:
         # _safe_get:302 到内网也要在跳到那一层时被拦住(裸 requests.get 会自动跟跳)
         response = _safe_get(url, timeout=8, headers={'User-Agent': _NAV_META_UA})

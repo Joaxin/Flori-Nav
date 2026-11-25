@@ -566,7 +566,8 @@ class AccentColorContractTests(TestCase):
         """弹层实底契约(2026-11-18):半透明 body-bg 的主题(日落/水墨/极光)必须给
         modal/dropdown 实底、给 --bs-offcanvas-bg —— 否则页面卡片透进弹窗。"""
         css = static_text('css/nav-sites.css')
-        for theme, panel in (('sunset', 'background: #fff8f2'), ('ink', 'background: #fbf7ee'),
+        # 2026-11-25:日落(sunset)皮肤已下线,弹层实底契约只覆盖其余半透明主题
+        for theme, panel in (('ink', 'background: #fbf7ee'),
                              ('aurora', 'background: #111a2d')):
             seg = css.split('body[data-nav-theme="%s"] .modal-content' % theme, 1)[1].split('}', 1)[0]
             self.assertIn(panel, seg, theme)
@@ -576,7 +577,8 @@ class AccentColorContractTests(TestCase):
         """2026-11-19 用户报「明暗没用」:浅色皮肤在 body 上覆盖 token 并刷浅色纸面,
         把深色档压掉了。浅色皮肤各要给一套夜间表面;极光本身是暗色皮肤,不参与。"""
         css = static_text('css/nav-sites.css')
-        for theme in ('paper', 'sunset', 'ink', 'plain', 'study'):
+        # 2026-11-25:日落/简白已下线;自定义皮肤颜色由用户自定,不要求夜间变体
+        for theme in ('paper', 'ink', 'study'):
             sel = 'html[data-bs-theme="dark"] body[data-nav-theme="%s"] {' % theme
             self.assertIn(sel, css, theme)
             seg = css.split(sel, 1)[1].split('}', 1)[0]
@@ -670,8 +672,8 @@ class BackgroundFxVisibilityTests(TestCase):
     这里把"看得见"写成可断言的契约,防止下次换肤又把它调成空气。
     """
 
-    # 2026-11-18 主题收敛 11→7(退役 glass/ocean/candy/editorial),在役 5 套带皮肤变量
-    THEMES = ['aurora', 'paper', 'sunset', 'ink', 'study']
+    # 2026-11-25:日落/简白下线,在役带 fx 配方的皮肤 4 套;自定义皮肤颜色由用户定,沿用默认配方
+    THEMES = ['aurora', 'paper', 'ink', 'study']
 
     def _fx_css(self):
         """只取「背景特效层」那一节:同样的 body[data-nav-theme=x] 选择器在文件前半段
@@ -758,13 +760,16 @@ class DGroupStructureTests(TestCase):
         self.assertIn('.col-2:has(.f-subcat2)', css)
         self.assertIn('.col-4:has(.f-desc)', css)
 
-    # ---- D2 权限边界:访客态隐藏维护 Tab 与管理员开关;文案分区 ----
-    def test_guest_hides_maintenance_tab_and_admin_switches(self):
+    # ---- D2 权限边界:访客态保留「排序」tab(本机排序),隐藏管理员开关;文案分区 ----
+    def test_guest_keeps_sort_tab_but_hides_admin_switches(self):
         guest = self.client.get(reverse('nav_guest')).content.decode('utf-8')
-        self.assertNotIn('id="tabBtn-sort"', guest)
+        # 2026-11-25:本机排序是访客合法能力,第 4 个 tab 与主人端对齐(只改文案)
+        self.assertIn('id="tabBtn-sort"', guest)
+        self.assertIn('本机排序', guest)
         self.assertNotIn('id="navFavLocalBtn"', guest)
         self.assertNotIn('id="navResetBtn"', guest)
         self.assertNotIn('id="navGuestScope"', guest)
+        self.assertNotIn('id="navQuizSave"', guest)
 
     def test_owner_keeps_maintenance_admin(self):
         owner = self.client.get(reverse('nav_sites')).content.decode('utf-8')

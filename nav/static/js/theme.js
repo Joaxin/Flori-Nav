@@ -146,6 +146,37 @@ jQuery(function ($) {
             .closest('.nav-fx-strength-box').toggleClass('nav-wall-locked', locked);
         $('#navWallLockHintQuick, #navWallLockHintFull').toggleClass('d-none', !locked);
     }
+    // ===== 自定义皮肤(2026-11-25):主色/页面底/卡片底/文字色/圆角 + 一段自定义 CSS =====
+    // 全部本机:颜色写到 :root 的 --nav-custom-* 变量,自定义 CSS 注入 <style id="navCustomSkinCss">;
+    // 切到别的皮肤时把注入的 CSS 清空(变量留着也无害:CSS 只在 body[data-nav-theme=custom] 下引用)。
+    var CUSTOM_SKIN_KEY = 'navCustomSkin';
+    function customSkinData() {
+        var d = null;
+        try { d = JSON.parse(localStorage.getItem(CUSTOM_SKIN_KEY) || 'null'); } catch (e) { d = null; }
+        return (d && typeof d === 'object') ? d : {};
+    }
+    function customSkinFillForm(d) {
+        $('#navCustomSkinBox [data-skin-field]').each(function() {
+            var k = this.getAttribute('data-skin-field');
+            var v = d[k];
+            if (v == null || v === '') return;
+            this.value = String(v);
+        });
+    }
+    function navApplyCustomSkin(d) {
+        d = d || customSkinData();
+        var r = document.documentElement.style;
+        r.setProperty('--nav-custom-accent', d.accent || '#635bff');
+        r.setProperty('--nav-custom-page', d.bg || '#f4f6fb');
+        r.setProperty('--nav-custom-card', d.card || '#ffffff');
+        r.setProperty('--nav-custom-text', d.text || '#23272f');
+        r.setProperty('--nav-custom-radius', String(Math.min(30, Math.max(0, parseInt(d.radius, 10) || 0))) + 'px');
+        var el = document.getElementById('navCustomSkinCss');
+        var css = String(d.css || '');
+        if (!css) { if (el) el.textContent = ''; return; }
+        if (!el) { el = document.createElement('style'); el.id = 'navCustomSkinCss'; document.head.appendChild(el); }
+        el.textContent = css;
+    }
     function navApplyTheme(t) {
         if (t && t !== 'default') document.body.dataset.navTheme = t;
         else delete document.body.dataset.navTheme;
@@ -190,11 +221,17 @@ jQuery(function ($) {
             $(this).toggleClass('btn-secondary', on).toggleClass('btn-outline-secondary', !on)
                    .attr('aria-pressed', on ? 'true' : 'false');
         });
+        // 自定义皮肤:选中才点亮面板并应用颜色/CSS;换到别的皮肤就把注入的 CSS 清空
+        const isCustom = (t || 'default') === 'custom';
+        $('#navCustomSkinBox').toggleClass('d-none', !isCustom);
+        if (isCustom) { const d = customSkinData(); customSkinFillForm(d); navApplyCustomSkin(d); }
+        else { const sEl = document.getElementById('navCustomSkinCss'); if (sEl) sEl.textContent = ''; }
         navApplyWallLocks();   // 壁纸模式:明暗/皮肤/特效置灰并禁用
         navExtractAndStore(false);   // 壁纸变了就重取色(同壁纸命中缓存不重复算)
     }
     // 2026-11-18 主题收敛 11→7:退役主题一次性迁移(本机存过退役名的,加载时改名)
-    const THEME_RETIRED = { ocean: 'aurora', candy: 'sunset', glass: 'sunset', editorial: 'paper' };
+    // 2026-11-25:日落/简白下线(candy/glass 原先并到日落),老档统一迁到极光/默认
+    const THEME_RETIRED = { ocean: 'aurora', candy: 'aurora', glass: 'aurora', editorial: 'paper', sunset: 'default', plain: 'default' };
     const storedTheme = localStorage.getItem('navTheme');
     if (storedTheme && THEME_RETIRED[storedTheme]) {
         localStorage.setItem('navTheme', THEME_RETIRED[storedTheme]);
@@ -218,6 +255,15 @@ jQuery(function ($) {
         localStorage.setItem('navTheme', t);
         navApplyTheme(t);
     });
+    // 自定义皮肤表单:改一下存一下,当场预览(颜色/圆角/CSS 三处同一个口)
+    $('#navCustomSkinBox').on('input change', '[data-skin-field]', function() {
+        var k = this.getAttribute('data-skin-field');
+        var d = customSkinData();
+        d[k] = this.value;
+        try { localStorage.setItem(CUSTOM_SKIN_KEY, JSON.stringify(d)); } catch (e) {}
+        if ((localStorage.getItem('navTheme') || 'default') === 'custom') navApplyCustomSkin(d);
+    });
+
     // 背景特效开关(2026-11-10):一层 .nav-fx 的显隐,跟主题解耦,换肤不影响开关
     function navApplyFx(on) {
         document.body.classList.toggle('nav-fx-off', !on);

@@ -1348,9 +1348,11 @@ $(function() {
         + '<div class="col-6"><label class="form-label small mb-1">名称 <span class="text-danger">*</span></label><input class="form-control form-control-sm f-name" maxlength="100" placeholder="例如： DHL Express"></div>'
         + '<div class="col-6"><label class="form-label small mb-1">网址 <span class="text-danger">*</span></label><input class="form-control form-control-sm f-url" maxlength="300" placeholder="dhl.com(自动加 https://)"></div>'
         + '</div>'
-        + '<div class="d-flex align-items-center gap-2 my-2">'
+        + '<div class="d-flex align-items-center gap-2 my-2 flex-wrap">'
         + '<button type="button" class="btn btn-sm btn-outline-secondary f-meta" title="抓取对方首页的 <title>、favicon 和 description"><i class="fas fa-wand-magic-sparkles me-1"></i>识别标题/图标</button>'
+        + '<button type="button" class="btn btn-sm btn-outline-primary f-ai" title="按名称/网址让 AI 推荐分类、标签和图标文字；分类只从库里现有清单里挑，实在不合适才建议新建"><i class="fas fa-robot me-1"></i>AI 推荐</button>'
         + '<button type="button" class="btn btn-sm btn-outline-secondary f-icon" title="选择图标:纯色文字 / 在线获取 / 本地上传"><i class="fas fa-image me-1"></i>选择图标</button>'
+        + '<label class="form-check form-check-inline small text-muted mb-0" title="勾上才让 AI 一起给子网页与备用网址；它只给确定存在的地址，不确定就留空"><input class="form-check-input f-ai-links" type="checkbox"><span class="ms-1">顺带子网页/备用</span></label>'
         + '<img class="site-fav f-fav d-none" alt="">'
         + '<span class="site-fav fav-letter f-fav-custom d-none"></span>'
         + '<span class="small text-muted f-status"></span></div>'
@@ -1453,6 +1455,7 @@ $(function() {
         const $pane = $('<div class="tab-pane fade" id="' + id + '" role="tabpanel">').append(SF_TPL);
         $('#siteFormPanes').append($pane);
         const $form = $pane.find('.sf-form');
+        $form.find('.f-ai-links').prop('checked', aiLinksPref());
         const dlId = 'sfSubDL-' + sfSeq;
         const dl2Id = 'sfSub2DL-' + sfSeq;
         $form.find('.f-subcat-list').attr('id', dlId);
@@ -1539,6 +1542,84 @@ $(function() {
             .find('i').toggleClass('fa-chevron-down', !open).toggleClass('fa-chevron-up', open);
     });
     $('#siteFormPanes').on('click', '.sub-del-row', function() { $(this).closest('.sub-row').remove(); });
+
+    // ===== AI 推荐(2026-11-25):分类优先复用库里现有清单,标签优先词表;子网页/备用默认不要 =====
+    var AI_LINKS_KEY = 'navAiSuggestLinks';
+    function aiLinksPref() { try { return localStorage.getItem(AI_LINKS_KEY) === '1'; } catch (e) { return false; } }
+    $('#siteFormPanes').on('change', '.f-ai-links', function() {
+        var on = this.checked;
+        try { localStorage.setItem(AI_LINKS_KEY, on ? '1' : '0'); } catch (e) {}
+        $('#siteFormPanes .f-ai-links').each(function() { this.checked = on; });
+    });
+    // 文字图标默认值:中文取前两个汉字;英文多词取各词首字母(最多 2),单词取前 2 个字母
+    function sfDefaultIconText(name) {
+        var s = String(name || '').replace(/^https?:\/\//, '').replace(/[^A-Za-z0-9\u4e00-\u9fa5 ]/g, '').trim();
+        if (!s) return 'Go';
+        var cjk = s.match(/[\u4e00-\u9fa5]/g);
+        if (cjk && cjk.length) return cjk.slice(0, 2).join('');
+        var words = s.split(/\s+/).filter(Boolean);
+        if (words.length >= 2) return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+        return s.slice(0, 2).toUpperCase();
+    }
+    $('#siteFormPanes').on('click', '.f-ai', function() {
+        var $form = $(this).closest('.sf-form');
+        var $btn = $(this).prop('disabled', true);
+        var name = ($form.find('.f-name').val() || '').trim();
+        var url = ($form.find('.f-url').val() || '').trim();
+        var desc = ($form.find('.f-desc').val() || '').trim();
+        if (!name && !url) { showToast('先填名称或网址'); $btn.prop('disabled', false); return; }
+        var wantLinks = $form.find('.f-ai-links').prop('checked');
+        $form.find('.f-status').text('AI 推荐中…');
+        $.ajax({
+            url: '/api/nav/ai/suggest/', type: 'POST', contentType: 'application/json',
+            data: JSON.stringify({ name: name, url: url, description: desc,
+                                   want_subs: wantLinks, want_alts: wantLinks }),
+            beforeSend: function(xhr) { xhr.setRequestHeader('X-CSRFToken', csrf()); }
+        }).done(function(res) {
+            var sug = res && res.suggestion;
+            if (!sug) { $form.find('.f-status').text(''); showToast('AI 没给出建议'); return; }
+            var notes = [];
+            if (sug.category) { $form.find('.f-cat').val(sug.category).trigger('input'); notes.push('分类'); }
+            if (sug.subcat) $form.find('.f-subcat').val(sug.subcat);
+            if (sug.subcat2) $form.find('.f-subcat2').val(sug.subcat2);
+            sfRefreshSubcats($form);
+            if (sug.tags && sug.tags.length) {
+                var cur = ($form.find('.f-tags').val() || '').split(/[,，]/).map(function(x) { return x.trim(); }).filter(Boolean);
+                var merged = cur.concat(sug.tags.filter(function(t) { return cur.indexOf(t) < 0; })).slice(0, 8);
+                $form.find('.f-tags').val(merged.join(','));
+                notes.push('标签');
+            }
+            if (sug.icon_text) {
+                var color = '#5850ec';
+                $form.data('iconPick', { mode: 'text', text: sug.icon_text, color: color, size: 34 });
+                $form.find('.f-fav-custom').removeClass('d-none').text(sug.icon_text)
+                    .css({ background: color, '--fav-fs': '10px' });
+                $form.find('.f-fav').addClass('d-none');
+                notes.push('图标 ' + sug.icon_text);
+            }
+            if (sug.subs && sug.subs.length) {
+                $form.find('.f-subrows').empty();
+                sug.subs.forEach(function(x) { sfAddSubRow($form.find('.f-subrows'), x.name, x.url); });
+                $form.find('.f-adv').addClass('show');
+                $form.find('.f-adv-toggle').attr('aria-expanded', true)
+                    .find('i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                notes.push('子网页 ' + sug.subs.length);
+            }
+            if (sug.alts && sug.alts.length) {
+                $form.find('.f-altrows').empty();
+                sug.alts.forEach(function(x) { sfAddSubRow($form.find('.f-altrows'), x.name, x.url); });
+                $form.find('.f-adv').addClass('show');
+                notes.push('备用 ' + sug.alts.length);
+            }
+            var extra = sug.new_category ? '（AI 建议新建大类：' + sug.category + '）' : '';
+            $form.find('.f-status').text('AI 已填：' + (notes.join(' / ') || '无') + extra);
+        }).fail(function(xhr) {
+            var b = (xhr && xhr.responseJSON) || {};
+            if (b.code === 'ai_not_configured') showToast('还没配置 AI 接口：到 设置 → AI 工具 里填地址与密钥');
+            else showToast(b.message || 'AI 推荐失败');
+            $form.find('.f-status').text('');
+        }).always(function() { $btn.prop('disabled', false); });
+    });
 
     // 识别标题/图标/简介(按表单作用域;失焦自动一次,按钮可强制重抓)
     // 同一次抓取顺带做"迁移新地址"提示:候选可一键加入本表单的备用网址行
@@ -1642,7 +1723,7 @@ $(function() {
             ipCtx.text = saved.text; ipCtx.color = saved.color; ipCtx.size = saved.size;
         } else {
             const name = ipCtx.$form.find('.f-name').val().trim() || ipCtx.$form.find('.f-url').val().trim();
-            ipCtx.text = (name.replace(/[^A-Za-z0-9\u4e00-\u9fa5]/g, '').slice(0, 2) || 'Go').toUpperCase();
+            ipCtx.text = sfDefaultIconText(name);
         }
         $('#ipText').val(ipCtx.text); $('#ipSizeR').val(ipCtx.size); $('#ipSizeV').text(ipCtx.size);
         $('#ipColors .ip-color').removeClass('active');

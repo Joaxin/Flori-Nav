@@ -1,6 +1,7 @@
 /* ==========================================================================
    R-24 左下 fixbar(独立组件)
-   - 三个动作:回到顶部 / 切换皮肤(navTheme) / 切换明暗(navColorMode)。
+   - 两个动作:回到顶部 / 收起展开(2026-11-25 按用户要求下架「切换皮肤」「切换明暗」两颗;
+     明暗与皮肤的入口仍留在设置面板与快捷设置,这里不再重复开第二处入口)。
    - 全部复用既有存储键与既有对外 API,不自造主题逻辑、不发任何网络请求、
      访客态零写库(不触发 /api/nav/ 请求)。
    - 注册表协议:window.NavWidgets 存在则 register;否则压入 __navWidgetQueue
@@ -12,9 +13,6 @@
 (function () {
     'use strict';
 
-    var THEME_FALLBACK = ['default', 'aurora', 'paper', 'sunset', 'ink', 'plain', 'study'];
-    // 2026-11-24:明暗压成一档「跟随系统」,工具条这颗按钮从三态循环改成开关式切换。
-    var COLOR_ORDER = ['auto', 'manual'];
     var BULK_SELECTORS = ['#navMsBar', '#ngSnapBulkBar', '#navBulkBar'];
     var DOCK_KINDS = ['top', 'bottom-left', 'bottom-right'];
     var dockKind = 'bottom-left';
@@ -28,76 +26,6 @@
     function storageGet(key) {
         try { return localStorage.getItem(key); } catch (e) { return null; }
     }
-    function storageSet(key, value) {
-        try { localStorage.setItem(key, value); } catch (e) {}
-    }
-
-    function themeList() {
-        var btns = document.querySelectorAll('#navThemeMenu [data-nav-theme]');
-        if (btns && btns.length) {
-            return Array.prototype.map.call(btns, function (b) {
-                return String(b.getAttribute('data-nav-theme') || '');
-            }).filter(Boolean);
-        }
-        return THEME_FALLBACK.slice();
-    }
-
-    /* ---------- 动作:只调用既有能力 ---------- */
-    function actBackTop() {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function cycleTheme() {
-        var list = themeList();
-        var cur = storageGet('navTheme') || 'default';
-        var idx = list.indexOf(cur);
-        var next = list[(idx < 0 ? 0 : idx + 1) % list.length];
-        storageSet('navTheme', next);
-        if (typeof window.navApplyTheme === 'function') {
-            try { window.navApplyTheme(next); } catch (e) {}
-        }
-        paint();
-    }
-
-    function cycleColorMode() {
-        var cur = storageGet('navColorMode');
-        if (cur !== 'manual') cur = 'auto';
-        var next = cur === 'manual' ? 'auto' : 'manual';
-        storageSet('navColorMode', next);
-        if (typeof window.navSetColorMode === 'function') {
-            try { window.navSetColorMode(next); } catch (e) {}
-        }
-        if (typeof window.applyNavAccent === 'function') {
-            try { window.applyNavAccent(storageGet('navAccent') || ''); } catch (e) {}
-        }
-        paint();
-    }
-
-    /* 壁纸模式下既有设置面板把明暗/皮肤置灰,这里保持同一口径,不另开可写入口 */
-    function wallLocked() {
-        return !!(document.body && document.body.dataset.navWall === '1');
-    }
-
-    function paint() {
-        if (!root) return;
-        var themeBtn = root.querySelector('[data-fix-act="theme"]');
-        var colorBtn = root.querySelector('[data-fix-act="color"]');
-        var locked = wallLocked();
-
-        var curTheme = storageGet('navTheme') || 'default';
-        if (themeBtn) {
-            themeBtn.disabled = locked;
-            themeBtn.title = locked ? '壁纸模式:皮肤暂不可调' : '切换皮肤(当前:' + curTheme + ')';
-        }
-        var curColor = storageGet('navColorMode');
-        if (curColor !== 'manual') curColor = 'auto';
-        if (colorBtn) {
-            colorBtn.disabled = locked;
-            colorBtn.title = locked ? '壁纸模式:明暗暂不可调'
-                : ('明暗(当前:' + (curColor === 'auto' ? '跟随系统' : '固定浅色') + ')');
-        }
-    }
-
     /* ---------- 多选条动态让位 ---------- */
     function visibleBar() {
         var best = null;
@@ -227,8 +155,6 @@
         root.innerHTML =
             '<div class="nav-fixbar-main">' +
             '  <button type="button" class="nav-fixbar-btn" data-fix-act="top" title="回到顶部" aria-label="回到顶部"><i class="fas fa-arrow-up"></i></button>' +
-            '  <button type="button" class="nav-fixbar-btn" data-fix-act="theme" title="切换皮肤" aria-label="切换皮肤"><i class="fas fa-palette"></i></button>' +
-            '  <button type="button" class="nav-fixbar-btn" data-fix-act="color" title="切换明暗" aria-label="切换明暗"><i class="fas fa-circle-half-stroke"></i></button>' +
             '</div>' +
             '<button type="button" class="nav-fixbar-btn nav-fixbar-toggle" data-fix-act="toggle" title="收起为小圆钮" aria-label="收起工具条"><i class="fas fa-chevron-down"></i></button>';
 
@@ -237,8 +163,6 @@
             if (!btn) return;
             var act = btn.getAttribute('data-fix-act');
             if (act === 'top') actBackTop();
-            else if (act === 'theme') cycleTheme();
-            else if (act === 'color') cycleColorMode();
             else if (act === 'toggle') setCollapsed(!root.classList.contains('is-collapsed'));
         });
 
@@ -248,7 +172,6 @@
         bindAvoidObservers();
         // 移动端默认收起为小圆钮;桌面端默认展开
         setCollapsed(window.innerWidth < 768);
-        paint();
         syncAvoid();
         mounted = true;
     }

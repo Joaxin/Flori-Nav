@@ -602,9 +602,14 @@
         el.id = id;
         return el;
     }
+    // 关闭统一走 Bootstrap(与主人端 .modal 一致);取不到实例时退回原手写显隐
+    function hidePanel() {
+        var m = (window.bootstrap && bootstrap.Modal) ? bootstrap.Modal.getInstance(panel) : null;
+        if (m) m.hide(); else if (panel) panel.classList.remove('show');
+    }
     function openPanel() {
         if (!panel) buildPanel();
-        panel.style.display = 'flex';
+        bootstrap.Modal.getOrCreateInstance(panel).show();
         loadCfg().then(function (c) {
             document.getElementById('gaiBase').value = c.baseUrl;
             document.getElementById('gaiKey').value = c.apiKey;
@@ -619,30 +624,33 @@
         loadHistory().then(renderHistory);
     }
     function buildPanel() {
+        // 2026-11-25:改用与主人端 #petAiModal 同一套 Bootstrap modal 外壳 ——
+        // modal-dialog 同宽(500px)、带遮罩、ESC/data-bs-dismiss 关闭、header/body/footer 三段式;
+        // 不再手写 fixed 浮层(原来 440px 无遮罩,只算"观感接近",骨架并不一致)。
         panel = document.createElement('div');
         panel.id = 'navGuestAiPanel';
-        // 2026-11-24:原先贴右下角(right:16px/bottom:96px),与主人端 #navAiModal 的居中弹窗观感差一截,
-        // 还正好压在右侧快捷工具条上;统一成居中浮层(宽度/最大高度保持原口径)。
-        panel.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1060;width:440px;max-width:calc(100vw - 32px);'
-            + 'max-height:min(86vh,720px);background:var(--bs-body-bg);border:1px solid var(--bs-border-color);'
-            + 'border-radius:var(--nav-r-lg,16px);box-shadow:0 18px 48px rgba(0,0,0,.28);display:none;'
-            + 'flex-direction:column;overflow:hidden';
+        panel.className = 'modal fade';
+        panel.tabIndex = -1;
+        panel.setAttribute('data-no-resize', '1');
+        var dialog = document.createElement('div');
+        dialog.className = 'modal-dialog';
+        var content = document.createElement('div');
+        content.className = 'modal-content';
 
         var head = document.createElement('div');
-        head.className = 'd-flex align-items-center gap-2 px-3 py-2 border-bottom';
-        var title = document.createElement('span');
-        title.className = 'fw-semibold small';
-        title.textContent = '自带 Key · 仅本机';
+        head.className = 'modal-header';
+        var title = document.createElement('h5');
+        title.className = 'modal-title';
+        title.innerHTML = '<i class="fas fa-robot me-2"></i>AI 接口 <small class="text-muted fw-normal fs-6">仅本机：Key 不出浏览器</small>';
         var close = document.createElement('button');
         close.type = 'button';
-        close.className = 'btn-close ms-auto';
+        close.className = 'btn-close';
+        close.setAttribute('data-bs-dismiss', 'modal');
         close.setAttribute('aria-label', '关闭');
-        close.addEventListener('click', function () { panel.style.display = 'none'; });
         head.appendChild(title); head.appendChild(close);
 
         var body = document.createElement('div');
-        body.className = 'px-3 py-2';
-        body.style.cssText = 'display:flex;flex-direction:column;gap:6px;overflow:auto';
+        body.className = 'modal-body';
 
         var baseEl = field('接口地址,如 https://api.deepseek.com', 'text', 'gaiBase');
         var keyEl = field('API Key(只存本机)', 'password', 'gaiKey');
@@ -676,11 +684,11 @@
         var findBtn = document.createElement('button');
         findBtn.type = 'button'; findBtn.className = 'btn btn-sm btn-outline-primary';
         findBtn.textContent = 'AI 找站';
-        findBtn.addEventListener('click', function () { panel.style.display = 'none'; openFind(); });
+        findBtn.addEventListener('click', function () { hidePanel(); openFind(); });
         var classBtn = document.createElement('button');
         classBtn.type = 'button'; classBtn.className = 'btn btn-sm btn-outline-primary';
         classBtn.textContent = 'AI 分类';
-        classBtn.addEventListener('click', function () { panel.style.display = 'none'; openClassify(); });
+        classBtn.addEventListener('click', function () { hidePanel(); openClassify(); });
         var clearBtn = document.createElement('button');
         clearBtn.type = 'button'; clearBtn.className = 'btn btn-sm btn-outline-secondary';
         clearBtn.textContent = '清空对话';
@@ -765,7 +773,7 @@
         msgsBox.style.cssText = 'flex:1;min-height:150px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:2px 0';
 
         var foot = document.createElement('div');
-        foot.className = 'd-flex gap-2 px-3 pb-2';
+        foot.className = 'modal-footer';
         inputEl = document.createElement('input');
         inputEl.type = 'text';
         inputEl.className = 'form-control form-control-sm';
@@ -824,17 +832,15 @@
         body.appendChild(swWrap);
         body.appendChild(document.createElement('hr'));
         body.appendChild(logWrap);
-        panel.appendChild(head); panel.appendChild(body); panel.appendChild(msgsBox); panel.appendChild(foot);
+        // 对话区跟配置同处 modal-body(原来是一块独立的贴边滚动区)
+        var chatHead = document.createElement('div');
+        chatHead.className = 'nav-set-h mt-2';
+        chatHead.textContent = '对话';
+        body.appendChild(chatHead);
+        body.appendChild(msgsBox);
+        content.appendChild(head); content.appendChild(body); content.appendChild(foot);
+        dialog.appendChild(content); panel.appendChild(dialog);
         document.body.appendChild(panel);
-        // 2026-11-24:拖动/缩放交给共享模块 nav-modal-move.js(主人端 .modal 走同一份),
-        // 标题栏拖动,右下角缩放;不再两端各造一套。
-        if (window.NavModalMove) {
-            window.NavModalMove.enable(panel, head);
-            var moveCorner = document.createElement('span');
-            moveCorner.className = 'nav-resize-corner';
-            panel.appendChild(moveCorner);
-            window.NavModalMove.resize(panel, moveCorner);
-        }
 
         btnModels.addEventListener('click', function () {
             modelStatusLine('正在拉取模型列表…', 'muted');

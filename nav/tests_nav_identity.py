@@ -12,6 +12,7 @@
 """
 
 import os
+from unittest.mock import patch
 from unittest import mock
 
 from django.test import TestCase
@@ -52,8 +53,9 @@ class NavIdentityTests(TestCase):
     # --- 配置令牌后的三种来源 ---------------------------------------------
     def test_same_url_falls_back_to_guest_without_token(self):
         self._enable_token()
-        with self.assertNumQueries(0):
-            resp = self.client.get(reverse('nav_sites'))
+        with patch('config.middleware.public_gate', return_value={'enabled': False}):
+            with self.assertNumQueries(0):
+                resp = self.client.get(reverse('nav_sites'))
         self.assertEqual(200, resp.status_code)
         self.assertFalse(self._is_owner_page(resp))
         self.assertIn(b'NAV_GUEST_MODE', resp.content)
@@ -98,8 +100,9 @@ class NavIdentityTests(TestCase):
     def test_guest_route_stays_guest_even_with_owner_cookie(self):
         self._enable_token()
         self.client.cookies['nav_token'] = TOKEN
-        with self.assertNumQueries(0):
-            resp = self.client.get(reverse('nav_guest'))
+        with patch('config.middleware.public_gate', return_value={'enabled': False}):
+            with self.assertNumQueries(0):
+                resp = self.client.get(reverse('nav_guest'))
         self.assertFalse(self._is_owner_page(resp))
         self.assertIn(b'NAV_GUEST_MODE', resp.content)
 

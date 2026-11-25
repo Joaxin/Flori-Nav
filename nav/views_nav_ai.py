@@ -610,6 +610,47 @@ def api_nav_ai_classify_items(request):
 
 
 @require_POST
+@owner_only
+def api_nav_ai_suggest(request):
+    """添加站点时的 AI 推荐(2026-11-25):分类/标签/图标文字,按需附带子网页与备用网址。
+
+    分类优先复用库里的目录(交给模型的是 _nav_classify_catalog 的现成清单),
+    图标会带上库里已占用的 icon_text,避免多个站挤在同一个字母。
+    """
+    if not NavAiConfig.is_configured():
+        return JsonResponse({'status': 'error', 'code': 'ai_not_configured',
+                             'message': '还没配置 AI 接口:先到 设置 → AI 工具 里填上接口地址与密钥'}, status=400)
+    data, err = _json_body(request)
+    if err:
+        return err
+    name = str(data.get('name') or '').strip()[:100]
+    url = str(data.get('url') or '').strip()[:300]
+    desc = str(data.get('description') or data.get('desc') or '').strip()[:200]
+    if not name and not url:
+        return JsonResponse({'status': 'error', 'message': '先填名称或网址'}, status=400)
+    want_subs = bool(data.get('want_subs'))
+    want_alts = bool(data.get('want_alts'))
+    catalog = _nav_classify_catalog()
+    tags = _nav_classify_tag_vocab()[:60]
+    icon_used = list(NavSite.objects.filter(archived_at__isnull=True).exclude(icon_text='')
+                     .values_list('icon_text', flat=True)[:80])
+    try:
+        suggestion = ai_pipeline.assist_site({'name': name, 'url': url, 'description': desc},
+                                             list(catalog), catalog, tags, icon_used,
+                                             want_subs=want_subs, want_alts=want_alts)
+    except AiNotConfigured:
+        return JsonResponse({'status': 'error', 'code': 'ai_not_configured',
+                             'message': '还没配置 AI 接口'}, status=400)
+    except Exception as exc:   # 网络/超时/模型乱答:给人话,不抛 500
+        logger.warning('nav_ai_suggest failed: %s', exc)
+        return JsonResponse({'status': 'error',
+                             'message': 'AI 这次没给出可用的推荐(%s),过一会儿再试或手动填'
+                                        % str(exc)[:120]}, status=502)
+    return JsonResponse({'status': 'ok', 'suggestion': suggestion,
+                         'categories': list(catalog), 'subs': catalog, 'tags': tags})
+
+
+@require_POST
 def api_nav_ai_classify_batch(request):
     """接口模式:给一批站点分类。未配置 AI 时返回 code,前端据此切到手动模式。"""
     data, err = _json_body(request)

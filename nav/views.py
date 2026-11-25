@@ -80,7 +80,7 @@ from .views_nav_ai import (
     api_nav_ai_models, api_nav_ai_model_test, api_nav_ai_logs,
     api_nav_ai_import, api_nav_ai_parse, api_nav_ai_prompt,
     api_nav_ai_classify_items, api_nav_ai_classify_batch, api_nav_ai_classify_prompt,
-    api_nav_ai_classify_parse, api_nav_ai_classify_apply,
+    api_nav_ai_classify_parse, api_nav_ai_classify_apply, api_nav_ai_suggest,
 )  # noqa: F401
 from .views_nav_pet import (
     _PET_GEO_CACHE_TTL, _PET_GEO_TIMEOUT, _pet_ai_status, _pet_geo_pick, _pet_geo_score,

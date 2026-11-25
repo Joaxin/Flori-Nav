@@ -14,11 +14,15 @@
 """
 
 import hmac
+import json
 import logging
 import os
+import time
+from pathlib import Path
+from urllib.parse import quote
 
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse
 
 logger = logging.getLogger('nav')
 
@@ -94,3 +98,119 @@ class WriteTokenMiddleware:
             if not _token_eq(supplied, token):
                 return JsonResponse({'status': 'error', 'message': '未授权'}, status=403)
         return self.get_response(request)
+
+
+# ============================================================
+# 访客准入答题(2026-11-25)
+# ============================================================
+#
+# 为什么中间件读快照而不是查库:访客页有"零数据库查询"契约
+# (tests_nav_guest.test_guest_page_is_readonly_and_zero_queries),中间件每请求查库会直接破掉它。
+# 题目/提示/一个不可逆的 key 由 export_nav_public 写进 nav-public.json;答案只留在库里。
+#
+# 换题或改答案 → key 变 → 老通行 cookie 立刻失效,不用手动清。
+# 未配置(快照里 gate.enabled=false)→ 完全放行,本地开发无感。
+
+NAV_QUIZ_COOKIE = 'nav_gate_pass'
+NAV_QUIZ_MAX_AGE = 30 * 24 * 3600
+NAV_QUIZ_PATH = '/nav/quiz/'
+NAV_GATE_PREFIXES = ('/nav/', '/api/nav/')
+NAV_QUIZ_EXEMPT_PATHS = ('/nav/quiz/', '/nav/login/', '/nav/logout/')
+NAV_QUIZ_FAIL_WINDOW = 60          # 同一 IP 60 秒最多错 8 次,挡脚本穷举
+NAV_QUIZ_FAIL_MAX = 8
+
+NAV_GATE_CACHE_SECONDS = 120       # 进程内缓存:后台改完最多 2 分钟在整个实例组里生效
+
+_GATE_CACHE = {'ts': 0.0, 'gate': {}}
+_QUIZ_FAILS = {}
+
+
+def reset_gate_cache():
+    """配置保存后调一次:本实例立刻按新配置判定,不用等缓存过期。"""
+    _GATE_CACHE['ts'] = 0.0
+    _GATE_CACHE['gate'] = {}
+
+
+def public_gate():
+    """当前访客准入配置(题目/提示/key)。
+
+    读数据库,不读公开快照:Vercel 部署目录只读,后台改完题写不进快照,
+    读快照会出现"保存了但不生效"。代价是每个实例首个请求多一条极小的查询,
+    之后走进程内缓存;库不可用/未迁移时按"未启用"处理,绝不把整站锁死。
+    """
+    now = time.monotonic()
+    if _GATE_CACHE['ts'] and now - _GATE_CACHE['ts'] < NAV_GATE_CACHE_SECONDS:
+        return dict(_GATE_CACHE['gate'])
+    gate = {}
+    try:
+        from nav.management.commands.export_nav_public import gate_payload
+        from nav.models import NavPublicConfig
+        gate = gate_payload(NavPublicConfig.current())
+    except Exception as exc:            # 未迁移/库没连上:当未启用,别锁站
+        logger.warning('读取访客准入配置失败,按未启用处理:%s', exc)
+        gate = {}
+    _GATE_CACHE.update({'ts': now, 'gate': gate})
+    return dict(gate)
+
+
+def quiz_pass_token(key):
+    """通行 cookie 的值:拿快照里的 key 再做一次 HMAC,伪造不出。"""
+    return hmac.new((settings.SECRET_KEY or '').encode('utf-8'),
+                    ('nav-quiz-pass:' + str(key or '')).encode('utf-8'), 'sha256').hexdigest()[:24]
+
+
+def quiz_pass_valid(request, key):
+    value = request.COOKIES.get(NAV_QUIZ_COOKIE, '')
+    return bool(value and key) and hmac.compare_digest(value, quiz_pass_token(key))
+
+
+def _client_ip(request):
+    forwarded = (request.headers.get('X-Forwarded-For') or '').split(',')[0].strip()
+    return forwarded or (request.META.get('REMOTE_ADDR') or '')
+
+
+def quiz_rate_limited(ip):
+    now = time.monotonic()
+    hist = [t for t in _QUIZ_FAILS.get(ip, []) if now - t < NAV_QUIZ_FAIL_WINDOW]
+    _QUIZ_FAILS[ip] = hist
+    return len(hist) >= NAV_QUIZ_FAIL_MAX
+
+
+def record_quiz_fail(ip):
+    _QUIZ_FAILS.setdefault(ip, []).append(time.monotonic())
+
+
+def reset_quiz_rate_limit():
+    """测试用:清空限流计数。"""
+    _QUIZ_FAILS.clear()
+
+
+class QuizGateMiddleware:
+    """访客准入:没答对题的人进不了 `/nav/` 与 `/api/nav/`。"""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        gate = public_gate()
+        if not gate.get('enabled'):            # 没开:本地/预览完全无感
+            return self.get_response(request)
+        token = _nav_write_token()
+        if not token:                          # 没配主人令牌 = 单机自用,根本不存在"访客"
+            return self.get_response(request)
+        supplied = (request.headers.get(NAV_WRITE_TOKEN_HEADER)
+                    or request.COOKIES.get(NAV_WRITE_TOKEN_COOKIE)
+                    or request.GET.get(NAV_WRITE_TOKEN_QUERY) or '').strip()
+        if _token_eq(supplied, token):         # 主人免检
+            return self.get_response(request)
+        path = request.path
+        if not path.startswith(NAV_GATE_PREFIXES):
+            return self.get_response(request)
+        if any(path.startswith(p) for p in NAV_QUIZ_EXEMPT_PATHS):
+            return self.get_response(request)
+        if quiz_pass_valid(request, gate.get('key')):
+            return self.get_response(request)
+        if path.startswith('/api/nav/'):
+            return JsonResponse({'status': 'error', 'message': '先答对访客题:浏览器打开 /nav/ 答一次即可'},
+                                status=403)
+        return HttpResponseRedirect(NAV_QUIZ_PATH + '?next=' + quote(request.get_full_path()))

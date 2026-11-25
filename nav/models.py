@@ -180,6 +180,11 @@ class NavPublicConfig(models.Model):
 
     scope = models.CharField('游客页显示范围', max_length=10, choices=SCOPE_CHOICES,
                              default=SCOPE_PUBLIC)
+    # 2026-11-25 访客准入答题:题目/答案都在主人后台配,答对才放行(答案不进公开快照)
+    gate_enabled = models.BooleanField('访客需答题', default=False)
+    quiz_question = models.CharField('题目', max_length=200, blank=True)
+    quiz_answers = models.TextField('可接受答案(每行一个,忽略大小写与首尾空白)', blank=True)
+    quiz_hint = models.CharField('提示(可空)', max_length=200, blank=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
 
     class Meta:
@@ -187,6 +192,34 @@ class NavPublicConfig(models.Model):
 
     def __str__(self):
         return self.get_scope_display()
+
+    def answer_list(self):
+        """可接受答案列表:每行一个,去空白、忽略大小写。"""
+        return [a.strip().casefold() for a in (self.quiz_answers or '').splitlines() if a.strip()]
+
+    def accepts(self, raw):
+        """用户答的内容是否在可接受答案里(大小写不敏感)。"""
+        given = (raw or '').strip().casefold()
+        return bool(given) and given in self.answer_list()
+
+    def gate_ready(self):
+        """开关打开且题目与答案都填了,才算真启用。"""
+        return bool(self.gate_enabled and (self.quiz_question or '').strip()
+                    and self.answer_list())
+
+    @classmethod
+    def safe_current(cls):
+        """渲染路径专用:迁移还没跑/列缺失/库暂时不可用时,回退内存默认值(准入门关闭)。
+
+        2026-11-25:新增 4 个准入门字段后,线上没跑迁移时主人页会直接 500
+        (`no such column: navpublicconfig.gate_enabled`)。页面不该因为一道可选的
+        门而整站打不开,所以读配置的地方一律走这里;保存类接口仍用 current(),
+        它们需要真表,会给出明确的"请先迁移"提示。
+        """
+        try:
+            return cls.current()
+        except Exception:
+            return cls(scope=cls.SCOPE_PUBLIC)
 
     @classmethod
     def current(cls):

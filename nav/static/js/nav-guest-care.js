@@ -374,17 +374,17 @@
     // ---------- 弹层 ----------
     function ensureModal() {
         if (careModal) return careModal;
-        careModal = document.createElement('div');
-        careModal.className = 'modal fade';
+        /* 2026-11-25:与主人端「保养」统一为右侧抽屉 offcanvas-end nav-drawer(原来是自己写的居中 modal-lg) */
+        careModal = document.createElement('aside');
+        careModal.className = 'offcanvas offcanvas-end nav-drawer';
         careModal.id = 'navGuestCareModal';
         careModal.tabIndex = -1;
         careModal.setAttribute('data-no-resize', '1');
         careModal.innerHTML =
-            '<div class="modal-dialog modal-lg modal-dialog-centered">' +
-            '<div class="modal-content"><div class="modal-header">' +
-            '<h5 class="modal-title"><i class="fas fa-screwdriver-wrench me-2"></i>本机保养维护</h5>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
-            '<div class="modal-body">' +
+            '<div class="offcanvas-header pb-1">' +
+            '<h5 class="offcanvas-title"><i class="fas fa-screwdriver-wrench me-2"></i>本机保养维护</h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button></div>' +
+            '<div class="offcanvas-body pt-1">' +
             '<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">' +
             '<button type="button" class="btn btn-sm btn-primary" id="ngcTabCare">保养分组</button>' +
             '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngcTabUrl">URL 卫生</button>' +
@@ -394,7 +394,7 @@
             '<div id="ngcCareView"></div>' +
             '<div id="ngcUrlView" class="d-none"></div>' +
             '<div id="ngcLinkView" class="d-none"></div>' +
-            '</div></div></div>';
+            '</div>';
         document.body.appendChild(careModal);
         document.getElementById('ngcTabCare').addEventListener('click', function () { switchView('care'); });
         document.getElementById('ngcTabUrl').addEventListener('click', function () { switchView('url'); });
@@ -444,7 +444,7 @@
     function openCare() {
         ensureModal();
         switchView('care');
-        bootstrap.Modal.getOrCreateInstance(careModal).show();
+        bootstrap.Offcanvas.getOrCreateInstance(careModal).show();
     }
 
     // ---------- 链接检测 / AI 提示词 / 粘贴导入 ----------

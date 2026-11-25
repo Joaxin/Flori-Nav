@@ -100,11 +100,25 @@ class ModalSkeletonParityTests(TestCase):
         self.assertIn('nav-drawer', owner_root)
         self.assertEqual(guest_root, owner_root)
 
-    def test_pair_ai_link_vs_guest_care(self):
-        owner = _tokens(_owner_dialog_classes('navAiLinkModal'))
-        guest = _tokens(_guest_dialog_classes(GUEST_CARE, 'navGuestCareModal'))
-        self.assertEqual(owner, {'modal-dialog', 'modal-lg', 'modal-dialog-centered'})
-        self.assertEqual(guest, owner)
+    def test_pair_basket_drawer_vs_guest_care(self):
+        """访客「本机保养维护」= 主人「保养」所在抽屉:同一 offcanvas-end nav-drawer 骨架。
+        (2026-11-25:访客原来自己写居中 modal-lg,主人是右侧抽屉,位置不一致,已统一)"""
+        owner_root = _tokens(_owner_root_classes('navBasketDrawer'))
+        guest_root = _tokens(_guest_dialog_classes(GUEST_CARE, 'navGuestCareModal'))
+        self.assertEqual(guest_root, owner_root)
+        self.assertIn('nav-drawer', guest_root)
+
+    def test_pair_pet_ai_vs_guest_ai_panel(self):
+        """AI 接口配置:访客侧 #navGuestAiPanel 与主人 #petAiModal 同一套 modal 外壳。
+        (2026-11-25:访客原来是手写 fixed 浮层 440px 无遮罩,已改成 Bootstrap modal)"""
+        owner = _tokens(_owner_dialog_classes('petAiModal'))
+        self.assertEqual(owner, {'modal-dialog'})
+        self.assertIn("panel.className = 'modal fade'", GUEST_AI)
+        self.assertIn("dialog.className = 'modal-dialog'", GUEST_AI)
+        self.assertIn("content.className = 'modal-content'", GUEST_AI)
+        self.assertIn("head.className = 'modal-header'", GUEST_AI)
+        self.assertIn("body.className = 'modal-body'", GUEST_AI)
+        self.assertIn("foot.className = 'modal-footer'", GUEST_AI)
 
     def test_pair_ai_modal_vs_guest_ai(self):
         owner = _tokens(_owner_dialog_classes('navAiModal'))

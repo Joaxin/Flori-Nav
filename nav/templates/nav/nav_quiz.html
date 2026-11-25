@@ -1,0 +1,300 @@
+{% comment %}
+访客准入答题页(2026-11-25)。独立于站点主题:零 Bootstrap、零 JS 依赖,整站其它东西
+全挂了它也能显示。视觉走"私密资料库"的路子:柔和光斑 + 玻璃卡片 + 单一强调色。
+{% endcomment %}
+<!doctype html>
+<html lang="{% if nav_lang == 'en' %}en{% else %}zh-CN{% endif %}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#eef1f8">
+<title>{% if nav_lang == 'en' %}One question{% else %}答一道题{% endif %}</title>
+<style>
+  :root {
+    --ink: #131722;
+    --sub: #5f6779;
+    --faint: #8b93a5;
+    --line: rgba(19, 23, 34, .10);
+    --card: rgba(255, 255, 255, .86);
+    --panel: rgba(238, 241, 248, .92);
+    --accent: #3b5bfd;
+    --accent-2: #8a5cf6;
+    --danger: #cf3b45;
+    --ring: rgba(59, 91, 253, .16);
+    --shadow:
+      0 1px 2px rgba(19, 23, 34, .05),
+      0 14px 30px -12px rgba(19, 23, 34, .22),
+      0 48px 90px -40px rgba(19, 23, 34, .28);
+    --bg-a: #eef1f8;
+    --bg-b: #f7f5f0;
+    --blob-1: rgba(96, 128, 255, .22);
+    --blob-2: rgba(255, 170, 120, .18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e9ecf4;
+      --sub: #9aa3b6;
+      --faint: #6d7688;
+      --line: rgba(233, 236, 244, .12);
+      --card: rgba(23, 27, 36, .82);
+      --panel: rgba(31, 36, 47, .85);
+      --accent: #8fa0ff;
+      --accent-2: #b79bff;
+      --danger: #ff8a92;
+      --ring: rgba(143, 160, 255, .22);
+      --shadow:
+        0 1px 2px rgba(0, 0, 0, .5),
+        0 18px 40px -14px rgba(0, 0, 0, .7),
+        0 60px 110px -50px rgba(0, 0, 0, .8);
+      --bg-a: #0b0e14;
+      --bg-b: #12101a;
+      --blob-1: rgba(96, 128, 255, .20);
+      --blob-2: rgba(255, 140, 90, .14);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    display: grid;
+    place-items: center;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 620px at 18% -6%, var(--blob-1), transparent 62%),
+      radial-gradient(900px 560px at 92% 108%, var(--blob-2), transparent 60%),
+      linear-gradient(168deg, var(--bg-a), var(--bg-b));
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .card {
+    width: 100%;
+    max-width: 432px;
+    padding: 30px 30px 26px;
+    border-radius: 26px;
+    border: 1px solid rgba(19, 23, 34, .06);
+    background: linear-gradient(180deg, rgba(255, 255, 255, .97), rgba(255, 255, 255, .91));
+    backdrop-filter: blur(18px) saturate(130%);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .9);
+    animation: rise .5s cubic-bezier(.2, .8, .2, 1) both;
+  }
+  @media (prefers-color-scheme: dark) {
+    .card {
+      border-color: rgba(233, 236, 244, .09);
+      background: linear-gradient(180deg, rgba(27, 31, 41, .94), rgba(20, 24, 32, .90));
+      box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, .05);
+    }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px) scale(.985); }
+    to   { opacity: 1; transform: none; }
+  }
+  .card.is-error { animation: shake .42s cubic-bezier(.36, .07, .19, .97); }
+  @keyframes shake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(4px); }
+    30%, 50%, 70% { transform: translateX(-7px); }
+    40%, 60% { transform: translateX(7px); }
+  }
+  .mark {
+    width: 46px; height: 46px;
+    display: grid; place-items: center;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(145deg, var(--accent), var(--accent-2));
+    box-shadow: 0 10px 22px -10px rgba(59, 91, 253, .7);
+    margin-bottom: 18px;
+  }
+  .mark svg { width: 22px; height: 22px; display: block; }
+  .eyebrow {
+    margin: 0 0 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: 21px;
+    line-height: 1.35;
+    font-weight: 700;
+    letter-spacing: -.01em;
+  }
+  .lede {
+    margin: 0 0 22px;
+    font-size: 13.5px;
+    line-height: 1.62;
+    color: var(--sub);
+  }
+  .prompt {
+    position: relative;
+    margin: 0 0 18px;
+    padding: 16px 18px 17px 20px;
+    border-radius: 14px;
+    background: rgba(19, 23, 34, .034);
+    border: 1px solid transparent;
+  }
+  @media (prefers-color-scheme: dark) {
+    .prompt { background: rgba(255, 255, 255, .045); }
+  }
+  .prompt::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 14px; bottom: 14px;
+    width: 3px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  }
+  .prompt-label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 7px;
+  }
+  .question {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.55;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  label.field { display: block; margin-bottom: 0; }
+  .field-label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    color: var(--faint);
+    margin-bottom: 8px;
+  }
+  input[type="text"] {
+    width: 100%;
+    height: 50px;
+    padding: 0 15px;
+    font-size: 15.5px;
+    font-family: inherit;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    outline: none;
+    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  input[type="text"]::placeholder { color: var(--faint); }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--ring);
+  }
+  .hint {
+    margin: 10px 0 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--sub);
+  }
+  .err {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 12px 0 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--danger);
+  }
+  .err svg { width: 14px; height: 14px; flex: none; }
+  button {
+    width: 100%;
+    height: 50px;
+    margin-top: 18px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    font-family: inherit;
+    color: #fff;
+    border: 0;
+    border-radius: 13px;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24),
+                0 14px 30px -12px rgba(59, 91, 253, .7);
+    transition: transform .16s cubic-bezier(.2, .8, .2, 1), box-shadow .16s ease, filter .16s ease;
+  }
+  button:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), 0 18px 34px -12px rgba(59, 91, 253, .78); }
+  button:active { transform: translateY(0) scale(.995); filter: brightness(.97); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--ring), 0 12px 26px -12px rgba(59, 91, 253, .75); }
+  .foot {
+    margin: 16px 0 0;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--faint);
+  }
+  @media (max-width: 480px) {
+    .card { padding: 24px 20px 22px; border-radius: 20px; }
+    h1 { font-size: 19px; }
+    .question { font-size: 17px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card.is-error, button { animation: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+  <form class="card{% if error %} is-error{% endif %}" method="post" action="" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10.5" width="16" height="10" rx="2.6"></rect>
+        <path d="M7.6 10.5V7.4a4.4 4.4 0 0 1 8.8 0v3.1"></path>
+        <circle cx="12" cy="15.6" r="1.35" fill="currentColor" stroke="none"></circle>
+      </svg>
+    </div>
+    <p class="eyebrow">{% if nav_lang == 'en' %}Private library{% else %}私密资料库{% endif %}</p>
+    <h1>{% if nav_lang == 'en' %}One question, then you're in{% else %}答对这道题就进来{% endif %}</h1>
+    <p class="lede">
+      {% if nav_lang == 'en' %}The owner put a small question in front of the site to keep crawlers and bandwidth thieves out.
+      {% else %}站主在门口放了一道小题,挡的是爬虫和蹭带宽的脚本,不是人。{% endif %}
+    </p>
+
+    <section class="prompt">
+      <span class="prompt-label">{% if nav_lang == 'en' %}Question{% else %}问题{% endif %}</span>
+      <p class="question">{{ question }}</p>
+    </section>
+
+    <label class="field" for="answer">
+      <span class="field-label">{% if nav_lang == 'en' %}Your answer{% else %}你的答案{% endif %}</span>
+      <input id="answer" name="answer" type="text" autofocus required
+             autocomplete="off" autocapitalize="off" spellcheck="false"
+             enterkeyhint="go"
+             placeholder="{% if nav_lang == 'en' %}Type it here{% else %}在这里作答{% endif %}">
+    </label>
+
+    {% if hint %}<p class="hint">{% if nav_lang == 'en' %}Hint · {% else %}提示 · {% endif %}{{ hint }}</p>{% endif %}
+    {% if error %}
+    <p class="err" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+           stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.2"></circle>
+        <path d="M12 7.6v5.2M12 16.2v.9"></path>
+      </svg>
+      <span>{{ error }}</span>
+    </p>
+    {% endif %}
+
+    <button type="submit">{% if nav_lang == 'en' %}Enter{% else %}进入{% endif %}</button>
+    <p class="foot">
+      {% if nav_lang == 'en' %}Once you pass, this device skips the question for 30 days.
+      {% else %}答对后这台设备 30 天内不用再答。{% endif %}
+    </p>
+  </form>
+</body>
+</html>

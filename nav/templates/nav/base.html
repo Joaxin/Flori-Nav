@@ -46,7 +46,8 @@
                         localStorage.setItem('navTheme', 'aurora');
                         localStorage.setItem(KEY, 'auto');
                     } else if (old === 'light') {
-                        localStorage.setItem('navTheme', 'plain');
+                        // 2026-11-25:简白(plain)皮肤已移除,浅色用户落默认
+                        localStorage.setItem('navTheme', 'default');
                         localStorage.setItem(KEY, 'auto');
                     } else if (old !== 'auto' && old !== 'manual') {
                         localStorage.setItem(KEY, 'auto');

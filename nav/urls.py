@@ -3,6 +3,7 @@
 from django.urls import path
 from . import views
 from .views_nav_check import nav_link_fix
+from .views_nav_quiz import api_nav_quiz_config, nav_quiz
 
 urlpatterns = [
     # `/nav/` 单入口:带令牌=主人全量页,不带=访客只读页(见 nav/nav_access.py)
@@ -12,6 +13,8 @@ urlpatterns = [
     # 访客页「主人登录 / 退出主人态」:只收 POST,密码不进 URL
     path('nav/login/', views.nav_login, name='nav_login'),
     path('nav/logout/', views.nav_logout, name='nav_logout'),
+    # 访客准入答题(2026-11-25):未答对的访客由 QuizGateMiddleware 送到这里
+    path('nav/quiz/', nav_quiz, name='nav_quiz'),
 
     # --- 网址导航 APIs ---
     path('api/nav/add/', views.nav_add, name='nav_add'),
@@ -43,6 +46,8 @@ urlpatterns = [
     path('api/nav/site-order/swap/', views.nav_site_swap, name='nav_site_swap'),
     path('api/nav/category-rename/', views.nav_category_rename, name='nav_category_rename'),
     path('api/nav/guest-scope/', views.api_nav_guest_scope, name='api_nav_guest_scope'),
+    # 访客准入答题的配置读写(主人):题目/可接受答案/提示/开关
+    path('api/nav/quiz-config/', api_nav_quiz_config, name='api_nav_quiz_config'),
     path('nav/tools/<int:pk>/', views.nav_tool_open, name='nav_tool_open'),
     path('api/nav/tools/upload/', views.nav_tool_upload, name='nav_tool_upload'),
     path('api/nav/tools/edit/', views.nav_tool_edit, name='nav_tool_edit'),
@@ -64,6 +69,7 @@ urlpatterns = [
     path('api/nav/ai/import/', views.api_nav_ai_import, name='api_nav_ai_import'),
 
     # --- AI 分类 + 标签(给已有站点重判大类/小分类并补标签;未配置 AI 时走提示词手动模式) ---
+    path('api/nav/ai/suggest/', views.api_nav_ai_suggest, name='api_nav_ai_suggest'),
     path('api/nav/ai/classify-items/', views.api_nav_ai_classify_items, name='api_nav_ai_classify_items'),
     path('api/nav/ai/classify-batch/', views.api_nav_ai_classify_batch, name='api_nav_ai_classify_batch'),
     path('api/nav/ai/classify-prompt/', views.api_nav_ai_classify_prompt, name='api_nav_ai_classify_prompt'),

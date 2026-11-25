@@ -27,8 +27,7 @@ html.nav-guest-mode #navFavLocalBtn {
     cursor: not-allowed;
     pointer-events: none;
 }
-/* 「主人登录」顶栏常驻:访客态可见;也可按 Ctrl/Cmd+Shift+L 唤起登录框。 */
-#navGuestLoginBtn { white-space: nowrap; }
+/* 2026-11-25:访客态顶栏不再有「主人登录」按钮,原来给它加的 nowrap 规则一并删除 */
 /* 访客本机书签/工具的本机操作按钮(不写库);刻意不用主人侧站点操作类,避免被上面的隐藏清单收起 */
 .ng-actions { display: none; gap: 2px; margin-top: 4px; }
 .site-card-box:hover .ng-actions, .nav-hub.show-actions .ng-actions { display: flex; }
@@ -99,8 +98,10 @@ document.documentElement.classList.add('nav-guest-mode');
     <button class="nav-chip nav-chip--icon d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#navToc" data-tip="打开目录" aria-label="打开目录"><i class="fas fa-list"></i></button>
     <span class="nav-bar-stat" data-tip="{% if nav_lang == 'en' %}{{ total }} sites{% if hidden_site_count %} · {{ hidden_site_count }} in hidden categories{% endif %}{% if archived %} · {{ archived|length }} dormant{% endif %}&#10;Hidden categories only affect display — the sites are still in the library. Restore them in Settings → Categories.&#10;Dormant sites stay in the library but are left out of the category tree.{% else %}共 {{ total }} 个站点{% if hidden_site_count %} · {{ hidden_site_count }} 个在隐藏分类{% endif %}{% if archived %} · 含休眠 {{ archived|length }}{% endif %}&#10;{% if hidden_site_count %}隐藏分类只影响显示，站还在库里；到 ⚙ 设置 → 分类排序 点眼睛恢复&#10;{% endif %}休眠的站仍在库里，只是不进分类；体检篮 → 🩺 保养 最下方可唤醒{% endif %}">{% if nav_lang == 'en' %}{{ total }} sites{% if hidden_site_count %} · {{ hidden_site_count }} in hidden categories{% endif %}{% if archived %} · {{ archived|length }} dormant{% endif %}{% else %}共 {{ total }} 个站点{% if hidden_site_count %} · 其中 {{ hidden_site_count }} 个在隐藏分类{% endif %}{% if archived %} · 含休眠 {{ archived|length }}{% endif %}{% endif %}</span>
     {% if nav_guest_mode %}
-    <button class="nav-chip nav-chip--primary" type="button" id="navGuestLoginBtn"
-            data-tip="输入访问令牌后，本网址变完整自用版&#10;快捷键 Ctrl/Cmd+Shift+L；网址不变">主人登录</button>
+    {% comment %}
+    2026-11-25 按用户要求:访客态顶栏不再放「主人登录」按钮(突兀);
+    唯一入口保留快捷键 Ctrl/Cmd+Shift+L,见下方登录脚本。
+    {% endcomment %}
     <input type="file" id="navGuestImportFile" accept=".json,.html,.htm,application/json,text/html" hidden>
     <input type="file" id="navGuestToolFile" accept=".html,.htm,text/html" hidden>
     {% endif %}
@@ -135,7 +136,7 @@ document.documentElement.classList.add('nav-guest-mode');
 
         {% if nav_guest_mode %}
         <button class="nav-chip nav-chip--primary" type="button" id="navGuestAddBtn" aria-label="添加本机站点" data-tip="手动添加一条本机书签&#10;只存这台浏览器，不写服务器">
-            <i class="fas fa-plus"></i><span>添加本机站点</span>
+            <i class="fas fa-plus"></i><span>添加本机</span>
         </button>
         {% else %}
         <button class="nav-chip nav-chip--primary" type="button" data-bs-toggle="modal" data-bs-target="#addSiteModal" aria-label="添加站点" data-tip="添加站点&#10;网址 + 名称 + 分类，批量最多 20 个">
@@ -781,7 +782,8 @@ document.documentElement.classList.add('nav-guest-mode');
                 <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-view" data-bs-toggle="tab" data-bs-target="#setTabView" type="button" role="tab"><i class="fas fa-palette me-1"></i>外观</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-content" data-bs-toggle="tab" data-bs-target="#setTabContent" type="button" role="tab"><i class="fas fa-table-columns me-1"></i>布局</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-fx" data-bs-toggle="tab" data-bs-target="#setTabFx" type="button" role="tab"><i class="fas fa-wand-magic-sparkles me-1"></i>效果</button></li>
-                {% if not nav_guest_mode %}<li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-sort" data-bs-toggle="tab" data-bs-target="#setTabSort" type="button" role="tab"><i class="fas fa-screwdriver-wrench me-1"></i>维护</button></li>{% endif %}
+                {# 2026-11-25:第 4 个 tab 两端都渲染(游客=本机排序,主人=维护+排序),tab 数量/顺序完全对齐;管理员段仍只在主人端 #}
+                <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-sort" data-bs-toggle="tab" data-bs-target="#setTabSort" type="button" role="tab"><i class="fas fa-screwdriver-wrench me-1"></i>{% if nav_guest_mode %}排序{% else %}维护{% endif %}</button></li>
             </ul>
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="setTabView" role="tabpanel">
@@ -856,10 +858,22 @@ document.documentElement.classList.add('nav-guest-mode');
                         <button type="button" class="btn btn-outline-secondary" data-nav-theme="default" title="跟随站点明暗设置">默认</button>
                         <button type="button" class="btn btn-outline-secondary" data-nav-theme="aurora" title="暗色极光流动背景">极光</button>
                         <button type="button" class="btn btn-outline-secondary" data-nav-theme="paper" title="护眼米白纸感">纸质</button>
-                        <button type="button" class="btn btn-outline-secondary" data-nav-theme="sunset" title="暖橙粉渐变 + 亮色卡片">日落</button>
                         <button type="button" class="btn btn-outline-secondary" data-nav-theme="ink" title="宣纸为底，浓淡墨晕，印章红点睛">水墨</button>
-                        <button type="button" class="btn btn-outline-secondary" data-nav-theme="plain" title="细线极简方角，去阴影">简白</button>
                         <button type="button" class="btn btn-outline-secondary" data-nav-theme="study" title="墨绿书房：沉稳不冷淡，黄铜点缀">书房</button>
+                        <button type="button" class="btn btn-outline-secondary" data-nav-theme="custom" title="自定义主色/页面底/卡片底/文字色/圆角，还能写一段 CSS">自定义</button>
+                    </div>
+                    <div class="d-none mb-2" id="navCustomSkinBox">
+                        <div class="form-text small mb-1">颜色与 CSS 都只存这台浏览器；切到「自定义」才生效</div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                            <label class="small mb-0">主色 <input type="color" class="form-control form-control-color form-control-sm" data-skin-field="accent" value="#635bff" aria-label="自定义主色"></label>
+                            <label class="small mb-0">页面底 <input type="color" class="form-control form-control-color form-control-sm" data-skin-field="bg" value="#f4f6fb" aria-label="自定义页面背景"></label>
+                            <label class="small mb-0">卡片底 <input type="color" class="form-control form-control-color form-control-sm" data-skin-field="card" value="#ffffff" aria-label="自定义卡片背景"></label>
+                            <label class="small mb-0">文字 <input type="color" class="form-control form-control-color form-control-sm" data-skin-field="text" value="#23272f" aria-label="自定义文字颜色"></label>
+                            <label class="small mb-0 d-flex align-items-center gap-1">圆角 <input type="number" class="form-control form-control-sm" style="width:62px" min="0" max="30" step="1" data-skin-field="radius" value="14" aria-label="自定义圆角"> px</label>
+                        </div>
+                        <label class="small mb-1" for="navCustomSkinCssInput">自定义 CSS</label>
+                        <textarea class="form-control form-control-sm font-monospace" id="navCustomSkinCssInput" rows="4" spellcheck="false" data-skin-field="css" placeholder=".site-card { box-shadow: none }"></textarea>
+                        <div class="form-text small">留空即不用；只在这台浏览器生效，不写服务器</div>
                     </div>
                     <div class="form-text small text-muted d-none" id="navWallLockHintFull">壁纸模式：背景特效暂不可调（会和壁纸叠在一起）；明暗与皮肤照常可切。</div>
 {# 壁纸并入「外观」页签(2026-11-18):壁纸是外观核心,原来挤在「显示内容」底部 #}
@@ -1051,13 +1065,6 @@ document.documentElement.classList.add('nav-guest-mode');
                             <input class="form-check-input" type="checkbox" id="setShowActions">
                             <label class="form-check-label small" for="setShowActions">常显卡片操作按钮</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="要先打开上一项。默认只有鼠标移到卡片右上角时才显示 ✎ / ×；打开后，编辑和删除按钮会一直显示。" aria-label="说明"></i>
                         </div>
-                        {% if nav_guest_mode %}
-                        {# #3 仅访客:快照卡片的编辑/删除小按钮默认隐藏,开启后 body 加 nav-guest-cardbtns;主人端不渲染此开关,小按钮始终显示。右键/长按菜单不受此开关管辖。 #}
-                        <div class="form-check form-switch mb-1">
-                            <input class="form-check-input" type="checkbox" id="setGuestCardBtns">
-                            <label class="form-check-label small" for="setGuestCardBtns">显示卡片编辑 / 删除小按钮</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="默认不显示卡片右上角的 ✎ / ×；打开后才显示。右键或长按菜单一直可用，不影响本机书签按钮。" aria-label="说明"></i>
-                        </div>
-                        {% endif %}
                         <div class="form-check form-switch mb-1">
                             <input class="form-check-input" type="checkbox" id="setShowTags">
                             <label class="form-check-label small" for="setShowTags">显示站点标签</label> <i class="fas fa-circle-question nav-help" role="button" tabindex="0" data-tip="卡片底部那排站点标签（国产、免费、编程…）；关掉后卡片更清爽，标签筛选和已经打好的标签都不受影响。" aria-label="说明"></i>
@@ -1130,7 +1137,7 @@ document.documentElement.classList.add('nav-guest-mode');
                         <button type="button" class="btn btn-outline-secondary" data-settings-dock="bottom-left" title="竖排贴左下角（默认）">左下角</button>
                         <button type="button" class="btn btn-outline-secondary" data-settings-dock="bottom-right" title="竖排贴右下角，抬高避开回顶钮">右下角</button>
                     </div>
-                    <div class="form-text small mb-2">管的是左下那组圆按钮（回顶 / 皮肤 / 明暗 / 收起）；顶栏齿轮固定不动。</div>
+                    <div class="form-text small mb-2">管的是左下那组圆按钮（回顶 / 收起）；顶栏齿轮固定不动。</div>
                     <div class="nav-set-h">交互</div>
                     <div class="form-text small mb-1">卡片操作：右键(触屏长按)打开菜单，可编辑 / 置顶 / 上移下移 / 换分类 / 删除</div>
                 </div>
@@ -1177,6 +1184,27 @@ document.documentElement.classList.add('nav-guest-mode');
                         <span class="form-text small" id="navGuestScopeMsg"></span>
                     </div>
                     <div class="form-text small mb-3" style="margin-left:0">只影响访客页公开快照；主人页始终显示全部站点。切换「仅内置站点」后，快照只包含内置清单里的站点。</div>
+
+                    <div class="nav-set-h">访客准入</div>
+                    <div class="form-text small mb-2" style="margin-left:0">开启后访客要先答对一道题才能进站。题目和提示会写进公开快照，答案只留在服务器，不进快照。</div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="navQuizEnabled"{% if nav_quiz_enabled %} checked{% endif %}>
+                        <label class="form-check-label small" for="navQuizEnabled">要求答题</label>
+                    </div>
+                    <label class="form-label small mb-1" for="navQuizQuestion">题目</label>
+                    <input class="form-control form-control-sm mb-2" id="navQuizQuestion" maxlength="200"
+                           value="{{ nav_quiz_question }}" placeholder="例如：本站标题里的第二个字是什么？">
+                    <label class="form-label small mb-1" for="navQuizAnswers">可接受答案（每行一个，不分大小写）</label>
+                    <textarea class="form-control form-control-sm mb-2" id="navQuizAnswers" rows="3"
+                              placeholder="答案一&#10;答案二">{{ nav_quiz_answers }}</textarea>
+                    <label class="form-label small mb-1" for="navQuizHint">提示（可空）</label>
+                    <input class="form-control form-control-sm mb-2" id="navQuizHint" maxlength="200"
+                           value="{{ nav_quiz_hint }}" placeholder="例如：两个字，跟导航有关">
+                    <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-primary" id="navQuizSave">保存准入设置</button>
+                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'nav_quiz' %}" target="_blank" rel="noopener">预览答题页</a>
+                        <span class="form-text small" id="navQuizMsg"></span>
+                    </div>
 
                     <div class="nav-set-h">图标资产</div>
                     <div class="d-flex gap-2 align-items-center mb-3 flex-wrap">
@@ -1464,11 +1492,8 @@ document.documentElement.classList.add('nav-guest-mode');
 /* 访客态「主人登录」:同一个地址,POST 令牌写 cookie 后刷新即变完整自用版。
    CSRF 走 Django 的标准 cookie→header 流程;失败只提示,不改页面。 */
 (function () {
-    var btn = document.getElementById('navGuestLoginBtn');
-    if (!btn) return;
-    function setBusy(v) {
-        btn.disabled = v;
-    }
+    // 2026-11-25:顶栏按钮已移除,不再引用 navGuestLoginBtn(留死变量只会让人以为还有按钮)
+    function setBusy(v) {}
     function csrfToken() {
         var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
         return m ? decodeURIComponent(m[1]) : '';
@@ -1499,17 +1524,10 @@ document.documentElement.classList.add('nav-guest-mode');
                 if (window.navToast) window.navToast(err && err.message ? err.message : '登录请求失败');
             });
         });
-        // 弹窗正文保留一句可见提示:快捷键同样可以唤起本登录框。
-        var card = document.querySelector('.nav-confirm');
-        if (card && !card.querySelector('.nav-login-shortcut-hint')) {
-            var hint = document.createElement('p');
-            hint.className = 'nav-login-shortcut-hint';
-            hint.textContent = '也可用快捷键 Ctrl/Cmd+Shift+L 唤起本登录框';
-            var row = card.querySelector('.nav-confirm-row');
-            if (row) card.insertBefore(hint, row); else card.appendChild(hint);
-        }
+        // 2026-11-25:顶栏按钮已删,「也可用快捷键…」这句提示一并去掉;
+        // 快捷键说明留在输入框 placeholder 里,不再额外插一行。
     }
-    if (btn) btn.addEventListener('click', openLogin);
+    // 2026-11-25:按钮已删,不再挂点击监听;唯一入口是下方快捷键
     // 快捷键:Ctrl/Cmd+Shift+L 唤起主人登录(顶栏按钮为唯一常驻入口;菜单项已按拍板删除)。
     document.addEventListener('keydown', function (e) {
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
@@ -3882,6 +3900,56 @@ document.documentElement.classList.add('nav-guest-mode');
             if (window.navToast) window.navToast('游客页范围已更新');
         }).catch(function (err) {
             btn.disabled = false;
+            say(err && err.message ? err.message : '保存失败', true);
+        });
+    });
+})();
+
+// 2026-11-25 访客准入(答题):保存即重写公开快照,访客下次刷新就生效
+(function () {
+    var save = document.getElementById('navQuizSave');
+    if (!save) return;
+    var enabled = document.getElementById('navQuizEnabled');
+    var question = document.getElementById('navQuizQuestion');
+    var answers = document.getElementById('navQuizAnswers');
+    var hint = document.getElementById('navQuizHint');
+    var msg = document.getElementById('navQuizMsg');
+    function csrf() {
+        var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+    function say(text, bad) {
+        if (!msg) return;
+        msg.textContent = text || '';
+        msg.className = 'form-text small' + (bad ? ' text-danger' : ' text-success');
+    }
+    save.addEventListener('click', function () {
+        save.disabled = true;
+        say('保存中…');
+        fetch('{% url "api_nav_quiz_config" %}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+            body: JSON.stringify({
+                enabled: enabled.checked,
+                question: question.value,
+                answers: answers.value,
+                hint: hint.value
+            })
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (!r.ok || !d || d.status !== 'success') {
+                    throw new Error((d && d.message) || ('保存失败（' + r.status + '）'));
+                }
+                return d;
+            });
+        }).then(function (d) {
+            save.disabled = false;
+            if (d.enabled) say('已生效：访客要先答对题目才能进站');
+            else if (enabled.checked) say('已保存，但题目或答案没填全，准入还没生效', true);
+            else say('已关闭：访客可以直接浏览');
+            if (window.navToast) window.navToast(d.enabled ? '访客准入已开启' : '访客准入已关闭');
+        }).catch(function (err) {
+            save.disabled = false;
             say(err && err.message ? err.message : '保存失败', true);
         });
     });

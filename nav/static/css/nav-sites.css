@@ -417,13 +417,6 @@
     #tocGearMenu .d-flex.gap-1 > .btn { flex: 1 1 78px; min-width: 0; }
     .toc-cheve:hover, .toc-gear:hover { color: var(--accent); }
     .nav-cat[id], .nav-sub[id], .nav-sub2[id], #toolsSection { scroll-margin-top: 84px; }
-        /* 日落主题下,描边按钮给半实心底保证可读(纯描边在渐变上发灰) */
-    body[data-nav-theme="sunset"] .btn-outline-secondary {
-        background: rgba(255, 255, 255, .55); color: var(--bs-body-color); border-color: transparent;
-    }
-    body[data-nav-theme="sunset"] .btn-outline-secondary:hover {
-        background: rgba(255, 255, 255, .85);
-    }
     /* ===== 外观:参考 Flame / Dashy / homepage 等导航项目的通用风格,布局与主题色均可在设置里切换(存本机) ===== */
     /* 分层改用边框(2026-11-13):默认态那层 0 1px 3px 摊到几十张卡片上是纯噪声,
        浅色主题下直接糊成一片灰。默认零阴影,悬停只留一层描边提亮 + 极轻投影。 */
@@ -580,60 +573,7 @@
     }
     /* 海洋已退役(2026-11-18 并入极光):顶栏共用「与页面背景同源的毛玻璃条」始于它,
        这条纪律对所有皮肤仍然有效 */
-    body[data-nav-theme="sunset"] {
-        --bs-body-bg: rgba(255, 248, 240, .78);
-        --bs-body-color: #3a2a22;
-        --bs-border-color: rgba(255, 235, 215, .7);
-        --bs-secondary-color: #7c5a45;
-        --bs-tertiary-bg: rgba(255, 243, 230, .7);
-        --bs-offcanvas-bg: #fff8f2;       /* 抽屉实底(2026-11-18):半透明 body-bg 只给页面 */
-        /* 2026-11-18:日落此前没定义 --nav-accent,整站强调色(按钮/搜索环/标签胶囊)
-           回退到 :root 的旧紫 #635bff —— 换肤换一半。补暖赭橙,同落日色相,白字 4.9:1 */
-        --nav-accent: #c2410c;
-        /* 与 glass 同一教训:中段过饱和会把深棕小字"吃"进去,整体提亮一档。
-           2026-11-18 调整:原 45% 就到粉(#ff92a6),整页上半读作粉紫,和「日落」名字对不上
-           (用户:实际效果和背景与名字不一致)。改成暖橙贯穿全页、只在过渡处带一点粉意,
-           金黄仍收右下 —— 中段取亮珊瑚 #ff9d84,对深棕小字仍是 ~5:1 的浅底 */
-        background: linear-gradient(135deg, #ffb27d 0%, #ff9d84 45%, #ffcf8d 78%, #ffd694 100%) fixed;
-    }
-    body[data-nav-theme="sunset"] .site-card, body[data-nav-theme="sunset"] .card,
-    body[data-nav-theme="sunset"] #navWebSearch .input-group {
-        background: rgba(255, 250, 242, .8) !important;
-        /* 2026-11-18 双层影:大范围暖色光晕让卡片「浮在余晖上」,小范围微投影收边缘,
-           替代原来的单层影(0 4px 14px rgba(180,80,40,.16)) */
-        box-shadow: 0 4px 20px rgba(220, 100, 80, .10), 0 1px 3px rgba(120, 50, 20, .10);
-    }
-    /* 弹层实底(2026-11-18):rgba(255,250,242,.8) 留给页面卡片,弹窗/下拉用同色系实底 */
-    body[data-nav-theme="sunset"] .modal-content,
-    body[data-nav-theme="sunset"] .dropdown-menu {
-        background: #fff8f2 !important;
-        box-shadow: 0 12px 34px -16px rgba(120, 50, 20, .35), 0 1px 3px rgba(120, 50, 20, .10);
-    }
-    body[data-nav-theme="sunset"] .nav-toc {
-        background: rgba(255, 252, 246, .6);
-        border: 1px solid rgba(255, 255, 255, .7);
-        border-radius: var(--nav-r-md);
-        padding: .6rem .7rem;
-        backdrop-filter: blur(14px) saturate(150%);
-        -webkit-backdrop-filter: blur(14px) saturate(150%);
-    }
-    body[data-nav-theme="sunset"] #navClockLine, body[data-nav-theme="sunset"] #navClockExtra {
-        color: #6b4433;
-        text-shadow: 0 1px 8px rgba(255, 255, 255, .65);
-    }
-    /* 2026-11-23:这层白光晕在纯色底(尤其没铺壁纸时)会把分类标题糊成一片虚边,
-       用户专门报了「字体很模糊」。只有真的坐在壁纸上才保留,纯色底不加任何 shadow。 */
-    body[data-nav-theme="sunset"][data-nav-wall="1"] .nav-cat-title,
-    body[data-nav-theme="sunset"][data-nav-wall="1"] .nav-sub-title,
-    body[data-nav-theme="sunset"][data-nav-wall="1"] .nav-sub2-title {
-        text-shadow: 0 1px 6px rgba(255, 255, 255, .5);
-    }
-    body[data-nav-theme="sunset"] #toolsEmpty {
-        background: rgba(255, 250, 242, .5);
-        border-color: rgba(255, 255, 255, .85);
-    }
-    /* 日落:顶栏原先是一条橙红渐变,和页面里的暖橙背景重复了两遍 ——
-        2026-11-13 起交给统一的毛玻璃顶栏,只保留页面本体配色 */
+    /* 2026-11-25:日落(sunset)皮肤已移除,老用户由 theme.js 一次性迁到默认 */
     /* ===== 水墨:宣纸为底 + 浓淡墨晕 + 印章红点睛(不再是纯黑极简) =====
        传统水墨是"黑墨落于宣纸":暖米白纸面 + 浓墨字 + 淡墨晕,分类标题用衬线模拟题款,
        印章红贯穿按钮/选中态,顶栏一墨条收束。整体一眼可辨为水墨,而非纯黑皮肤 */
@@ -913,21 +853,7 @@
     .nav-hub .site-card .site-desc { font-size: .75rem !important; line-height: 1.55 !important; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: var(--nav-desc-lines); -webkit-box-orient: vertical; overflow: hidden; }
     .nav-hub .site-card .site-url { font-size: .68rem !important; }
     .nav-hub .nav-cat-title { font-size: .92rem; letter-spacing: .02em; }
-    /* ===== 简白:细线极简方角,去阴影,紧凑(seeseed 终态) ===== */
-    body[data-nav-theme="plain"] {
-        --bs-body-bg: #ffffff; --bs-body-color: #22252a;
-        --bs-border-color: #ececee; --bs-secondary-color: #7d838d; --bs-tertiary-bg: #fafafb;
-        --bs-navbar-color: #22252a; --bs-navbar-brand-color: #22252a;
-        background: #ffffff;
-    }
-    body[data-nav-theme="plain"] .site-card, body[data-nav-theme="plain"] .card,
-    body[data-nav-theme="plain"] .nav-toc, body[data-nav-theme="plain"] .modal-content,
-    body[data-nav-theme="plain"] .dropdown-menu {
-        background: #ffffff !important; border-color: #ececee !important;
-        box-shadow: none !important; border-radius: var(--nav-r-sm) !important;
-    }
-    /* plain(简白):顶栏现在本来就是浅色,(--bs-body-bg 取 #fff)—— 原先那一整段
-       「白字翻深色」的补丁全部作废,顶栏自动跟页面同色 */
+    /* 2026-11-25:简白(plain)皮肤已移除,老用户由 theme.js 一次性迁到默认 */
     /* 糖果/杂志已退役(2026-11-18):candy→sunset, editorial→paper(theme.js 一次性迁移) */
     /* ===== 墨绿书房(2026-10-26 候选 D):浅色系补位——沉稳不冷淡,墨绿 + 黄铜 + 衬线题款 ===== */
     body[data-nav-theme="study"] {
@@ -992,29 +918,6 @@
     html[data-bs-theme="dark"] body[data-nav-theme="paper"] .nav-cat-title,
     html[data-bs-theme="dark"] body[data-nav-theme="paper"] .nav-sub-title { border-bottom-color: #4a4030; }
 
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] {
-        --bs-body-bg: #2a1710; --bs-body-color: #f6e3d2; --bs-border-color: #55392a;
-        --bs-secondary-color: #d4aa8e; --bs-tertiary-bg: #332017; --bs-offcanvas-bg: #2b1a12;
-        --nav-accent: #ff8a4c;           /* 深底上的落日橙(原 #c2410c 太暗) */
-        background: linear-gradient(135deg, #3a1f14 0%, #28150e 45%, #3d2617 78%, #33200f 100%) fixed !important;
-    }
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] .site-card,
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] .card,
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] #navWebSearch .input-group,
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] .nav-toc {
-        background: rgba(46, 28, 19, .82) !important;
-        border-color: rgba(255, 170, 120, .18) !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, .32), 0 1px 3px rgba(0, 0, 0, .25);
-    }
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] .modal-content,
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] .dropdown-menu {
-        background: #2b1a12 !important;
-        border-color: #55392a !important;
-        box-shadow: 0 12px 34px -16px #000;
-    }
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] #navClockLine,
-    html[data-bs-theme="dark"] body[data-nav-theme="sunset"] #navClockExtra { color: #f3c7a6; text-shadow: 0 1px 8px rgba(0, 0, 0, .35); }
-
     html[data-bs-theme="dark"] body[data-nav-theme="ink"] {
         --bs-body-bg: #15161a; --bs-body-color: #e9e6df; --bs-border-color: #35363c;
         --bs-secondary-color: #a5a29a; --bs-tertiary-bg: #1d1f24; --bs-offcanvas-bg: #191a1f;
@@ -1040,20 +943,6 @@
     html[data-bs-theme="dark"] body[data-nav-theme="ink"] .site-card:hover { border-color: #d2604f !important; }
     html[data-bs-theme="dark"] body[data-nav-theme="ink"] .nav-cat-title { border-bottom-color: #4a4b51; }
 
-    html[data-bs-theme="dark"] body[data-nav-theme="plain"] {
-        --bs-body-bg: #14181f; --bs-body-color: #d8dee8; --bs-border-color: #2a3140;
-        --bs-secondary-color: #98a2b3; --bs-tertiary-bg: #1b222d; --bs-offcanvas-bg: #181e27;
-        --bs-navbar-color: #d8dee8; --bs-navbar-brand-color: #d8dee8;
-        background: #14181f;
-    }
-    html[data-bs-theme="dark"] body[data-nav-theme="plain"] .site-card,
-    html[data-bs-theme="dark"] body[data-nav-theme="plain"] .card,
-    html[data-bs-theme="dark"] body[data-nav-theme="plain"] .nav-toc,
-    html[data-bs-theme="dark"] body[data-nav-theme="plain"] .modal-content,
-    html[data-bs-theme="dark"] body[data-nav-theme="plain"] .dropdown-menu {
-        background: #1b2029 !important; border-color: #2a3140 !important;
-        box-shadow: none !important;
-    }
 
     html[data-bs-theme="dark"] body[data-nav-theme="study"] {
         --bs-body-bg: #11170f; --bs-body-color: #e3e9df; --bs-border-color: #2f3d31;
@@ -1837,30 +1726,14 @@ body[data-nav-theme="paper"] {
     --fx-b: radial-gradient(46% 34% at 80% 18%, rgba(160, 106, 60, .18), transparent 70%);
     --fx-dur: 34s;
 }
-/* 日落:深珊瑚暮色 + 一片奶油色斜阳
-   旧配方(2026-11-14)是"暖底冷调":紫色天光压进左上,奶油色斜阳扫右下 —— 可见度达标,
-   但紫斑漂在橙底上,整页上半被罩成粉紫,和「日落」名字对不上(2026-11-18 用户反馈
-   "实际效果和背景与名字不一致")。改回暖色系:深珊瑚压暗左上(对亮橙底是同族加深,
-   G/B 双通道 ~25/255 色偏,仍够可见),奶油斜阳保留。 */
-body[data-nav-theme="sunset"] {
-    --fx-a: radial-gradient(58% 44% at 18% 16%, rgba(216, 74, 44, .26), transparent 70%);
-    --fx-b: radial-gradient(52% 40% at 84% 80%, rgba(255, 240, 206, .40), transparent 72%);
-    --fx-dur: 26s;
-}
+/* 日落的 fx 配方已随主题下线删除(2026-11-25) */
 /* 水墨:两团极淡墨晕,慢慢晕开 */
 body[data-nav-theme="ink"] {
     --fx-a: radial-gradient(42% 36% at 24% 22%, rgba(60, 55, 48, .14), transparent 70%);
     --fx-b: radial-gradient(38% 32% at 76% 74%, rgba(178, 59, 46, .12), transparent 70%);
     --fx-dur: 36s;
 }
-/* 简白:细网格纸,静态质感 */
-body[data-nav-theme="plain"] {
-    --fx-a: linear-gradient(rgba(0, 0, 0, .07) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 0, 0, .07) 1px, transparent 1px);
-    --fx-size: 48px 48px;
-    --fx-b: none;
-    --fx-dur: 70s;
-}
+/* 简白的 fx 配方已随主题下线删除(2026-11-25) */
 /* 糖果/杂志的 fx 配方已随主题退役删除(2026-11-18) */
 /* 书房:右上黄铜暖光 */
 body[data-nav-theme="study"] {
@@ -2149,20 +2022,9 @@ body:has(#navFixbar.nav-fixbar--br:not(.is-collapsed)) #navBackTop { display: no
 .nav-hub.hide-actions .site-card-box .tool-edit,
 .nav-hub.hide-actions .site-card-box .tool-del { display: none !important; }
 
-/* #3 访客态卡片编辑/删除小按钮默认隐藏:桌面 hover、.show-actions 常显、触屏常显全部态都不出。
-   访客卡片右键/长按菜单已覆盖编辑、删除两项本机动作,卡面小按钮只是右上角 clutter;
-   主人端选择器不含 html.nav-guest-mode,完全不受影响;.site-star 原本常显,保留不动。
-   开关开启时模板/JS 给 <body> 加 .nav-guest-cardbtns,隐藏规则整体不命中,按钮回落上面既有
-   hover / show-actions / 触屏露出规则,不需要再写一层反向覆盖。
-   !important 只压在访客隐藏这一条:既有露出规则是普通声明,不压权重会被 hover/触屏重新露出;
-   开启态靠 body:not(.nav-guest-cardbtns) 排除实现恢复,恢复侧因此不再用 !important,避免
-   和既有 hover / 触屏规则叠第二层权重。 */
-html.nav-guest-mode body:not(.nav-guest-cardbtns) .site-card-box .site-edit,
-html.nav-guest-mode body:not(.nav-guest-cardbtns) .site-card-box .site-del,
-html.nav-guest-mode body:not(.nav-guest-cardbtns) .site-card .site-edit,
-html.nav-guest-mode body:not(.nav-guest-cardbtns) .site-card .site-del {
-    display: none !important;
-}
+/* 2026-11-25:访客端不再单独隐藏卡面 ✎/×——#3 的 html.nav-guest-mode 隐藏块已删,
+   两端共用上面的 hover / .show-actions 常显 / 触屏常显三套露出规则;设置项也只留
+   「卡片显示编辑 ✎ / 删除 × 按钮」+「常显卡片操作按钮」两级。 */
 /* 大图标 / 紧凑列表 / 三列:星标不显示(与卡片时期的规则一致) */
 .lyr-icon .site-card-box .site-star,
 .lyr-list .site-card-box .site-star { display: none; }
@@ -2443,6 +2305,10 @@ body.bulk-mode .ms-sel {
    不靠第二种强调色;顶栏已是浅色底,白按钮会消失,所以这里用实心而非白底。 */
 .nav-topbar .nav-chip--primary {
     padding: 0 12px;
+    /* 2026-11-25:主按钮死等宽——两端文案不同(添加站点/添加本机/Add site/Add local),
+       宽度差会把左侧 AI 按钮挤得左右不齐;固定最小宽 108px 后两端 chip 位置逐像素一致 */
+    min-width: 6.75rem;
+    justify-content: center;
     border-color: transparent;
     background: var(--nav-accent, #635bff);
     color: #fff;
@@ -2524,7 +2390,15 @@ body.bulk-mode .ms-sel {
 .nav-ai-card { border-radius: var(--nav-r-sm); }
 .nav-ai-card .nav-ai-name { font-size: .85rem; }
 .nav-ai-classify-dialog { width: min(1140px, 92vw) !important; height: min(90vh, 900px); max-height: var(--nav-modal-max-h); }
-#petAiModal .modal-dialog { width: min(760px, 92vw) !important; }
+/* 2026-11-25:访客 AI 配置也走 modal 外壳后与主人同宽(原来手写浮层 440,肉身 500) */
+#petAiModal .modal-dialog, #navGuestAiPanel .modal-dialog { width: min(760px, 92vw) !important; }
+/* 访客弹窗内容比主人多一节"对话":限高让 body 自己滚,footer 按钮不再被挤成竖排两行 */
+#navGuestAiPanel .modal-dialog { display: flex; flex-direction: column; max-height: min(92vh, 860px); }
+#navGuestAiPanel .modal-content { max-height: 100%; }
+#navGuestAiPanel .modal-body { overflow-y: auto; }
+#navGuestAiPanel .modal-footer { flex-wrap: nowrap; }
+#navGuestAiPanel .modal-footer > * { flex: 0 0 auto; white-space: nowrap; }
+#navGuestAiPanel .modal-footer > input { flex: 1 1 auto; }
 #petAiSaveBtn { min-width: 96px; }
 /* 高级项默认收起:弹窗本来就长,按任务模型/调用记录属于排查时才展开的东西 */
 .nav-ai-adv summary { cursor: pointer; }
@@ -2576,21 +2450,21 @@ body.bulk-mode .ms-sel {
 }
 .nac-toolbar .nac-count { min-width: 0; }
 /* 原生白色粗滚动条在深色主题里太刺眼:统一细、半透明 */
-#navAiModal, #navAiClassifyModal, #petAiModal,
+#navAiModal, #navAiClassifyModal, #petAiModal, #navGuestAiPanel,
 .nav-ai-preview, .nac-tablewrap {
     scrollbar-width: thin;
     scrollbar-color: rgba(128, 128, 128, .45) transparent;
 }
-#navAiModal ::-webkit-scrollbar, #navAiClassifyModal ::-webkit-scrollbar, #petAiModal ::-webkit-scrollbar,
+#navAiModal ::-webkit-scrollbar, #navAiClassifyModal ::-webkit-scrollbar, #petAiModal ::-webkit-scrollbar, #navGuestAiPanel ::-webkit-scrollbar,
 .nav-ai-preview::-webkit-scrollbar, .nac-tablewrap::-webkit-scrollbar { width: 8px; height: 8px; }
-#navAiModal ::-webkit-scrollbar-thumb, #navAiClassifyModal ::-webkit-scrollbar-thumb, #petAiModal ::-webkit-scrollbar-thumb,
+#navAiModal ::-webkit-scrollbar-thumb, #navAiClassifyModal ::-webkit-scrollbar-thumb, #petAiModal ::-webkit-scrollbar-thumb, #navGuestAiPanel ::-webkit-scrollbar-thumb,
 .nav-ai-preview::-webkit-scrollbar-thumb, .nac-tablewrap::-webkit-scrollbar-thumb {
     background: rgba(128, 128, 128, .42); border-radius: var(--nav-r-pill);
 }
-#navAiModal ::-webkit-scrollbar-track, #navAiClassifyModal ::-webkit-scrollbar-track, #petAiModal ::-webkit-scrollbar-track,
+#navAiModal ::-webkit-scrollbar-track, #navAiClassifyModal ::-webkit-scrollbar-track, #petAiModal ::-webkit-scrollbar-track, #navGuestAiPanel ::-webkit-scrollbar-track,
 .nav-ai-preview::-webkit-scrollbar-track, .nac-tablewrap::-webkit-scrollbar-track { background: transparent; }
 /* 这三个弹窗只移动、不缩放;缩放角按复核意见去掉(宠物设置弹窗保留) */
-#navAiModal .modal-dialog, #navAiClassifyModal .modal-dialog, #petAiModal .modal-dialog {
+#navAiModal .modal-dialog, #navAiClassifyModal .modal-dialog, #petAiModal .modal-dialog, #navGuestAiPanel .modal-dialog {
     resize: none !important;
 }
 .nav-mi { display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: var(--nav-r-sm); white-space: normal; text-align: left; }
@@ -4264,3 +4138,25 @@ body.bulk-mode .site-card-box .site-del { display: none !important; }
    碍眼的上下小箭头。这里锁死 overflow-y,并隐藏横向滚动条(和目录/分类条同一手法)。 */
 .sf-tabs { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
 .sf-tabs::-webkit-scrollbar { display: none; }
+
+    /* ===== 自定义皮肤(2026-11-25):主色/页面底/卡片底/文字色/圆角 + 一段自定义 CSS =====
+       颜色全部由 JS 写到 :root 的 --nav-custom-* 变量,这里只负责把它们接到 Bootstrap 变量上。
+       自定义 CSS 由 theme.js 注入 <style id="navCustomSkinCss">,随切肤自动清理。 */
+    body[data-nav-theme="custom"] {
+        --bs-body-bg: var(--nav-custom-card, rgba(255, 255, 255, .92));
+        --bs-body-color: var(--nav-custom-text, #23272f);
+        --bs-secondary-color: color-mix(in srgb, var(--nav-custom-text, #23272f) 62%, transparent);
+        --bs-border-color: color-mix(in srgb, var(--nav-custom-text, #23272f) 14%, transparent);
+        --bs-tertiary-bg: color-mix(in srgb, var(--nav-custom-text, #23272f) 5%, transparent);
+        --nav-accent: var(--nav-custom-accent, #635bff);
+        background: var(--nav-custom-page, transparent) !important;
+        background-attachment: fixed;
+    }
+    body[data-nav-theme="custom"] .site-card, body[data-nav-theme="custom"] .card,
+    body[data-nav-theme="custom"] .nav-toc, body[data-nav-theme="custom"] .modal-content,
+    body[data-nav-theme="custom"] .dropdown-menu, body[data-nav-theme="custom"] .offcanvas {
+        background: var(--nav-custom-card, rgba(255, 255, 255, .92)) !important;
+        border-color: var(--bs-border-color) !important;
+        color: var(--nav-custom-text, #23272f);
+        border-radius: var(--nav-custom-radius, 14px) !important;
+    }

@@ -8,6 +8,7 @@
   也不带点击次数这类使用统计，避免把主人侧数据顺手泄露出去。
 """
 
+import hmac
 import json
 import os
 from pathlib import Path
@@ -30,6 +31,28 @@ PUBLIC_SITE_KEYS = (
 )
 
 
+def quiz_gate_key(question, answers):
+    """把题目+答案压成一个不可逆的 key:快照里只放这个,答案本身绝不进公开文件。
+
+    中间件靠它判断 cookie 是否过期:换题或改答案 → key 变 → 旧通行 cookie 自动失效。
+    """
+    basis = (question or '').strip() + '|' + (answers or '')
+    return hmac.new((settings.SECRET_KEY or '').encode('utf-8'),
+                    ('quiz-pass:' + basis).encode('utf-8'), 'sha256').hexdigest()[:16]
+
+
+def gate_payload(cfg):
+    """公开快照里的准入门小节(enabled / 题目 / 提示 / key)。"""
+    if not cfg or not cfg.gate_ready():
+        return {'enabled': False}
+    return {
+        'enabled': True,
+        'question': (cfg.quiz_question or '').strip(),
+        'hint': (cfg.quiz_hint or '').strip(),
+        'key': quiz_gate_key(cfg.quiz_question, cfg.quiz_answers),
+    }
+
+
 def public_payload(scope=None):
     """返回可直接序列化的游客快照；不写文件，便于测试和以后复用。
 
@@ -39,9 +62,10 @@ def public_payload(scope=None):
       避免「内置网站」分类被主人隐藏后游客一张都看不到。
     - None：读取主人后台保存的 NavPublicConfig.scope（默认 public）。
     """
+    cfg = NavPublicConfig.safe_current()
     valid_scopes = {NavPublicConfig.SCOPE_PUBLIC, NavPublicConfig.SCOPE_BUILTIN}
     if scope not in valid_scopes:
-        scope = NavPublicConfig.current().scope
+        scope = cfg.scope
     if scope not in valid_scopes:
         scope = NavPublicConfig.SCOPE_PUBLIC
 
@@ -86,6 +110,7 @@ def public_payload(scope=None):
         'brand': {'name': BRAND_NAME, 'tagline': BRAND_TAGLINE},
         'categories': ordered,
         'sites': rows,
+        'gate': gate_payload(cfg),
     }
 
 

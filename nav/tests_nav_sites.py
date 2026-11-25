@@ -66,12 +66,12 @@ class NavSiteTests(TestCase):
     def test_settings_view_tab_is_grouped(self):
         """全部设置按 tab 分段:
         外观=语言/配色/主题皮肤/壁纸,布局=卡片布局/卡片密度/卡片排序/显示内容/目录与页面/快捷工具条位置/交互,
-        效果=页面效果,维护=图标资产/内置站点 —— 共 15 段。"""
+        效果=页面效果,维护=游客页内容/访客准入/图标资产/内置站点 —— 共 16 段。"""
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
         for label in ('语言', '配色', '主题皮肤', '壁纸', '卡片布局', '卡片密度', '卡片排序', '显示内容', '目录与页面',
-                      '快捷工具条位置', '交互', '页面效果', '图标资产', '内置站点'):
+                      '快捷工具条位置', '交互', '页面效果', '游客页内容', '访客准入', '图标资产', '内置站点'):
             self.assertIn('class="nav-set-h">' + label, html)
-        self.assertEqual(15, html.count('class="nav-set-h"'))
+        self.assertEqual(16, html.count('class="nav-set-h"'))
 
     def test_pinyin_initial_is_server_rendered_with_toggle(self):
         """首字母不再依赖手动刷新静态表:服务端随卡片渲染写 data-initial;前端可开关且 ≥3 个字母才参与。"""

@@ -1,7 +1,7 @@
 {
  "format": "nav-public",
  "version": 1,
- "generatedAt": "2026-11-23T11:09:25.869071+00:00",
+ "generatedAt": "2026-11-25T06:06:52.404211+00:00",
  "scope": "public",
  "brand": {
   "name": "寻花集",
@@ -374,5 +374,8 @@
    "tags": [],
    "order": null
   }
- ]
+ ],
+ "gate": {
+  "enabled": false
+ }
 }

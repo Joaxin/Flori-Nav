@@ -403,6 +403,132 @@ def classify_sites(items, categories, subs_map=None, tags=None):
                      lambda raw: parse_classify_result(raw, len(items)), task='classify')
 
 
+# ===== 录入助手(2026-11-25):添加站点时一次给出分类/标签/图标文字,按需附子网页与备用网址 =====
+ASSIST_SYSTEM_PROMPT = (
+    '你是导航站的录入助手。用户正在添加一个新站点(可能只有名称、网址、简介中的一两项),'
+    '请一次性给出分类、标签、纯色文字图标用的短标记,按需再给子网页与备用网址。\n'
+    '硬性要求:\n'
+    '1. 大类必须从"现有大类清单"里原样选一个;清单确实装不下才新建,新大类 ≤8 字、通用、'
+    '能装多个同类站,并在 new_category 写 true、reason 写一句理由;\n'
+    '2. 二级/三级优先复用该大类下已有的小分类命名;没有合适的可给 ≤10 字的新名称,拿不准留空字符串;\n'
+    '3. 标签优先从标签词表里选,最多 3 个;词表明显没有合适维度时才允许 ≤2 个新词(每个 ≤6 字);'
+    '不要重复分类名,不要描述主题;\n'
+    '4. icon_text 是纯色文字图标上显示的 1~2 个字符:中文取能代表站点的字,英文取大写字母;'
+    '必须避开"已占用图标"清单里已有的内容,尽量和库里其他站点区分开,别都挤在同一个首字母;\n'
+    '5. 子网页/备用网址只在被要求时给,且必须是该站真实存在的地址:你不确定就不要输出,宁缺毋滥,'
+    '绝不编造路径;子网页最多 5 条,备用最多 3 条,url 用 https:// 开头的绝对地址;\n'
+    '6. 只输出 JSON 数组,数组里只有一个对象,不要任何解释文字。'
+)
+
+
+def build_site_assist_prompts(site, categories, subs_map=None, tags=None, icon_used=None,
+                              want_subs=False, want_alts=False, max_subs_per_cat=8):
+    """构造「新站点录入建议」的 (system, user) 提示词(不调用接口)。
+
+    categories/subs_map/tags/icon_used:库里现成的分类、小分类、标签词表与已被占用的
+    图标文字 —— 全都喂给模型是为了复用命名、避免撞车,而不是每次各造一套。
+    """
+    subs_map = subs_map or {}
+    cats = [str(c).strip() for c in (categories or []) if str(c).strip()]
+    cat_line = ' / '.join(cats) or '(暂无)'
+    sub_lines = []
+    for c in cats[:40]:
+        subs = [str(x).strip() for x in (subs_map.get(c) or []) if str(x).strip()][:max_subs_per_cat]
+        if subs:
+            sub_lines.append(f'- {c}:{"、".join(subs)}')
+    sub_block = '\n'.join(sub_lines) or '(暂无)'
+    vocab, seen = [], set()
+    for t in list(tags or []) + list(CLASSIFY_TAG_SEED):
+        t = str(t).strip()
+        if t and t not in seen:
+            seen.add(t)
+            vocab.append(t)
+    tag_line = '、'.join([v for v in vocab if v][:60]) or '(暂无)'
+    icons = [str(i).strip() for i in (icon_used or []) if str(i).strip()][:80]
+    icon_line = '、'.join(icons) or '(暂无)'
+    name = str(site.get('name') or '').strip()[:60] or '(未填)'
+    url = str(site.get('url') or '').strip()[:120] or '(未填)'
+    desc = str(site.get('description') or '').strip()[:90] or '(未填)'
+    asks = ['分类(大类/二级/三级)', '标签', '图标文字']
+    if want_subs:
+        asks.append('子网页')
+    if want_alts:
+        asks.append('备用网址')
+    keys = ['"category": "大类"', '"subcat": "二级,可为空字符串"', '"subcat2": "三级,可为空字符串"',
+            '"new_category": false', '"reason": "新建或改动的一句话理由,复用现有可留空"',
+            '"tags": ["标签1", "标签2"]', '"icon_text": "1~2 个字符"']
+    if want_subs:
+        keys.append('"subs": [{"name": "子页名称", "url": "https://…"}]')
+    if want_alts:
+        keys.append('"alts": [{"name": "备用名称", "url": "https://…"}]')
+    user_prompt = (
+        f'新增站点 —— 名称:{name} | 网址:{url} | 简介:{desc}\n\n'
+        f'现有大类(优先复用):{cat_line}\n'
+        f'各大类下已有小分类(命名尽量对齐):\n{sub_block}\n'
+        f'标签词表(优先复用):{tag_line}\n'
+        f'已占用图标(不要和这些重复):{icon_line}\n'
+        f'需要你给:{",".join(asks)}；子网页={"要" if want_subs else "不要"}，'
+        f'备用网址={"要" if want_alts else "不要"}。\n\n'
+        '输出 JSON 数组(只有一个对象):'
+        '{' + ', '.join(keys[::-1][::-1]) + '}'
+    )
+    return ASSIST_SYSTEM_PROMPT, user_prompt
+
+
+def _clean_assist_links(raw, limit=5):
+    """子网页/备用网址清洗:只收 dict、只要 http(s) 绝对地址,名字截断;去重。"""
+    if not isinstance(raw, list):
+        return []
+    out, seen = [], set()
+    for it in raw:
+        if isinstance(it, str):
+            it = {'url': it}
+        if not isinstance(it, dict):
+            continue
+        url = str(it.get('url') or '').strip()[:300]
+        if not url.lower().startswith(('http://', 'https://')):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        out.append({'name': str(it.get('name') or '').strip()[:60], 'url': url})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def parse_site_assist(raw):
+    """解析录入建议(容错 ```json 围栏/前后废话),只取数组里第一个对象并清洗。"""
+    data = extract_json_array(raw)
+    if not data or not isinstance(data[0], dict):
+        raise ValueError('回复里没有推荐对象(需要 [{...}] 的 JSON 数组)')
+    d = data[0]
+    cat = str(d.get('category') or '').strip()[:50]
+    if not cat:
+        raise ValueError('回复里没有分类(category)')
+    return {
+        'category': cat,
+        'subcat': str(d.get('subcat') or '').strip()[:50],
+        'subcat2': str(d.get('subcat2') or '').strip()[:50],
+        'new_category': bool(d.get('new_category')),
+        'reason': str(d.get('reason') or '').strip()[:100],
+        'tags': _clean_classify_tags(d.get('tags')),
+        'icon_text': str(d.get('icon_text') or '').strip()[:2].upper(),
+        'subs': _clean_assist_links(d.get('subs'), 5),
+        'alts': _clean_assist_links(d.get('alts'), 3),
+    }
+
+
+def assist_site(site, categories, subs_map=None, tags=None, icon_used=None,
+                want_subs=False, want_alts=False):
+    """一次模型调用给「正在添加的新站点」出建议。低温:同输入结果要稳定。"""
+    system_prompt, user_prompt = build_site_assist_prompts(
+        site, categories, subs_map, tags, icon_used, want_subs, want_alts)
+    return chat_json([{'role': 'system', 'content': system_prompt},
+                      {'role': 'user', 'content': user_prompt}],
+                     parse_site_assist, task='classify')
+
+
 # ===== 桌宠 AI(移植 dsh-pet:人设 + 时间上下文 + 记忆轮数 + 表情包配图协议) =====
 
 PET_DEFAULT_PERSONA = (

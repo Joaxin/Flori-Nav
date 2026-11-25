@@ -6,7 +6,7 @@
   全部恢复。现在 CSS 必须保留六档规则(lyr-mag / lyr-min / lyr-cols 与分栏从属
   cols-even / data-cards-cols / --cols-count),JS 白名单六值、旧值归并表清空,模板
   排列按钮输出六个 data-layout。默认卡片栅格的 :not() 守卫同时排除三档恢复布局。
-- #3:访客态(html.nav-guest-mode)卡片编辑/删除小按钮默认隐藏,覆盖 hover / show-actions /
+- 2026-11-25:访客态不再单独隐藏卡片编辑/删除小按钮,与主人共用 hover / show-actions /
   触屏全部态;body.nav-guest-cardbtns 开关开启后回落既有露出规则;主人端与 .site-star 不动。
 - #11:主人 #navMsBar 的 fixed 吸底为基准,主客共用同一套定位 / 安全区 / 宽度口径;
   访客 .ng-bulkbar 不再 sticky;退出钮靠右;禁用态 / 0 项计数 / 多选操作簇让位规则在位。
@@ -75,47 +75,33 @@ class LegacyLayoutCleanupTests(TestCase):
 
 
 class GuestSmallButtonsTests(TestCase):
-    """#3:访客小按钮默认隐藏,开关开启成对恢复;主人端 / 星标不受影响。"""
+    """2026-11-25:访客卡面 ✎/× 与主人共用同一套露出规则(两端统一,不再单写访客样式/JS)。"""
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.css = static_text('css/nav-sites.css')
-        cls.blocks = _rule_blocks(cls.css)
+    def test_no_guest_scoped_hide_rule(self):
+        """访客端不得再有任何只针对 nav-guest-mode 的卡片按钮隐藏块。"""
+        css = static_text('css/nav-sites.css')
+        for sel, body in _rule_blocks(css):
+            if 'nav-guest-mode' in sel and ('.site-edit' in sel or '.site-del' in sel):
+                self.fail('访客端不应再单独隐藏卡面按钮: ' + sel)
 
-    def test_guest_hide_rule_covers_all_action_buttons(self):
-        """隐藏规则同时覆盖 .site-edit / .site-del,且用 !important 压过既有露出态。"""
-        hide_blocks = [
-            (sel, body) for sel, body in self.blocks
-            if 'html.nav-guest-mode' in sel and 'nav-guest-cardbtns' in sel
-            and '.site-edit' in sel and '.site-del' in sel
-        ]
-        self.assertTrue(hide_blocks, '未找到访客态编辑/删除隐藏规则')
-        for sel, body in hide_blocks:
-            self.assertIn('display: none !important', body)
-            # 排除开关开启态:恢复走既有露出规则,不靠第二条反向覆盖
-            self.assertIn('body:not(.nav-guest-cardbtns)', sel)
+    def test_shared_reveal_rules_still_cover_cards(self):
+        """共用的 hover / 常显 / 总开关三套规则仍在,两端都靠它。"""
+        css = static_text('css/nav-sites.css')
+        self.assertIn('.site-card:hover .site-edit', css)
+        self.assertIn('.nav-hub.show-actions .site-card .site-edit', css)
+        self.assertIn('.nav-hub.hide-actions .site-card-box .site-edit', css)
 
-    def test_guest_hide_rule_uses_guest_root_class(self):
-        """访客隐藏块的选择器必须挂在 html.nav-guest-mode 根类下,不得写成全局隐藏。"""
-        for sel, body in self.blocks:
-            if 'html.nav-guest-mode' in sel and '.site-edit' in sel:
-                self.assertIn('.site-del', sel)
-                self.assertIn('display: none !important', body)
+    def test_guest_page_has_no_dedicated_switch(self):
+        """访客页不再渲染 #setGuestCardBtns;两端设置项完全一致(显示按钮 + 常显)。"""
+        guest = self.client.get(reverse('nav_guest')).content.decode('utf-8')
+        self.assertNotIn('setGuestCardBtns', guest)
+        self.assertIn('id="setCardActions"', guest)
+        self.assertIn('id="setShowActions"', guest)
 
     def test_guest_mode_root_class_marked_in_template(self):
-        """访客页模板内联脚本给 <html> 挂 nav-guest-mode 根类(主人页不输出该分支)。"""
+        """访客页模板内联脚本给 <html> 挂 nav-guest-mode 根类(其他访客样式仍靠它)。"""
         html = self.client.get(reverse('nav_guest')).content.decode('utf-8')
         self.assertIn("classList.add('nav-guest-mode')", html)
-
-    def test_star_button_default_kept(self):
-        """.site-star 原本常显,访客隐藏规则不得波及星标。"""
-        self.assertIn('.site-card .site-star', self.css)
-        star_blocks = [(sel, body) for sel, body in self.blocks if '.site-star' in sel]
-        self.assertTrue(star_blocks)
-        for sel, body in star_blocks:
-            if 'nav-guest-mode' in sel:
-                self.fail('访客态规则误伤了 .site-star: ' + sel)
 
 
 class UnifiedBulkbarTests(TestCase):
