@@ -13,6 +13,10 @@
     var selected = {};
     var bulkBar = null;
 
+    function T(zh) {
+        return (window.NavI18n && typeof window.NavI18n.t === 'function') ? window.NavI18n.t(zh) : zh;
+    }
+
     function toast(msg) {
         if (window.navToast) window.navToast(msg);
         else if (window.console) console.warn('[nav-guest-snapshot] ' + msg);
@@ -202,7 +206,7 @@
         var allBtn = bulkBar.querySelector('[data-ngs-all]');
         if (!allBtn) return;
         var n = visibleCards().length;
-        var label = (allVisibleSelected() ? '取消全选当前可见' : '全选当前可见') + '（' + n + ' 项）';
+        var label = (allVisibleSelected() ? T('取消全选当前可见') : T('全选当前可见')) + T('（{n} 项）').replace('{n}', String(n));
         allBtn.textContent = label;
         allBtn.setAttribute('aria-label', label);
         allBtn.disabled = !n;
@@ -211,7 +215,7 @@
         if (!bulkBar) return;
         var n = Object.keys(selected).length;
         var count = bulkBar.querySelector('[data-ngs-count]');
-        if (count) count.textContent = n ? ('已选 ' + n + ' 项') : '已选 0 项';
+        if (count) count.textContent = n ? T('已选 {n} 项').replace('{n}', String(n)) : T('已选 0 项');
         var hideBtn = bulkBar.querySelector('[data-ngs-hide]');
         if (hideBtn) hideBtn.disabled = !n;
         var openBtn = bulkBar.querySelector('[data-ngs-open]');
@@ -231,20 +235,20 @@
         bulkBar = document.createElement('div');
         bulkBar.id = 'ngSnapBulkBar';
         bulkBar.className = 'ng-bulkbar';
-        bulkBar.innerHTML = '<span class="small text-muted" data-ngs-count>已选 0 项</span>'
-            + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-ngs-all aria-label="全选当前可见">全选当前可见</button>'
-            + '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" data-ngs-open disabled>打开所选</button>'
-            + '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-ngs-hide disabled>隐藏所选</button>'
-            + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-auto" data-ngs-exit>退出多选</button>'
-            + '<span class="small text-muted">只作用于这台浏览器；主人库不变</span>';
+        bulkBar.innerHTML = '<span class="small text-muted" data-ngs-count>' + T('已选 0 项') + '</span>'
+            + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-ngs-all aria-label="' + T('全选当前可见') + '">' + T('全选当前可见') + '</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" data-ngs-open disabled>' + T('打开所选') + '</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-ngs-hide disabled>' + T('隐藏所选') + '</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-auto" data-ngs-exit>' + T('退出多选') + '</button>'
+            + '<span class="small text-muted">' + T('只作用于这台浏览器；主人库不变') + '</span>';
         bulkBar.querySelector('[data-ngs-all]').addEventListener('click', function () {
             var cards = visibleCards();
             if (!cards.length) return;
             if (!allVisibleSelected() && cards.length > 10 && window.navConfirm) {
                 window.navConfirm({
-                    title: '一次选中 ' + cards.length + ' 个站点？',
-                    body: '当前可见结果共 ' + cards.length + ' 个站点，全选后可以批量打开或隐藏。',
-                    confirmLabel: '全选'
+                    title: T('一次选中 {n} 个站点？').replace('{n}', String(cards.length)),
+                    body: T('当前可见结果共 {n} 个站点，全选后可以批量打开或隐藏。').replace('{n}', String(cards.length)),
+                    confirmLabel: T('全选')
                 }).then(function (ok) { if (ok) selectAllVisible(); });
                 return;
             }
@@ -264,11 +268,11 @@
                 chain.then(function () {
                     selected = {};
                     mountChecks(); paintBulkBar(); renderHiddenBar();
-                    toast('已隐藏 ' + urls.length + ' 个站点（只影响这台浏览器）');
+                    toast(T('已隐藏 {n} 个站点（只影响这台浏览器）').replace('{n}', String(urls.length)));
                 });
             }
             if (window.navConfirm) {
-                window.navConfirm({ title: '批量隐藏站点', body: '把这 ' + urls.length + ' 个站点从这台浏览器的访客页移除；主人库不受影响。', danger: true, confirmLabel: '隐藏' })
+                window.navConfirm({ title: T('批量隐藏站点'), body: T('把这 {n} 个站点从这台浏览器的访客页移除；主人库不受影响。').replace('{n}', String(urls.length)), danger: true, confirmLabel: T('隐藏') })
                     .then(function (ok) { if (ok) run(); });
             } else { run(); }
         });

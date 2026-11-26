@@ -963,7 +963,7 @@ class GuestSnapshotManageTests(TestCase):
 
     def test_snapshot_bulk_copy_and_large_select_guard(self):
         # D7 访客快照多选与主人侧同一口径:0 项文案、全选范围、>10 二次确认
-        for token in ("'已选 0 项'", '全选当前可见', "'（' + n + ' 项）'", 'cards.length > 10',
+        for token in ("'已选 0 项'", '全选当前可见', "T('（{n} 项）')", 'cards.length > 10',
                       '一次选中', 'confirmLabel'):
             self.assertIn(token, self.snap_js)
 
@@ -1086,7 +1086,9 @@ class S1MenuAndLoginContractTests(TestCase):
 
     def test_upload_icons_and_new_tips(self):
         # C7:两处上传工具图标换 fa-upload;导出书签/统计/足迹补 tooltip,说清数据侧
-        self.assertIn('<i class="fas fa-upload"></i>上传工具', self.guest)
+        # 2026-11-25:访客端去掉「上传工具」入口(顶栏菜单 + 工具区空态),主人端保留
+        self.assertNotIn('id="navGuestToolBtn"', self.guest)
+        self.assertNotIn('id="toolsEmpty"', self.guest)
         self.assertIn('<i class="fas fa-upload"></i>上传工具', self.owner)
         self.assertNotIn('<i class="fas fa-screwdriver-wrench"></i>上传工具', self.guest)
         self.assertNotIn('<i class="fas fa-screwdriver-wrench"></i>上传工具', self.owner)

@@ -3,6 +3,10 @@
    边界约定同 pet.js:csrf 走 window.navCsrf,toast 走 window.navToast;URL 走配置岛 #navBatchUrls。*/
 jQuery(function ($) {
     'use strict';
+    // 动态文案统一走词条表:切英文后批量条/提示不再是中文(2026-11-26)
+    function T(zh) {
+        return (window.NavI18n && typeof window.NavI18n.t === 'function') ? window.NavI18n.t(zh) : zh;
+    }
     const BATCH_URLS = JSON.parse(document.getElementById('navBatchUrls').textContent);
     const showToast = window.navToast;   // csrf 不在这取快照,两个请求各自经 window.navCsrf() 现取现判存
     const sel = new Set();          // 选中卡元素(按 DOM 引用,防 URL 重复)
@@ -17,7 +21,7 @@ jQuery(function ($) {
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.className = 'site-bulk-check';
-            cb.setAttribute('aria-label', '选择站点');
+            cb.setAttribute('aria-label', T('选择站点'));
             box.prepend(cb);
         });
     }
@@ -43,7 +47,7 @@ jQuery(function ($) {
         if (btn) {
             btn.classList.toggle('active', bulkMode);
             btn.setAttribute('aria-pressed', bulkMode ? 'true' : 'false');
-            btn.setAttribute('aria-label', bulkMode ? '退出多选模式' : '批量选择');
+            btn.setAttribute('aria-label', bulkMode ? T('退出多选模式') : T('批量选择'));
         }
         if (bulkMode) { ensureCheckboxes(); syncCheckboxes(); } else { msClear(); }
         msBarRender();
@@ -55,7 +59,7 @@ jQuery(function ($) {
         // (裸引用闭包局部名会恒 false 静默失效)。取不到就没有 X-CSRFToken 头 → 后端 403,
         // 所以宁可明着报错也不发一个注定被拒的请求。
         if (typeof window.navCsrf !== 'function') {
-            if (window.navToast) { window.navToast('页面脚本没加载完,请刷新后重试'); }
+            if (window.navToast) { window.navToast(T('页面脚本没加载完,请刷新后重试')); }
             return Promise.reject(new Error('navCsrf unavailable'));
         }
         return fetch(BATCH_URLS.batch, {
@@ -88,40 +92,40 @@ jQuery(function ($) {
         try { subs = JSON.parse(document.getElementById('navCatSubs').textContent) || {}; } catch (e) {}
         const selCat = msBar.querySelector('#navMsCat');
         const curCat = selCat ? selCat.value : '';
-        msBar.innerHTML = '<b class="small" id="navBulkCount" data-bulk-count>已选 ' + n + ' 项</b>' +
-            '<button class="btn btn-sm btn-primary" id="navMsGoOpen" data-bulk-act="open">打开</button>' +
-            '<button class="btn btn-sm btn-outline-primary" id="navMsGoStar" data-bulk-act="star">收藏</button>' +
-            '<button class="btn btn-sm btn-outline-danger" id="navMsGoDel" data-bulk-act="del">删除</button>' +
-            '<button class="btn btn-sm btn-outline-secondary" id="navMsMoreBtn" aria-expanded="' + (msMoreOpen ? 'true' : 'false') + '" title="其余批量动作:复制链接 / 全选 / 换分类 / 加标签 / 休眠">' +
-                '更多<i class="fas fa-chevron-' + (msMoreOpen ? 'down' : 'up') + ' ms-1" style="font-size:.7em"></i></button>' +
-            '<button class="btn btn-sm btn-outline-secondary" id="navMsCancel" data-bulk-act="exit" data-bulk-exit>退出</button>' +
+        msBar.innerHTML = '<b class="small" id="navBulkCount" data-bulk-count>' + T('已选 {n} 项').replace('{n}', String(n)) + '</b>' +
+            '<button class="btn btn-sm btn-primary" id="navMsGoOpen" data-bulk-act="open">' + T('打开') + '</button>' +
+            '<button class="btn btn-sm btn-outline-primary" id="navMsGoStar" data-bulk-act="star">' + T('收藏') + '</button>' +
+            '<button class="btn btn-sm btn-outline-danger" id="navMsGoDel" data-bulk-act="del">' + T('删除') + '</button>' +
+            '<button class="btn btn-sm btn-outline-secondary" id="navMsMoreBtn" aria-expanded="' + (msMoreOpen ? 'true' : 'false') + '" title="' + T('其余批量动作:复制链接 / 全选 / 换分类 / 加标签 / 休眠') + '">' +
+                T('更多') + '<i class="fas fa-chevron-' + (msMoreOpen ? 'down' : 'up') + ' ms-1" style="font-size:.7em"></i></button>' +
+            '<button class="btn btn-sm btn-outline-secondary" id="navMsCancel" data-bulk-act="exit" data-bulk-exit>' + T('退出') + '</button>' +
             // 2026-11-19 二级收纳:常用(打开/收藏/删除/退出)外露,其余收进浮层,免得 10 个按钮挤成一条
             '<div class="ms-more-panel' + (msMoreOpen ? '' : ' d-none') + '" id="navMsMore">' +
                 '<div class="ms-more-row">' +
-                    '<button class="btn btn-sm btn-outline-secondary" id="navMsGoCopy" data-bulk-act="copy">复制链接</button>' +
-                    '<button class="btn btn-sm btn-outline-secondary" id="navMsGoAll" data-bulk-act="all">全选当前可见</button>' +
+                    '<button class="btn btn-sm btn-outline-secondary" id="navMsGoCopy" data-bulk-act="copy">' + T('复制链接') + '</button>' +
+                    '<button class="btn btn-sm btn-outline-secondary" id="navMsGoAll" data-bulk-act="all">' + T('全选当前可见') + '</button>' +
                 '</div>' +
                 '<div class="ms-more-row">' +
                     '<select id="navMsCat" class="form-select form-select-sm" style="width:auto">' +
-                        '<option value="">换分类到…</option>' +
+                        '<option value="">' + T('换分类到…') + '</option>' +
                         cats.map(c => '<option' + (c === curCat ? ' selected' : '') + '>' + c + '</option>').join('') +
                     '</select>' +
-                    '<select id="navMsSub" class="form-select form-select-sm" style="width:auto"><option value="">(清空小分类)</option></select>' +
-                    '<button class="btn btn-sm btn-outline-primary" id="navMsGoCat" data-bulk-act="cat">换分类</button>' +
+                    '<select id="navMsSub" class="form-select form-select-sm" style="width:auto"><option value="">' + T('(清空小分类)') + '</option></select>' +
+                    '<button class="btn btn-sm btn-outline-primary" id="navMsGoCat" data-bulk-act="cat">' + T('换分类') + '</button>' +
                 '</div>' +
                 '<div class="ms-more-row">' +
-                    '<input id="navMsTags" class="form-control form-control-sm" style="width:150px" placeholder="追加标签,逗号分隔">' +
-                    '<button class="btn btn-sm btn-outline-primary" id="navMsGoTags" data-bulk-act="tags">加标签</button>' +
+                    '<input id="navMsTags" class="form-control form-control-sm" style="width:150px" placeholder="' + T('追加标签,逗号分隔') + '">' +
+                    '<button class="btn btn-sm btn-outline-primary" id="navMsGoTags" data-bulk-act="tags">' + T('加标签') + '</button>' +
                 '</div>' +
                 '<div class="ms-more-row">' +
-                    '<button class="btn btn-sm btn-outline-secondary" id="navMsGoArch" data-bulk-act="arch" title="收起来,不进分类;数据一条不动,体检篮 → 🩺 保养 页下方可唤醒">💤 休眠</button>' +
+                    '<button class="btn btn-sm btn-outline-secondary" id="navMsGoArch" data-bulk-act="arch" title="' + T('收起来,不进分类;数据一条不动,体检篮 → 🩺 保养 页下方可唤醒') + '">' + T('💤 休眠') + '</button>' +
                 '</div>' +
             '</div>';
         msBar.style.display = 'flex';
         function syncSubs() {
             const cat = msBar.querySelector('#navMsCat').value;
             const sub = msBar.querySelector('#navMsSub');
-            sub.innerHTML = '<option value="">(清空小分类)</option>' +
+            sub.innerHTML = '<option value="">' + T('(清空小分类)') + '</option>' +
                 (subs[cat] || []).map(s => '<option>' + escAttr(s) + '</option>').join('');
         }
         msBar.querySelector('#navMsCat').addEventListener('change', syncSubs);
@@ -139,12 +143,12 @@ jQuery(function ($) {
         msBar.querySelector('#navMsGoAll').addEventListener('click', selectVisible);
         msBar.querySelector('#navMsGoCat').addEventListener('click', function () {
             const cat = msBar.querySelector('#navMsCat').value;
-            if (!cat) { showToast('先选目标大类'); return; }
+            if (!cat) { showToast(T('先选目标大类')); return; }
             runBatch({action: 'category', ids: selIds(), category: cat, subcat: msBar.querySelector('#navMsSub').value});
         });
         msBar.querySelector('#navMsGoTags').addEventListener('click', function () {
             const tags = (msBar.querySelector('#navMsTags').value || '').split(/[,，]/).map(t => t.trim()).filter(Boolean);
-            if (!tags.length) { showToast('先填标签'); return; }
+            if (!tags.length) { showToast(T('先填标签')); return; }
             runBatch({action: 'tags', ids: selIds(), tags: tags});
         });
         msBar.querySelector('#navMsGoArch').addEventListener('click', function () {
@@ -179,7 +183,7 @@ jQuery(function ($) {
         selectedLinks().forEach(function (item) {
             window.open(item.url, '_blank', 'noopener');
         });
-        showToast('已打开 ' + sel.size + ' 个站点');
+        showToast(T('已打开 {n} 个站点').replace('{n}', String(sel.size)));
     }
     function starSelected() {
         const urls = selectedLinks().map(function (x) { return x.url; });
@@ -188,14 +192,14 @@ jQuery(function ($) {
         if (typeof window.navLsSet === 'function') window.navLsSet('navStars', merged);
         if (typeof window.syncStarButtons === 'function') window.syncStarButtons();
         if (typeof window.renderNavStars === 'function') window.renderNavStars();
-        showToast('已收藏 ' + urls.length + ' 个站点');
+        showToast(T('已收藏 {n} 个站点').replace('{n}', String(urls.length)));
     }
     function copySelectedLinks() {
         const text = selectedLinks().map(function (x) {
             return x.name ? x.name + ' - ' + x.url : x.url;
         }).join('\n');
-        if (!text) { showToast('先选择站点'); return; }
-        const done = function () { showToast('已复制 ' + sel.size + ' 条链接'); };
+        if (!text) { showToast(T('先选择站点')); return; }
+        const done = function () { showToast(T('已复制 {n} 条链接').replace('{n}', String(sel.size))); };
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text); done(); });
         } else {
@@ -226,15 +230,15 @@ jQuery(function ($) {
     }
     function runBatch(payload) {
         postBatch(payload).then(function (d) {
-            if (d.status !== 'ok') { showToast(d.message || '批量操作失败'); return; }
+            if (d.status !== 'ok') { showToast(d.message || T('批量操作失败')); return; }
             if (payload.action === 'delete') {
                 // 撤销窗口必须真的看得见：改前 900ms 就整页刷新，那条「全部撤销」刚冒头
                 // 就被冲掉——确认框下线之后它就是唯一退路，退路只有 0.9 秒等于没有退路。
                 // 所以刷新推到提示条收起之后；点了撤销就取消这次刷新（恢复完自己会刷）。
                 const reloadTimer = setTimeout(() => location.reload(), 9000);
-                showToast('已删除 ' + d.deleted + ' 个站点', {
+                showToast(T('已删除 {n} 个站点').replace('{n}', String(d.deleted)), {
                     ms: 8500,
-                    label: '全部撤销',
+                    label: T('全部撤销'),
                     fn: function () {
                         clearTimeout(reloadTimer);
                         (d.rows || []).forEach(function (row) {
@@ -245,7 +249,7 @@ jQuery(function ($) {
                                 body: JSON.stringify({site: row})
                             }).catch(function () {});
                         });
-                        showToast('已批量恢复,刷新看看');
+                        showToast(T('已批量恢复,刷新看看'));
                         setTimeout(() => location.reload(), 900);
                     }
                 });
@@ -254,15 +258,15 @@ jQuery(function ($) {
             }
             if (payload.action === 'archive') {
                 // 休眠不删数据,所以不必等刷新:卡片当场收起,唤醒在「🩺 保养」下方(那里要刷新才回分类)
-                showToast('已休眠 ' + d.updated + ' 个站点(名称/网址/星标/体检记录都没动,体检篮 → 🩺 保养 页下方可唤醒)');
+                showToast(T('已休眠 {n} 个站点(名称/网址/星标/体检记录都没动,体检篮 → 🩺 保养 页下方可唤醒)').replace('{n}', String(d.updated)));
                 sel.forEach(el => el.remove());
                 msClear();
                 return;
             }
-            showToast(payload.action === 'category' ? ('已换分类 ' + d.updated + ' 个') : ('已加标签 ' + d.updated + ' 个'));
+            showToast(payload.action === 'category' ? T('已换分类 {n} 个').replace('{n}', String(d.updated)) : T('已加标签 {n} 个').replace('{n}', String(d.updated)));
             msClear();
             setTimeout(() => location.reload(), 700);
-        }).catch(function () { showToast('批量操作失败'); });
+        }).catch(function () { showToast(T('批量操作失败')); });
     }
     // 多选模式下点卡片即选中;Ctrl/Cmd 点卡片仍是备用多选(capture 阶段拦下,不让打开会话)
     document.addEventListener('click', function (e) {

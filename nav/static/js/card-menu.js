@@ -15,6 +15,11 @@
 (function () {
     'use strict';
 
+    // 动态文案统一走词条表:切英文后卡片菜单/提示不再是中文(2026-11-26)
+    function T(zh) {
+        return (window.NavI18n && typeof window.NavI18n.t === 'function') ? window.NavI18n.t(zh) : zh;
+    }
+
     // 主客共用同一套卡片菜单(2026-11-21):容器/定位翻边/键盘 ↑↓·Esc/长按防误触全复用。
     // 主人端动作走服务端写库;访客端动作只碰本机(localStorage / navStore / 内存书签),
     // 不调任何 owner 写接口、不写服务器 DB。访客本机书签卡(#navGuestImports)由模板内联
@@ -68,26 +73,26 @@
             // 访客态:只保留本机可落地的五项;快照数据没有书签级排序持久化,
             // 不提供置顶/置底/上移/下移(见 docs/并行改造/09-访客卡片菜单.md §4)。
             items = [
-                '<button type="button" role="menuitem" data-act="open"><i class="fas fa-up-right-from-square"></i>打开链接</button>',
-                '<button type="button" role="menuitem" data-act="edit"><i class="fas fa-pen"></i>编辑</button>',
-                '<button type="button" role="menuitem" data-act="star"><i class="fas fa-star"></i>星标</button>',
-                '<button type="button" role="menuitem" data-act="copy"><i class="fas fa-link"></i>复制链接</button>',
+                '<button type="button" role="menuitem" data-act="open"><i class="fas fa-up-right-from-square"></i>' + T('打开链接') + '</button>',
+                '<button type="button" role="menuitem" data-act="edit"><i class="fas fa-pen"></i>' + T('编辑') + '</button>',
+                '<button type="button" role="menuitem" data-act="star"><i class="fas fa-star"></i>' + T('星标') + '</button>',
+                '<button type="button" role="menuitem" data-act="copy"><i class="fas fa-link"></i>' + T('复制链接') + '</button>',
                 '<hr>',
-                '<button type="button" role="menuitem" data-act="del" class="text-danger"><i class="fas fa-trash"></i>删除本机书签</button>'
+                '<button type="button" role="menuitem" data-act="del" class="text-danger"><i class="fas fa-trash"></i>' + T('删除本机书签') + '</button>'
             ];
         } else {
             items = [
-                '<button type="button" role="menuitem" data-act="open"><i class="fas fa-up-right-from-square"></i>打开链接</button>',
-                '<button type="button" role="menuitem" data-act="edit"><i class="fas fa-pen"></i>编辑</button>',
-                '<button type="button" role="menuitem" data-act="star"><i class="fas fa-star"></i>星标</button>',
-                '<button type="button" role="menuitem" data-act="copy"><i class="fas fa-link"></i>复制链接</button>',
+                '<button type="button" role="menuitem" data-act="open"><i class="fas fa-up-right-from-square"></i>' + T('打开链接') + '</button>',
+                '<button type="button" role="menuitem" data-act="edit"><i class="fas fa-pen"></i>' + T('编辑') + '</button>',
+                '<button type="button" role="menuitem" data-act="star"><i class="fas fa-star"></i>' + T('星标') + '</button>',
+                '<button type="button" role="menuitem" data-act="copy"><i class="fas fa-link"></i>' + T('复制链接') + '</button>',
                 '<hr>',
-                '<button type="button" role="menuitem" data-act="pin-top"><i class="fas fa-arrow-up-long"></i>置顶</button>',
-                '<button type="button" role="menuitem" data-act="pin-bottom"><i class="fas fa-arrow-down-long"></i>置底</button>',
-                '<button type="button" role="menuitem" data-act="up"><i class="fas fa-chevron-up"></i>上移</button>',
-                '<button type="button" role="menuitem" data-act="down"><i class="fas fa-chevron-down"></i>下移</button>',
+                '<button type="button" role="menuitem" data-act="pin-top"><i class="fas fa-arrow-up-long"></i>' + T('置顶') + '</button>',
+                '<button type="button" role="menuitem" data-act="pin-bottom"><i class="fas fa-arrow-down-long"></i>' + T('置底') + '</button>',
+                '<button type="button" role="menuitem" data-act="up"><i class="fas fa-chevron-up"></i>' + T('上移') + '</button>',
+                '<button type="button" role="menuitem" data-act="down"><i class="fas fa-chevron-down"></i>' + T('下移') + '</button>',
                 '<hr>',
-                '<button type="button" role="menuitem" data-act="del" class="text-danger"><i class="fas fa-trash"></i>删除</button>'
+                '<button type="button" role="menuitem" data-act="del" class="text-danger"><i class="fas fa-trash"></i>' + T('删除') + '</button>'
             ];
         }
         menu.innerHTML = items.join('');
@@ -121,7 +126,7 @@
         if (!text) return;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(function () {
-                toast('已复制链接');
+                toast(T('已复制链接'));
             }).catch(function () { legacyCopy(text); });
             return;
         }
@@ -140,7 +145,7 @@
             ok = document.execCommand('copy');
         } catch (e) { ok = false; }
         document.body.removeChild(ta);
-        toast(ok ? '已复制链接' : '复制失败,请手动复制');
+        toast(ok ? T('已复制链接') : T('复制失败,请手动复制'));
     }
 
     function moveNode(col, act) {

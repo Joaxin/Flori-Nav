@@ -157,7 +157,7 @@ document.documentElement.classList.add('nav-guest-mode');
         {# 2026-11-21(#5):标签筛选 / 多选 收进「···」菜单的「视图」分组,顶栏不再单列图标位;控件 id 与 data 钩子保持不变,stars-filter.js / batch.js / snapshot.js 按 ID 绑定不受影响。 #}
         {# id 沿用 navDataMenu:导出/导入/导出书签 仍是"一组数据动作，一个下拉" #}
         <div class="dropdown" id="navDataMenu">
-            <button class="nav-chip nav-chip--icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-tip="更多工具与设置&#10;上传 HTML 工具 / 链接测活 / 数据导入导出" aria-label="更多">
+            <button class="nav-chip nav-chip--icon" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-tip="更多工具与设置&#10;{% if nav_guest_mode %}本机数据 / 本机工具 / 导入导出{% else %}上传 HTML 工具 / 链接测活 / 数据导入导出{% endif %}" aria-label="更多">
                 <i class="fas fa-ellipsis"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow nav-more-menu">
@@ -176,7 +176,6 @@ document.documentElement.classList.add('nav-guest-mode');
                 <li><button type="button" class="dropdown-item" id="navGuestExportGuestJson" data-tip="书签全字段 / 工具元数据 / 分组顺序与隐藏 / 本机偏好 打包成 JSON&#10;AI Key 默认不导出明文;工具 HTML 一并纳入,文件可能偏大"><i class="fas fa-file-export"></i>访客书签 JSON</button></li>
                 <li><hr class="dropdown-divider"></li>
                 <li class="nav-menu-label">本机工具</li>
-                <li><button type="button" class="dropdown-item" id="navGuestToolBtn" data-tip="上传本机 HTML 小工具&#10;只存这台浏览器，不写服务器"><i class="fas fa-upload"></i>上传工具</button></li>
                 <li class="d-flex gap-1 px-1 pt-1 pb-1">
                     <button type="button" class="dropdown-item flex-grow-1" data-nav-stats data-tip="本机书签的使用与点击统计&#10;只读写这台浏览器，不发请求"><i class="fas fa-chart-simple"></i>本机统计</button>
                     <button type="button" class="dropdown-item flex-grow-1" data-nav-foot data-tip="本机足迹的点击热力图&#10;只存这台浏览器，不经过服务器"><i class="fas fa-fire"></i>足迹热力图</button>
@@ -368,7 +367,7 @@ document.documentElement.classList.add('nav-guest-mode');
             </div>
             {% endfor %}
         </div>
-        {% if not tools %}
+        {% if not tools and not nav_guest_mode %}
         <div id="toolsEmpty" class="tools-empty">
             <span class="tools-empty-ic" aria-hidden="true"><i class="fas fa-arrow-up-from-bracket"></i></span>
             <span>+ 上传本机 HTML 小工具<span class="text-muted">（最大 2MB，仅存本地）</span></span>
@@ -2209,19 +2208,23 @@ document.documentElement.classList.add('nav-guest-mode');
     function selectedUrls() {
         return Array.from(document.querySelectorAll('#navGuestImports .ng-check:checked')).map(function (c) { return c.dataset.url; });
     }
+    // 访客批量条动态文案:复用全站词条表,英文下不再半中文(2026-11-26)
+    function ibT(zh) {
+        return (window.NavI18n && typeof window.NavI18n.t === 'function') ? window.NavI18n.t(zh) : zh;
+    }
     function bulkOpen() {
         var urls = selectedUrls();
-        if (!urls.length) { toast('先勾选要打开的书签'); return; }
+        if (!urls.length) { toast(ibT('先勾选要打开的书签')); return; }
         urls.forEach(function (u, i) { setTimeout(function () { window.open(u, '_blank', 'noopener'); }, i * 120); });
-        toast('已打开 ' + urls.length + ' 个');
+        toast(ibT('已打开 {n} 个').replace('{n}', String(urls.length)));
     }
     function bulkCopy() {
         var urls = selectedUrls();
-        if (!urls.length) { toast('先勾选要复制的书签'); return; }
+        if (!urls.length) { toast(ibT('先勾选要复制的书签')); return; }
         var text = urls.join('\n');
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(function () { toast('已复制 ' + urls.length + ' 个链接'); }, function () { toast('复制失败'); });
-        } else { toast('当前环境不支持复制'); }
+            navigator.clipboard.writeText(text).then(function () { toast(ibT('已复制 {n} 个链接').replace('{n}', String(urls.length))); }, function () { toast(ibT('复制失败')); });
+        } else { toast(ibT('当前环境不支持复制')); }
     }
     function deleteTool(tl) {
         var doDel = function () {
@@ -2594,25 +2597,25 @@ document.documentElement.classList.add('nav-guest-mode');
         bulkToggle.id = 'navBulkExit';
         bulkToggle.className = 'btn btn-sm btn-outline-secondary py-0 px-2';
         bulkToggle.setAttribute('data-bulk-act', 'exit');
-        bulkToggle.textContent = bulkMode ? '退出多选' : '多选';
+        bulkToggle.textContent = bulkMode ? ibT('退出多选') : ibT('多选');
         bulkToggle.addEventListener('click', function () { bulkMode = !bulkMode; render(); });
         bulkBar.appendChild(bulkToggle);
         var bulkCount = document.createElement('span');
         bulkCount.className = 'small';
         bulkCount.id = 'navBulkCount';
         bulkCount.setAttribute('data-bulk-count', '');
-        bulkCount.textContent = '已选 ' + selectedUrls().length + ' 项';
+        bulkCount.textContent = ibT('已选 {n} 项').replace('{n}', String(selectedUrls().length));
         bulkBar.appendChild(bulkCount);
         if (bulkMode) {
             var openBtn = document.createElement('button');
             openBtn.type = 'button'; openBtn.className = 'btn btn-sm btn-outline-primary py-0 px-2';
             openBtn.setAttribute('data-bulk-act', 'open');
-            openBtn.textContent = '打开选中';
+            openBtn.textContent = ibT('打开选中');
             openBtn.addEventListener('click', bulkOpen);
             var copyBtn = document.createElement('button');
             copyBtn.type = 'button'; copyBtn.className = 'btn btn-sm btn-outline-secondary py-0 px-2';
             copyBtn.setAttribute('data-bulk-act', 'copy');
-            copyBtn.textContent = '复制链接';
+            copyBtn.textContent = ibT('复制链接');
             copyBtn.addEventListener('click', bulkCopy);
             bulkBar.appendChild(openBtn); bulkBar.appendChild(copyBtn);
         }

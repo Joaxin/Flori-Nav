@@ -55,6 +55,25 @@ class NavCardMarkupTests(TestCase):
         self.assertIn('metaKey', js)
         self.assertIn("addEventListener('click'", js)
 
+    def test_submodal_content_is_centered_inside_dialog(self):
+        """子页弹窗:兼容层 centered 为 flex 横排,content 会贴 dialog 左缘。
+        这里锁死子页弹窗的主轴居中,避免整块视觉偏左(2026-11-26)。"""
+        css = static_text('css/nav-sites.css')
+        self.assertRegex(
+            css,
+            r'#subModal\s+\.modal-dialog-centered\s*\{[^}]*justify-content:\s*center',
+        )
+        tpl = tpl_text('nav/nav_sites.html')
+        chunk = tpl[tpl.index('id="subModal"'):]
+        self.assertIn('modal-dialog-centered', chunk[:400])
+
+    def test_submodal_has_no_duplicate_main_site_button(self):
+        """第一行就是主站,底部「打开主站」按钮与倒计时提示是重复入口,不再保留。"""
+        js = static_text('js/stars-filter.js')
+        self.assertIn("subItem('主站'", js)
+        self.assertNotIn('sub-open-main', js)
+        self.assertNotIn('打开主站', js)
+
     def test_third_level_toc_collapsed_by_default(self):
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
         self.assertIn('hide-sub3', html)          # aside 首帧即带收起类

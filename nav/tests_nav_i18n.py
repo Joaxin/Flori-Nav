@@ -56,3 +56,18 @@ class NavI18nTests(TestCase):
     def test_language_script_is_included(self):
         html = self.client.get(reverse('nav_sites')).content.decode('utf-8')
         self.assertIn('js/nav-i18n.js', html)
+
+    def test_guest_bulk_dynamic_copy_uses_dictionary(self):
+        """访客批量条(本机导入区 + 动态弹层)不许再硬编码中文:词条在表里,按钮走 T()。"""
+        dict_text = (NAV_DIR / 'static' / 'js' / 'nav-i18n.js').read_text(encoding='utf-8')
+        batch_js = (NAV_DIR / 'static' / 'js' / 'nav-guest-batch.js').read_text(encoding='utf-8')
+        for key in ('隐藏分组', '恢复默认分组顺序', '移动 {n} 个书签', '已批量删除', '{n} 个书签'):
+            self.assertIn("'" + key + "'", dict_text, '词条缺失: ' + key)
+            self.assertIn(key, batch_js, '访客批量模块未使用该文案: ' + key)
+        self.assertIn('window.NavI18n.t', batch_js)
+        self.assertIn('[data-bulk-act="open"]', batch_js, '多选判态必须走结构标记,不能依赖中文文案')
+
+        html = self.client.get(reverse('nav_guest')).content.decode('utf-8')
+        for key in ('退出多选', '打开选中', '已选 {n} 项'):
+            self.assertIn("'" + key + "'", dict_text, '词条缺失: ' + key)
+            self.assertIn(key, html, '访客内联批量条未使用该文案: ' + key)

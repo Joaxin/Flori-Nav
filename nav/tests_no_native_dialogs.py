@@ -138,7 +138,7 @@ class NavNoNativeDialogsTests(SimpleTestCase):
         js = _read(NAV_DIR / 'static' / 'js' / 'batch.js')
         click = _slice(js, "querySelector('#navMsGoDel')", "querySelector('#navMsCancel')")
         self.assertIn("runBatch({action: 'delete'", click)
-        undo = _slice(js, "label: '全部撤销'", '// 多选模式下点卡片')
+        undo = _slice(js, "label: T('全部撤销')", '// 多选模式下点卡片')
         for marker in ("'/restore/'", 'JSON.stringify({site: row})', 'typeof window.navCsrf'):
             self.assertIn(marker, undo, '批量删除的撤销链路断了:' + marker)
 

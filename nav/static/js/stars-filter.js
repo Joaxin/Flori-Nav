@@ -871,11 +871,9 @@ jQuery(function ($) {
         $w.children('.collapsible').children('.cheve').addClass('rot');
     });
 
-    // 含子网页的站点:点击卡片弹窗选择(主站 + 各子页);30 秒未选择自动打开主站
-    let subAutoTimer = null;
-    function cancelSubAuto() { if (subAutoTimer) { clearTimeout(subAutoTimer); subAutoTimer = null; } }
-    $('#subModal').on('hidden.bs.modal', cancelSubAuto);
-    $('#subModalBody').on('click', 'a', cancelSubAuto);
+    // 含子网页的站点:点击卡片弹窗选择(主站 + 各子页)。
+    // 2026-11-26:删掉底部重复的主站按钮和 30 秒计时 —— 弹窗第一行就是主站,
+    // 再放一个同样的入口既重复又占高度;倒计时提示也一并去掉。
     $('.nav-hub').on('click', '.site-card[data-has-sub]', function(e) {
         if ($(e.target).closest('.site-edit, .site-del').length) return;
         e.preventDefault();
@@ -911,32 +909,7 @@ jQuery(function ($) {
             if (!url) return;
             $body.append(subItem('备用', String($(this).data('name') || url), url, 'fa-shield-halved'));
         });
-        const isEn = !!(window.NavI18n && NavI18n.getLang && NavI18n.getLang() === 'en');
-        const $tip = $('<div class="small text-muted px-2 pt-1 pb-0">');
-        if (mainUrl) {
-            // 30 s 后在 setTimeout 里 window.open 不算用户手势,Chrome 会当弹窗拦掉(静默失效)。
-            // 改成常驻按钮 + 到点只改提示文案;点按钮才是合法手势(2026-11-24)。
-            $tip.text(isEn ? 'Pick a sub-page, or open the main site.' : '选一个子页,或直接打开主站。');
-            const $open = $('<button type="button" class="btn btn-sm btn-outline-primary mt-2 sub-open-main">')
-                .text(isEn ? 'Open main site' : '打开主站');
-            $open.on('click', function() {
-                cancelSubAuto();
-                bootstrap.Modal.getOrCreateInstance($('#subModal')[0]).hide();
-                window.open(mainUrl, '_blank', 'noopener');
-            });
-            $body.append($tip, $('<div class="px-2 pb-2">').append($open));
-        } else {
-            $body.append($tip);
-        }
         bootstrap.Modal.getOrCreateInstance($('#subModal')[0]).show();
-        cancelSubAuto();
-        if (mainUrl) {
-            subAutoTimer = setTimeout(function() {
-                subAutoTimer = null;
-                $tip.text(isEn ? 'Still nothing picked — use the “Open main site” button above.'
-                               : '还没选?点上面的「打开主站」即可。');
-            }, 30000);
-        }
     });
 
     // ===== 快捷键直达:Alt+1~9 打开前九个常用站(读 navRecent;2026-10-25 brainstorm 落地) =====

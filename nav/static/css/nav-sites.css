@@ -988,6 +988,11 @@
 
     /* ===== 设置面板问号图标 + 点击气泡(长说明收纳) ===== */
     /* ===== 子页选择弹窗美化(借鉴发现导航 web-more-menu) ===== */
+    /* 2026-11-26:兼容层 .modal-dialog-centered 是 flex 横排,modal-content 按内容宽收缩后
+       停在 dialog 左缘,视觉上整块偏左(实测 dialog 560、content 308,content.x = dialog.x)。
+       这里只给子页弹窗补主轴居中,保留现有的内容自适应宽度,不改 dialog 尺寸,
+       也不影响其它共用 centered 的弹窗。 */
+    #subModal .modal-dialog-centered { justify-content: center; }
     #subModalBody { padding: .6rem .75rem .75rem; display: flex; flex-direction: column; gap: .35rem; }
     #subModalBody .list-group-item {
         display: flex; align-items: center; gap: .65rem;
