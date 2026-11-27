@@ -85,3 +85,5 @@ token.txt
 
 # 本地文档与截图:只留本机,不推送
 docs/
+.vercel
+.env*

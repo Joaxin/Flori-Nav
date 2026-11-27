@@ -92,14 +92,18 @@ postgresql://user:pass@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/flori_nav?sslm
 | `DJANGO_DEBUG` | `False` | ✅ 必填 | 生产必须 False |
 | `DATABASE_URL` | 第 2.2 步复制的 pooler 连接串 | ✅ 建议填 | 不填会用 SQLite(Vercel 上不持久) |
 | `NAV_WRITE_TOKEN` | 第 1.2 步生成的令牌 | ✅ 公网必填 | 主人写接口与页面身份令牌 |
-| `DJANGO_ALLOWED_HOSTS` | 留空即可 | 可选 | 留空时自动放行 `*.vercel.app` 和平台注入的域名 |
+| `DJANGO_ALLOWED_HOSTS` | `.vercel.app` | ✅ 公网必填 | Django 子域通配符是**前导点** `.vercel.app`,不是 `*.vercel.app`;写错会导致自定义域名 400 |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | 留空即可 | 可选 | 自定义域名时才需要填 `https://你的域名` |
 | `NAV_LINK_TOTAL_TIMEOUT` | `60` | 可选 | 全库测活总预算(秒);函数时长有限,别调太大 |
 | `SFLORA_LOG_LEVEL` | `INFO` | 可选 | 日志级别 |
 
 填完后,**点 Redeploy**(或回到 Deployments 点右上角 `...` → Redeploy)。改环境变量不会自动重跑已失败的部署,必须手动触发一次。
 
-> `config/settings.py` 对 Vercel 域名已做适配:`ALLOWED_HOSTS` 留空时自动放行 `*.vercel.app` 与 `VERCEL_URL`,`CSRF_TRUSTED_ORIGINS` 自动加 `https://*.vercel.app`,并设置了 `SECURE_PROXY_SSL_HEADER`,所以自定义域名之外的域名配置可以留空。
+> ⚠️ **重要:子域通配符必须用前导点写法 `.vercel.app`**。Django 的 `ALLOWED_HOSTS` 不认 `*.vercel.app`(那是 `CSRF_TRUSTED_ORIGINS` 的写法),写成 `*.vercel.app` 在 ALLOWED_HOSTS 里是无效值、永远匹配不上。当前 `config/settings.py:64` 留空时回落的就是这个无效写法,只有部署自动生成的 `VERCEL_URL` 那条能生效——所以 banner 域名(如 `flori-xxx.vercel.app`)能访问,而自定义生产域名(如 `flori-nav.vercel.app`)会 400。务必显式填 `DJANGO_ALLOWED_HOSTS=.vercel.app`。
+
+> 临时救急:把值改成 `*` 一定放行,配合已设置的 `NAV_WRITE_TOKEN` 够用。
+
+> `config/settings.py` 另外已适配:`CSRF_TRUSTED_ORIGINS` 自动加 `https://*.vercel.app`(这里用 `*` 是对的),并设置了 `SECURE_PROXY_SSL_HEADER`,这两项无需手动配置。
 
 ---
 
@@ -160,6 +164,8 @@ python manage.py export_nav_public
 
 如果第 2 步能进主人态、第 3 步写入成功,整条链路就通了。
 
+> ⚠️ 注意区分:带 `vercel.app` 的**部署预览域名**(如 `flori-xxx-项目名.vercel.app`)默认开了 Vercel 的 Deployment Protection,未登录时访问会跳到 `vercel.com/login` 登录页,不是你的站点。验证请用生产域名,或在 Vercel → Project Settings → Deployment Protection 里关闭 Vercel Authentication。
+
 ---
 
 ## 6. 常见报错排查
@@ -184,18 +190,7 @@ LANGUAGES = [
 ]
 ```
 
-Vercel 在构建阶段探测 Django 项目时,会在 app registry 初始化**之前**导入 settings;`gettext_lazy` 一经求值就去扫描已安装 app 的翻译(`apps.get_app_configs()`),此时 apps 还没 ready,于是抛错。
-
-**处理**:把这两行改成普通字符串(语言名是固定文案,不需要 lazy 翻译):
-
-```python
-LANGUAGES = [
-    ('zh-hans', '简体中文'),
-    ('en', 'English'),
-]
-```
-
-> 这个改动很小,但涉及代码文件。需要时让维护者确认后再改。
+Vercel 在构建阶段探测 Django 项目时,会在 app registry 初始化**之前**导入 settings;`gettext_lazy` 一经求值就去扫描已安装 app 的翻译(`apps.get_app_configs()`),此时 apps 还没 ready,于是抛错。**该问题已在当前版本修复。**
 
 ### 6.2 构建阶段:`缺少 DJANGO_SECRET_KEY`
 
@@ -203,7 +198,17 @@ LANGUAGES = [
 
 ### 6.3 访问 400:`DisallowedHost`
 
-请求域名不在 `ALLOWED_HOSTS` 里。自定义域名时把域名填进 `DJANGO_ALLOWED_HOSTS`(逗号分隔);用 `*.vercel.app` 默认域名则留空即可。
+**现象**:部署 URL(如 `flori-xxx.vercel.app`)能访问,但绑定的生产域名(如 `flori-nav.vercel.app`)打开显示 `Bad Request (400)`,且 Runtime Logs 里没有应用报错(host 校验阶段就被拒,请求没进视图)。
+
+**原因**:请求域名不在 `ALLOWED_HOSTS` 里。Django 的子域通配符是**前导点** `.vercel.app`,不是 `*.vercel.app`。`config/settings.py` 留空时回落的 `*.vercel.app` 是无效写法,只有 `VERCEL_URL` 那条(部署自动域名)真正生效,所以生产别名域名被拒。
+
+**处理**:在 Vercel 环境变量里加 `DJANGO_ALLOWED_HOSTS=.vercel.app`(或临时用 `*`),然后手动 Redeploy。若只想放行具体域名,可填逗号分隔的完整域名:
+
+```text
+flori-nav.vercel.app,flori-nav-git-master-uashuas-projects.vercel.app,flori-fiwjrr0a7-uashuas-projects.vercel.app
+```
+
+> 注意:这和 6.1 节不同——6.1 是构建阶段报错,这里是运行期 host 校验失败,两者独立。
 
 ### 6.4 访问 403 CSRF 失败
 
@@ -211,7 +216,7 @@ LANGUAGES = [
 
 ### 6.5 写接口 403
 
-没带写令牌。确认 `NAV_WRITE_TOKEN` 已设置,且访问时带cookie或请求头:
+没带写令牌。确认 `NAV_WRITE_TOKEN` 已设置,且访问时带 cookie 或请求头:
 
 - 浏览器先访问一次 `/?nav_token=你的令牌`,或
 - API 请求带请求头 `X-Nav-Write-Token: 你的令牌`
@@ -282,6 +287,7 @@ python manage.py export_nav_public
 - [ ] `DJANGO_SECRET_KEY` 已生成并填入 Vercel Production
 - [ ] `NAV_WRITE_TOKEN` 已生成并填入 Vercel Production
 - [ ] `DJANGO_DEBUG=False`
+- [ ] `DJANGO_ALLOWED_HOSTS=.vercel.app`(前导点!写 `*.vercel.app` 会导致生产域名 400)
 - [ ] Neon 项目已建,复制的是带 `-pooler` 的 Connection string
 - [ ] `DATABASE_URL` 填入 Vercel
 - [ ] 部署成功(构建无 `AppRegistryNotReady` 等错误)

@@ -1660,12 +1660,22 @@ document.documentElement.classList.add('nav-guest-mode');
         var clicks = Number(x.clicks); clicks = clicks >= 0 ? Math.floor(clicks) : 0;
         var seq = Number(x.seq) || 0;
         var iconSize = Number(x.iconSize);
+        // 修复旧版导入残留:Chrome 书签容器层曾被当成大类「Bookmarks bar」。
+        // 这类站点的真实分类保存在 subcat(如「搜索与导航」或「AI对话 / 对话工具台」),
+        // 加载时把大类还原成 subcat 的第一段,避免页面上出现假的「Bookmarks bar 426」分组。
+        var cat = String(x.category || '我的导入').trim().slice(0, 50) || '我的导入';
+        var sub = String(x.subcat || '').trim().slice(0, 80);
+        if (cat === 'Bookmarks bar' || cat === '书签栏' || cat === 'Bookmarks Toolbar') {
+            var first = sub.split(/\s*\/\s*/)[0].trim();
+            cat = first || '我的导入';
+            sub = first ? sub.slice(first.length).replace(/^\s*\/\s*/, '') : '';
+        }
         return {
             id: String(x.id || (seq + '-' + Math.random().toString(36).slice(2, 8))),
             name: String(x.name || x.title || x.url).trim().slice(0, 80) || x.url,
             url: x.url,
-            category: String(x.category || '我的导入').trim().slice(0, 50) || '我的导入',
-            subcat: String(x.subcat || '').trim().slice(0, 80),
+            category: cat,
+            subcat: sub,
             description: String(x.description || '').trim().slice(0, 200),
             tags: cleanTags(x.tags),
             pinned: !!x.pinned,

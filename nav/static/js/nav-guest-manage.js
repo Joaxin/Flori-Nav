@@ -55,11 +55,11 @@
             '<div class="modal-header"><h5 class="modal-title" id="ngeTitle">编辑本机书签</h5>' +
             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
             '<div class="modal-body">' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeName">名称</label>' +
+            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeName">名称 <span class="text-danger">*</span></label>' +
             '<input id="ngeName" class="form-control form-control-sm" maxlength="80" placeholder="站点名称"></div>' +
             '<div class="mb-2"><label class="small text-muted mb-0" for="ngeSiteTitle">页面标题(可空,≤80 字)</label>' +
             '<input id="ngeSiteTitle" class="form-control form-control-sm" maxlength="80" placeholder="浏览器标签页标题,留空用名称"></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeUrl">网址</label>' +
+            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeUrl">网址 <span class="text-danger">*</span></label>' +
             '<input id="ngeUrl" class="form-control form-control-sm font-monospace" placeholder="https://example.com"></div>' +
             '<div class="mb-2 d-flex align-items-center gap-2 flex-wrap">' +
             '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngeFetchMeta" title="按网址抓取对方的页面标题、favicon 和简介">' +
@@ -68,8 +68,8 @@
             '<div class="row g-2 mb-2"><div class="col-6"><label class="small text-muted mb-0" for="ngeCat">大类</label>' +
             '<input id="ngeCat" class="form-control form-control-sm" list="ngeCatList" placeholder="我的导入">' +
             '<datalist id="ngeCatList"></datalist></div>' +
-            '<div class="col-6"><label class="small text-muted mb-0" for="ngeSub">小分类(可空)</label>' +
-            '<input id="ngeSub" class="form-control form-control-sm" placeholder="二级 / 三级"></div></div>' +
+            '<div class="col-6"><label class="small text-muted mb-0" for="ngeSub">二级分类(可空)</label>' +
+            '<input id="ngeSub" class="form-control form-control-sm" placeholder="如:视频"></div></div>' +
             '<div class="mb-2"><label class="small text-muted mb-0" for="ngeTags">标签(逗号分隔,最多 8 个)</label>' +
             '<input id="ngeTags" class="form-control form-control-sm" placeholder="免费, 开源, 需代理"></div>' +
             '<div class="mb-2"><label class="small text-muted mb-0" for="ngeDesc">简介(可空)</label>' +
