@@ -113,7 +113,7 @@ class CascadeModuleTests(SimpleTestCase):
         # 主人端清二级 / 三级,访客端清小分类。
         self.assertIn("querySelector('.f-subcat')", self.src)
         self.assertIn("querySelector('.f-subcat2')", self.src)
-        self.assertIn("getElementById('ngeSub')", self.src)
+        self.assertIn("querySelector('.nge-sub')", self.src)
 
     # 7. 数据源全部只读:#navCatSubs JSON、访客本地 subs()、DOM data-cat。
     def test_universe_sources_read_only(self):

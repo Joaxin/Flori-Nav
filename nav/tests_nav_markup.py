@@ -214,8 +214,8 @@ class CardMenuTests(TestCase):
         js = static_text('js/card-menu.js')
         self.assertIn('js/card-menu.js', html)
         self.assertIn('navCardMenu', js)
-        for act in ('pin-top', 'pin-bottom', 'up', 'down', 'edit', 'del', 'copy'):
-            self.assertIn('data-act="%s"' % act, js)
+        for act in ('pin-top', 'pin-bottom', 'up', 'down', 'edit', 'del', 'copy', 'move'):
+            self.assertIn("item('%s'" % act, js)
         self.assertIn('/api/nav/site-order/pin/', js)
         self.assertIn('/api/nav/site-order/swap/', js)
         # 拖拽开关已移除

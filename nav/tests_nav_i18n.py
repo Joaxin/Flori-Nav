@@ -61,13 +61,17 @@ class NavI18nTests(TestCase):
         """访客批量条(本机导入区 + 动态弹层)不许再硬编码中文:词条在表里,按钮走 T()。"""
         dict_text = (NAV_DIR / 'static' / 'js' / 'nav-i18n.js').read_text(encoding='utf-8')
         batch_js = (NAV_DIR / 'static' / 'js' / 'nav-guest-batch.js').read_text(encoding='utf-8')
-        for key in ('隐藏分组', '恢复默认分组顺序', '移动 {n} 个书签', '已批量删除', '{n} 个书签'):
+        for key in ('隐藏分组', '恢复默认分组顺序', '已批量删除', '{n} 个书签',
+                    '已复制 {n} 条链接', '已移动到 {cat}', '已选 {n} 项'):
             self.assertIn("'" + key + "'", dict_text, '词条缺失: ' + key)
             self.assertIn(key, batch_js, '访客批量模块未使用该文案: ' + key)
         self.assertIn('window.NavI18n.t', batch_js)
-        self.assertIn('[data-bulk-act="open"]', batch_js, '多选判态必须走结构标记,不能依赖中文文案')
+        self.assertIn('data-bulk-act="open"', batch_js, '多选判态必须走结构标记,不能依赖中文文案')
 
         html = self.client.get(reverse('nav_guest')).content.decode('utf-8')
-        for key in ('退出多选', '打开选中', '已选 {n} 项'):
+        # 2026-11-27:条内文案改由 nav-guest-batch.js 画(与主人 #navMsBar 同形),
+        # 模板侧只剩进多选的入口与容器。
+        for key in ('退出多选', '打开', '已选 {n} 项'):
             self.assertIn("'" + key + "'", dict_text, '词条缺失: ' + key)
-            self.assertIn(key, html, '访客内联批量条未使用该文案: ' + key)
+        for token in ('多选', 'data-ngb-enter', 'navBulkBar'):
+            self.assertIn(token, html, '访客批量入口缺失: ' + token)

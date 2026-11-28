@@ -14,8 +14,9 @@
     var DAY_MS = 86400000;
     var PROBE_TIMEOUT = 7000;
 
-    var careModal = null;
-    var view = 'care';            // care | url
+    var viewsWrap = null;         // 三块内容容器,挂在体检篮页签 / 链接检测弹窗里
+    var linkModal = null;
+    var view = 'care';            // care | url | link
     var archiveFilter = '';
     var hygieneRows = [];         // {url, name, next, rules:[], conflict, checked}
     var hygieneScanned = false;
@@ -371,36 +372,49 @@
         } else { doApply(); }
     }
 
-    // ---------- 弹层 ----------
-    function ensureModal() {
-        if (careModal) return careModal;
-        /* 2026-11-25:与主人端「保养」统一为右侧抽屉 offcanvas-end nav-drawer(原来是自己写的居中 modal-lg) */
-        careModal = document.createElement('aside');
-        careModal.className = 'offcanvas offcanvas-end nav-drawer';
-        careModal.id = 'navGuestCareModal';
-        careModal.tabIndex = -1;
-        careModal.setAttribute('data-no-resize', '1');
-        careModal.innerHTML =
-            '<div class="offcanvas-header pb-1">' +
-            '<h5 class="offcanvas-title"><i class="fas fa-screwdriver-wrench me-2"></i>本机保养维护</h5>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button></div>' +
-            '<div class="offcanvas-body pt-1">' +
-            '<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">' +
-            '<button type="button" class="btn btn-sm btn-primary" id="ngcTabCare">保养分组</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngcTabUrl">URL 卫生</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngcTabLink">链接检测 / AI 提示词</button>' +
-            '<span class="small text-muted ms-auto">只读写本机书签,不经过服务器</span>' +
-            '</div>' +
+    // ---------- 视图容器(2026-11-27 对齐主人「体检篮」三页签) ----------
+    /* 主人把「保养 / URL 卫生」放在体检篮抽屉的第 2、3 个页签里,访客原来自己开了一个
+       「本机保养维护」抽屉(三颗散按钮),同一功能两个窗口、页签样式也不一样。
+       现在这里只出内容,壳子交给体检篮:mount(host, 'care'|'url') 挂进对应页签,
+       「链接检测 / AI 提示词」按主人做法单独一个 modal(菜单入口同名)。 */
+    function ensureViews() {
+        if (viewsWrap) return viewsWrap;
+        viewsWrap = document.createElement('div');
+        viewsWrap.className = 'ngc-views';
+        viewsWrap.innerHTML =
             '<div id="ngcCareView"></div>' +
             '<div id="ngcUrlView" class="d-none"></div>' +
-            '<div id="ngcLinkView" class="d-none"></div>' +
-            '</div>';
-        document.body.appendChild(careModal);
-        document.getElementById('ngcTabCare').addEventListener('click', function () { switchView('care'); });
-        document.getElementById('ngcTabUrl').addEventListener('click', function () { switchView('url'); });
-        document.getElementById('ngcTabLink').addEventListener('click', function () { switchView('link'); });
-        careModal.addEventListener('click', onCareClick);
-        return careModal;
+            '<div id="ngcLinkView" class="d-none"></div>';
+        viewsWrap.addEventListener('click', onCareClick);
+        return viewsWrap;
+    }
+    function mount(host, which) {
+        if (!host) return;
+        host.appendChild(ensureViews());
+        switchView(which === 'url' ? 'url' : 'care');
+    }
+    function openLinkModal() {
+        if (!linkModal) {
+            linkModal = document.createElement('div');
+            linkModal.className = 'modal fade';
+            linkModal.id = 'navGuestLinkModal';
+            linkModal.tabIndex = -1;
+            linkModal.setAttribute('data-no-resize', '1');
+            linkModal.innerHTML =
+                '<div class="modal-dialog modal-lg modal-dialog-centered">' +
+                '<div class="modal-content">' +
+                '<div class="modal-header">' +
+                '<h5 class="modal-title"><i class="fas fa-link me-2" style="color: var(--bs-primary);"></i>链接检测 / AI 提示词 ' +
+                '<small class="text-muted fw-normal fs-6">批量测活 · 复制提示词 · 粘贴回复预览后写本机</small></h5>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
+                '<div class="modal-body" id="ngcLinkHost"></div>' +
+                '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button></div>' +
+                '</div></div>';
+            document.body.appendChild(linkModal);
+        }
+        document.getElementById('ngcLinkHost').appendChild(ensureViews());
+        switchView('link');
+        bootstrap.Modal.getOrCreateInstance(linkModal).show();
     }
 
     function switchView(v) {
@@ -441,11 +455,7 @@
         }
     }
 
-    function openCare() {
-        ensureModal();
-        switchView('care');
-        bootstrap.Offcanvas.getOrCreateInstance(careModal).show();
-    }
+    // 保养视图统一由「体检篮」的「保养」页签承载(见 nav-guest-basket 的 switchTab)
 
     // ---------- 链接检测 / AI 提示词 / 粘贴导入 ----------
     function initLinkRows() {
@@ -511,7 +521,7 @@
         if (box) box.querySelectorAll('[data-ngc-prompt]').forEach(function (b) {
             var on = b.getAttribute('data-ngc-prompt') === mode;
             b.classList.toggle('btn-primary', on);
-            b.classList.toggle('btn-outline-secondary', !on);
+            b.classList.toggle('btn-outline-primary', !on);
         });
     }
     function copyPrompt() {
@@ -675,8 +685,15 @@
     // ---- 链接检测视图渲染 ----
     function linkViewShell() {
         return ''
-            + '<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">'
-            + '<button type="button" class="btn btn-sm btn-primary" id="ngcLinkRun">检测全部书签</button>'
+            + '<ul class="nav nav-tabs small mb-2" role="tablist">'
+            + '<li class="nav-item" role="presentation"><button class="nav-link py-1 px-2 active" id="ngcTabCheck" data-bs-toggle="tab" data-bs-target="#ngcCheckPane" type="button" role="tab">链接检测</button></li>'
+            + '<li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="ngcTabPrompt" data-bs-toggle="tab" data-bs-target="#ngcPromptPane" type="button" role="tab">AI 提示词</button></li>'
+            + '<li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="ngcTabImport" data-bs-toggle="tab" data-bs-target="#ngcImportPane" type="button" role="tab">粘贴导入</button></li>'
+            + '</ul>'
+            + '<div class="tab-content">'
+            + '<div class="tab-pane fade show active" id="ngcCheckPane" role="tabpanel">'
+            + '<div class="d-flex gap-2 mb-2 flex-wrap align-items-center">'
+            + '<button type="button" class="btn btn-sm btn-primary" id="ngcLinkRun"><i class="fas fa-heart-pulse me-1"></i>检测全部书签</button>'
             + '<span class="small text-muted">浏览器直连,只判能否连上;403/404 也可能算可连,不记状态码</span>'
             + '<div class="ms-auto d-flex gap-1 align-items-center flex-wrap">'
             + '<input type="search" id="ngcLinkSearch" class="form-control form-control-sm ngc-link-search" placeholder="筛名称 / 网址">'
@@ -687,28 +704,29 @@
             + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-link-filter="selected">只看勾选</button>'
             + '</div></div>'
             + '<div id="ngcLinkRows"></div>'
-            + '<hr class="my-3">'
-            + '<div class="ngc-section-title">复制提示词 + 选中站点清单(发给外部 AI 手动补全 / 修正)</div>'
-            + '<div class="btn-group mb-2" id="ngcPromptModes">'
-            + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-prompt="alt">找替代网址</button>'
-            + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-prompt="fix">修正网址</button>'
-            + '<button type="button" class="btn btn-sm btn-outline-secondary" data-ngc-prompt="info">补全信息</button>'
             + '</div>'
-            + '<textarea id="ngcPromptInput" class="form-control form-control-sm" rows="6"></textarea>'
-            + '<div class="mt-2 d-flex gap-2 align-items-center">'
-            + '<button type="button" class="btn btn-sm btn-primary" id="ngcPromptCopy">复制提示词与清单</button>'
-            + '<span class="small text-muted">文本框可手改;复制以当前内容为准</span></div>'
-            + '<hr class="my-3">'
-            + '<div class="ngc-section-title">粘贴 AI 回复,预览后应用到本机书签</div>'
-            + '<textarea id="ngcImportInput" class="form-control form-control-sm" rows="5" placeholder="粘贴 ```json 围栏或说明文字包裹的 JSON,也支持「原网址 -> 新网址」文本行"></textarea>'
-            + '<div class="mt-2 d-flex gap-2 flex-wrap align-items-center">'
-            + '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngcImportParse">解析预览</button>'
-            + '<label class="small"><input type="radio" name="ngcFillMode" id="ngcFillModeFill" checked> 仅补空字段</label>'
-            + '<label class="small"><input type="radio" name="ngcFillMode" id="ngcFillModeOverwrite"> 覆盖已有</label>'
-            + '<span class="small text-muted ms-auto">只处理勾选行;不删原书签、不新增重复条目</span></div>'
+            + '<div class="tab-pane fade" id="ngcPromptPane" role="tabpanel">'
+            + '<div class="d-flex gap-2 mb-2 flex-wrap">'
+            + '<button type="button" class="btn btn-sm btn-outline-primary" data-ngc-prompt="alt">找替代网址</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-primary" data-ngc-prompt="fix">修正网址</button>'
+            + '<button type="button" class="btn btn-sm btn-outline-primary" data-ngc-prompt="info">补全信息</button>'
+            + '<button type="button" class="btn btn-sm btn-primary ms-auto" id="ngcPromptCopy"><i class="fas fa-copy me-1"></i>复制提示词与清单</button>'
+            + '</div>'
+            + '<textarea id="ngcPromptInput" class="form-control font-monospace" rows="12" style="font-size:.78rem"></textarea>'
+            + '<div class="small text-muted mt-1">把清单发给任意 AI,再把整段回复粘回「粘贴导入」页签;提示词可直接在上方文本框里改。</div>'
+            + '</div>'
+            + '<div class="tab-pane fade" id="ngcImportPane" role="tabpanel">'
+            + '<textarea id="ngcImportInput" class="form-control font-monospace mb-2" rows="5" style="font-size:.78rem" placeholder="粘贴 AI 的整段回复(JSON 数组,或每行 原网址 -> 新网址)"></textarea>'
+            + '<div class="d-flex gap-2 mb-2 flex-wrap align-items-center">'
+            + '<button type="button" class="btn btn-sm btn-outline-primary" id="ngcImportParse"><i class="fas fa-clipboard-list me-1"></i>解析预览</button>'
+            + '<div class="form-check form-check-inline mb-0"><input class="form-check-input" type="radio" name="ngcFillMode" id="ngcFillModeFill" checked><label class="form-check-label small" for="ngcFillModeFill">仅补空字段</label></div>'
+            + '<div class="form-check form-check-inline mb-0"><input class="form-check-input" type="radio" name="ngcFillMode" id="ngcFillModeOverwrite"><label class="form-check-label small" for="ngcFillModeOverwrite">覆盖已有</label></div>'
+            + '<button type="button" class="btn btn-sm btn-primary ms-auto" id="ngcImportApply"><i class="fas fa-check me-1"></i>应用勾选改动</button>'
+            + '</div>'
             + '<div id="ngcImportRows" class="mt-2"></div>'
             + '<div id="ngcImportResult" class="small mt-1"></div>'
-            + '<div class="mt-2"><button type="button" class="btn btn-sm btn-primary" id="ngcImportApply">应用勾选改动</button></div>';
+            + '</div>'
+            + '</div>';
     }
     function wireLinkView() {
         document.getElementById('ngcLinkRun').addEventListener('click', runLinkCheck);
@@ -811,11 +829,19 @@
         });
     }
 
-    window.navGuestCare = { open: openCare };
+    window.navGuestCare = { mount: mount, openLink: openLinkModal };
 
     // ---------- 入口委托 ----------
+    /* 「保养维护(本机)」= 打开体检篮并切到「保养」页签(主人就是这个位置);
+       「链接检测 / AI 提示词」= 独立 modal,与主人同名入口同形态。 */
     document.addEventListener('click', function (ev) {
         var el = ev.target.closest('[data-nav-care]');
-        if (el) { ev.preventDefault(); openCare(); }
+        if (el) {
+            ev.preventDefault();
+            if (window.navGuestBasket && window.navGuestBasket.open) window.navGuestBasket.open('care');
+            return;
+        }
+        var lk = ev.target.closest('[data-nav-guest-link]');
+        if (lk) { ev.preventDefault(); openLinkModal(); }
     });
 })();

@@ -1050,14 +1050,114 @@ $(function() {
         try { const a = JSON.parse(localStorage.getItem(ENGINE_KEY) || '[]'); return Array.isArray(a) ? a : []; }
         catch (e) { return []; }
     }
+    const ENGINE_HIDDEN_KEY = 'navEngineHiddenV1';
+    const ENGINE_DEFAULTS_KEY = 'navEngineDefaultsV2';
+    // 2026-11-28:这几家默认收进「管理搜索引擎」,不占顶部下拉;用户勾选后可恢复。
+    const ENGINE_DEFAULT_HIDDEN = [
+        'https://duckduckgo.com/?q={query}',
+        'https://www.perplexity.ai/search?q={query}',
+        'https://www.sogou.com/web?query={query}',
+        'https://www.so.com/s?q={query}',
+        'https://quark.sm.cn/s?q={query}'
+    ];
+    function navEngineHiddenGet() {
+        let raw = null;
+        try { raw = localStorage.getItem(ENGINE_HIDDEN_KEY); } catch (e) { raw = null; }
+        if (raw === null) {
+            // 首次使用:默认把非高频引擎收起来,并落盘,之后用户勾选就按用户的来
+            navEngineHiddenSet(ENGINE_DEFAULT_HIDDEN);
+            localStorage.setItem(ENGINE_DEFAULTS_KEY, '1');
+            return ENGINE_DEFAULT_HIDDEN.slice();
+        }
+        let stored = [];
+        try {
+            const a = JSON.parse(raw);
+            stored = Array.isArray(a) ? a.filter(function (u) { return typeof u === 'string'; }) : [];
+        } catch (e) { stored = []; }
+        // 旧版本已经写过 navEngineHiddenV1(可能是空数组):一次性并入新的默认隐藏项
+        if (!localStorage.getItem(ENGINE_DEFAULTS_KEY)) {
+            const merged = stored.slice();
+            ENGINE_DEFAULT_HIDDEN.forEach(function (u) { if (merged.indexOf(u) < 0) merged.push(u); });
+            navEngineHiddenSet(merged);
+            localStorage.setItem(ENGINE_DEFAULTS_KEY, '1');
+            return merged;
+        }
+        return stored;
+    }
+    function navEngineHiddenSet(list) {
+        const uniq = [];
+        (list || []).forEach(function (u) { if (typeof u === 'string' && uniq.indexOf(u) < 0) uniq.push(u); });
+        localStorage.setItem(ENGINE_HIDDEN_KEY, JSON.stringify(uniq));
+    }
+    function navAllEngItems() {
+        return $('#navEngineMenu .dropdown-item[data-url]').toArray();
+    }
+    function navVisibleEngItems() {
+        return navAllEngItems().filter(function (el) { return !el.classList.contains('d-none'); });
+    }
+    function navEngineKeepOne(hidden) {
+        const all = navAllEngItems().map(function (el) { return String(el.dataset.url || ''); }).filter(Boolean);
+        const visible = all.filter(function (u) { return hidden.indexOf(u) < 0; });
+        if (all.length && !visible.length) return hidden.filter(function (u) { return u !== all[0]; });
+        return hidden;
+    }
+    function navEngineSelectFirstVisible() {
+        const items = navVisibleEngItems();
+        if (items.length) navEngineSelect(String(items[0].dataset.url || ''));
+    }
+    function navEngineEnsureSelection() {
+        const cur = String($engineSel.val() || '');
+        if (cur && navVisibleEngItems().some(function (el) { return el.dataset.url === cur; })) return;
+        navEngineSelectFirstVisible();
+    }
+    function renderEngManageList() {
+        const $list = $('#engCustomList').empty();
+        const all = navAllEngItems();
+        const hidden = navEngineHiddenGet();
+        if (!all.length) { $list.append('<div class="text-muted">暂无引擎</div>'); return; }
+        all.forEach(function (el) {
+            const url = String(el.dataset.url || '');
+            const name = String(el.dataset.name || url);
+            const custom = el.classList.contains('eng-custom');
+            const visible = hidden.indexOf(url) < 0;
+            const $row = $('<div class="d-flex align-items-center gap-2 py-1 border-bottom">');
+            const $cb = $('<input type="checkbox" class="form-check-input eng-visible">')
+                .attr('data-url', url).prop('checked', visible)
+                .prop('disabled', visible && navVisibleEngItems().length === 1);
+            $row.append($cb);
+            const $chip = $('<span class="eng-chip" aria-hidden="true">');
+            paintEngChip($chip[0], name);
+            $row.append($chip);
+            $row.append($('<span class="flex-grow-1 text-truncate">').text(name));
+            $row.append($('<span class="badge text-bg-light">').text(custom ? '自定义' : '内置'));
+            if (custom) {
+                $('<button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 eng-del">×</button>')
+                    .attr('data-url', url).appendTo($row);
+            }
+            $list.append($row);
+        });
+        const shown = all.length - hidden.filter(function (u) { return all.some(function (el) { return el.dataset.url === u; }); }).length;
+        $('#engVisibleHint').text('显示 ' + shown + ' / ' + all.length + '，至少保留一个');
+    }
+    function applyEngineVisibility() {
+        const before = navEngineHiddenGet();
+        let hidden = navEngineKeepOne(before);
+        if (hidden.length !== before.length) navEngineHiddenSet(hidden);
+        navAllEngItems().forEach(function (el) {
+            el.classList.toggle('d-none', hidden.indexOf(String(el.dataset.url || '')) >= 0);
+        });
+        renderEngManageList();
+    }
     function navEnginesSet(list) {
         localStorage.setItem(ENGINE_KEY, JSON.stringify(list));
         renderEngOptions();
-        renderEngList();
     }
     function renderEngOptions() {
-        const cur = $engineSel.val();
+        const cur = String($engineSel.val() || '');
         const $menu = $('#navEngineMenu');
+        $menu.find('.dropdown-item[data-url]').each(function() {
+            paintEngChip(this.querySelector('.eng-chip'), this.getAttribute('data-name'));
+        });
         $menu.find('.eng-custom').remove();
         // 自定义引擎插在「分隔线 + 添加搜索引擎」之前(2026-11-13):
         // 直接 append 会落到菜单最后一行「+ 添加搜索引擎」的下面,顺序看起来像内置项被截断
@@ -1065,47 +1165,68 @@ $(function() {
         navEnginesGet().forEach(function(en) {
             const $item = $('<button type="button" class="dropdown-item eng-custom">')
                 .attr('data-url', en.url).attr('data-name', en.name || en.url)
-                .text(en.name || en.url);
+                .append('<span class="eng-chip" aria-hidden="true"></span>')
+                .append($('<span>').text(en.name || en.url));
+            paintEngChip($item.find('.eng-chip')[0], en.name || en.url);
             if ($tail.length) $item.insertBefore($tail); else $item.appendTo($menu);
         });
-        navEngineSelect(cur);
+        applyEngineVisibility();
+        if (cur && navVisibleEngItems().some(function (el) { return el.dataset.url === cur; })) navEngineSelect(cur);
+        else navEngineEnsureSelection();
     }
-    function renderEngList() {
-        const $list = $('#engCustomList').empty();
-        const engines = navEnginesGet();
-        if (!engines.length) { $list.append('<div class="text-muted">暂无,添加后会出现在顶部下拉里</div>'); return; }
-        engines.forEach(function(en) {
-            const $row = $('<div class="d-flex align-items-center gap-2 py-1 border-bottom">');
-            $('<span class="flex-grow-1 text-truncate">').text((en.name || '') + '  ' + en.url).appendTo($row);
-            $('<button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 eng-del">×</button>')
-                .attr('data-url', en.url).appendTo($row);
-            $list.append($row);
-        });
+    // 引擎徽章(2026-11-27):每个引擎一颗首字母色块,内置四家用品牌色,
+    // 自定义引擎用域名首字母 + 中性灰。比给非 Google 的引擎硬套放大镜更好认,
+    // 也不依赖外网 favicon 服务(离线/被墙时不会变成破图)。
+    const NAV_ENG_BADGE = {
+        google: { t: 'G', bg: '#4285f4' },
+        bing: { t: 'B', bg: '#0c59a4' },
+        duckduckgo: { t: 'D', bg: '#de5833' },
+        '百度': { t: '百', bg: '#2932e1' },
+        baidu: { t: '百', bg: '#2932e1' },
+        perplexity: { t: 'P', bg: '#1fb8cd' },
+        '搜狗': { t: '搜', bg: '#ff6a00' },
+        sogou: { t: '搜', bg: '#ff6a00' },
+        '360 搜索': { t: '360', bg: '#1a9e57' },
+        '360': { t: '360', bg: '#1a9e57' },
+        '夸克': { t: '夸', bg: '#5a5cff' },
+        quark: { t: '夸', bg: '#5a5cff' },
+        yandex: { t: 'Я', bg: '#fc3f1d' },
+    };
+    function navEngBadge(name) {
+        const raw = String(name || '').trim();
+        const key = raw.toLowerCase();
+        const hit = NAV_ENG_BADGE[key] || NAV_ENG_BADGE[raw];
+        if (hit) return hit;
+        const first = (raw.match(/[A-Za-z0-9\u4e00-\u9fa5]/) || ['?'])[0];
+        const palette = ['#6b7280', '#0f766e', '#7c3aed', '#b45309', '#be123c', '#1d4ed8'];
+        let h = 0;
+        for (let i = 0; i < raw.length; i++) h = (h * 31 + raw.charCodeAt(i)) % palette.length;
+        return { t: first.toUpperCase(), bg: palette[h] };
     }
-    // 引擎图标:只有 Google 有可用的品牌字形,其余统一用放大镜 —— 名字由旁边的文字承担,
-    // 不给每个引擎硬凑一个不相干的图标(那正是「AI 随机配色」的同类问题)
-    const NAV_ENG_ICON = { google: 'fa-brands fa-google' };
-    function navEngineIcon(name) {
-        const key = String(name || '').trim().toLowerCase();
-        return NAV_ENG_ICON[key] || 'fas fa-magnifying-glass';
+    function paintEngChip(el, name) {
+        if (!el) return;
+        const b = navEngBadge(name);
+        el.textContent = b.t;
+        el.style.background = b.bg;
     }
     function navEngineSelect(v) {
         if (!v) return;
-        const $item = $('#navEngineMenu .dropdown-item').filter(function() { return this.dataset.url === v; }).first();
+        const $item = $('#navEngineMenu .dropdown-item').filter(function() {
+            return this.dataset.url === v && !this.classList.contains('d-none');
+        }).first();
         if (!$item.length) return;
         const engName = $item.attr('data-name') || $item.text();
         $engineSel.val(v);
         $('#navEngineLabel').text(engName);
-        $('#navEngineIcon').attr('class', 'nav-search__engico ' + navEngineIcon(engName));
+        paintEngChip(document.getElementById('navEngineIcon'), engName);
         $('#navEngineMenu .dropdown-item').removeClass('active');
         $item.addClass('active');
         localStorage.setItem('navSearchEngine', v);
     }
     renderEngOptions();
     navEngineSelect(localStorage.getItem('navSearchEngine'));
-    if (!$engineSel.val()) {   // 从没选过引擎(或存的已失效):回落第一个,否则搜索会打开空白标签页
-        const $first = $('#navEngineMenu .dropdown-item').first();
-        if ($first.length) navEngineSelect(String($first.attr('data-url') || ''));
+    if (!$engineSel.val()) {   // 从没选过引擎/存的已隐藏:回落第一个可见项,否则搜索会打开空白标签页
+        navEngineSelectFirstVisible();
     }
     $('#navEngineMenu').on('click', '.dropdown-item', function() {
         if (!this.dataset.url) return;   // 「+ 添加搜索引擎」是菜单最后一行,交给 modal,不参与引擎切换
@@ -1132,6 +1253,8 @@ $(function() {
         $err.addClass('d-none');
         const list = navEnginesGet();
         list.push({name: name, url: url});
+        // 同一个 URL 之前被隐藏过:添加后自动恢复显示
+        navEngineHiddenSet(navEngineHiddenGet().filter(function (u) { return u !== url; }));
         navEnginesSet(list);
         // navEngineSelect 同时写 hidden 值、按钮文字/图标与 localStorage;
         // 旧写法只写 $engineSel.val(url),左侧显示的仍是上一个引擎(误以为没添加成功)
@@ -1142,23 +1265,45 @@ $(function() {
     $('#engCustomList').on('click', '.eng-del', function() {
         const url = String($(this).data('url') || '');
         navEnginesSet(navEnginesGet().filter(function(en) { return en.url !== url; }));
+        navEngineHiddenSet(navEngineHiddenGet().filter(function (u) { return u !== url; }));
         if ($engineSel.val() === url) {
-            // hidden input 没有 selectedIndex;清掉后回落第一个可用引擎
+            // hidden input 没有 selectedIndex;清掉后回落第一个可见引擎
             $engineSel.val('');
             localStorage.removeItem('navSearchEngine');
-            const $first = $('#navEngineMenu .dropdown-item').first();
-            if ($first.length) navEngineSelect(String($first.attr('data-url') || ''));
+            navEngineEnsureSelection();
         }
+        renderEngManageList();
+    });
+    // 显示/隐藏:勾选=出现在顶部下拉,取消=只留管理清单。至少保留一个可见项。
+    $('#engCustomList').on('change', '.eng-visible', function() {
+        const url = String($(this).data('url') || '');
+        const checked = !!this.checked;
+        let hidden = navEngineHiddenGet();
+        if (!checked) {
+            if (navVisibleEngItems().length <= 1) {
+                this.checked = true;
+                showToast('至少保留一个搜索引擎');
+                return;
+            }
+            if (hidden.indexOf(url) < 0) hidden.push(url);
+        } else {
+            hidden = hidden.filter(function (u) { return u !== url; });
+        }
+        navEngineHiddenSet(hidden);
+        applyEngineVisibility();
+        navEngineEnsureSelection();
     });
     // ===== 搜索前缀 Bang(2026-11-10) =====
     // `/g 关键词`、`!bd 关键词` 直接按对应引擎搜,不用先点下拉。别名解析成"引擎名/URL 片段",
     // 不另存一份配置 —— 用户自定义的引擎名本身就能当别名用,再补几个英文缩写。
     const NAV_BANG_ALIAS = { g: 'google', bd: 'baidu', b: 'bing', ddg: 'duckduckgo',
+                             ppl: 'perplexity', sg: '搜狗', 360: '360 搜索', qk: '夸克',
+                             yd: 'yandex',
                              gh: 'github', yt: 'youtube', w: 'wikipedia' };
     function navBangResolve(alias) {
         const key = String(alias || '').toLowerCase();
         const guess = NAV_BANG_ALIAS[key] || key;
-        const items = $('#navEngineMenu .dropdown-item').toArray().map(function(el) {
+        const items = navVisibleEngItems().map(function(el) {
             return { name: String(el.dataset.name || '').toLowerCase(), url: String(el.dataset.url || '') };
         }).filter(function(it) { return it.url; });
         const hit = items.find(function(it) { return it.name === guess; })
@@ -1206,8 +1351,8 @@ $(function() {
         const q = $(this).val().trim();
         if (!q) return;
         navHistorySave(q);
-        $('#navEngineMenu .dropdown-item').map(function() { return this.getAttribute('data-url'); }).get()
-            .filter(Boolean).slice(0, 3).forEach(function(u) {   // 先滤掉「添加引擎」这类无 data-url 的项再取前三
+        navVisibleEngItems().map(function(el) { return el.getAttribute('data-url'); })
+            .filter(Boolean).slice(0, 3).forEach(function(u) {   // 只在可见引擎里取前三
             window.open(u.replace('{query}', encodeURIComponent(q)), '_blank', 'noopener');
         });
     });
@@ -1687,6 +1832,7 @@ $(function() {
 
     // ===== 选择图标(纯色文字/在线获取/本地上传):抓不到图标或想自定义时用 =====
     let ipCtx = null;   // {$form, mode:'text'|'online'|'local', text, color, size, url}
+    let ipExternal = null;   // 非表单调用方(访客编辑弹窗)传进来的 onPick 回调;有它就不写 .sf-form
     function ipShowPreview() {
         if (!ipCtx) return;
         if (ipCtx.mode === 'text') {
@@ -1699,7 +1845,8 @@ $(function() {
         }
     }
     function ipRenderOnline() {
-        const raw = ($('#ipOnlineUrl').val() || ipCtx.$form.find('.f-url').val() || '').trim();
+        const formUrl = ipCtx.$form && ipCtx.$form.length ? ipCtx.$form.find('.f-url').val() : '';
+        const raw = ($('#ipOnlineUrl').val() || formUrl || (ipCtx.urlFallback ? ipCtx.urlFallback() : '') || '').trim();
         let host = '';
         try { host = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw).hostname; } catch (e) { host = ''; }
         const $row = $('#ipOnlineRow').empty();
@@ -1716,21 +1863,36 @@ $(function() {
             $row.append($b);
         });
     }
-    $('#siteFormPanes').on('click', '.f-icon', function() {
-        ipCtx = { $form: $(this).closest('.sf-form'), mode: 'text', text: '', color: '#5850ec', size: 34, url: '' };
-        const saved = ipCtx.$form.data('iconPick');
-        if (saved && saved.mode === 'text') {
-            ipCtx.text = saved.text; ipCtx.color = saved.color; ipCtx.size = saved.size;
+    function ipOpen(seed, $form, onPick) {
+        ipExternal = typeof onPick === 'function' ? onPick : null;
+        ipCtx = { $form: $form || $(), mode: 'text', text: '', color: '#5850ec', size: 34, url: '' };
+        seed = seed || {};
+        if (seed.mode === 'url' && seed.url) {
+            ipCtx.url = seed.url;
         } else {
-            const name = ipCtx.$form.find('.f-name').val().trim() || ipCtx.$form.find('.f-url').val().trim();
-            ipCtx.text = sfDefaultIconText(name);
+            ipCtx.text = seed.text || sfDefaultIconText(seed.fallbackName || '');
+            if (seed.color) ipCtx.color = seed.color;
+            if (seed.size) ipCtx.size = seed.size;
         }
         $('#ipText').val(ipCtx.text); $('#ipSizeR').val(ipCtx.size); $('#ipSizeV').text(ipCtx.size);
         $('#ipColors .ip-color').removeClass('active');
         $('#ipColorCustom').val(ipCtx.color);
         $('#ipOnlineUrl').val('');
+        $('#ipModeGroup .btn').each(function() { $(this).toggleClass('active', this.getAttribute('data-ip-mode') === (ipCtx.url ? 'online' : 'text')); });
+        $('#ipPaneText').toggle(!ipCtx.url);
+        $('#ipPaneOnline').toggle(!!ipCtx.url);
+        $('#ipPaneLocal').hide();
         ipShowPreview();
         bootstrap.Modal.getOrCreateInstance(document.getElementById('iconPickerModal')).show();
+    }
+    // 2026-11-27:访客「添加/编辑本机书签」也复用这一个图标选择器。
+    // 访客那边没有 .sf-form,拿到结果自己写字段;有 onPick 时 ipOk 不碰主人表单。
+    window.navIconPickerOpen = function (seed, onPick) { ipOpen(seed || {}, $(), onPick); };
+    $('#siteFormPanes').on('click', '.f-icon', function() {
+        const $form = $(this).closest('.sf-form');
+        const saved = $form.data('iconPick');
+        const name = $form.find('.f-name').val().trim() || $form.find('.f-url').val().trim();
+        ipOpen(saved || { text: sfDefaultIconText(name) }, $form);
     });
     $('#ipModeGroup').on('click', '.btn', function() {
         ipCtx.mode = String($(this).data('ip-mode'));
@@ -1778,6 +1940,20 @@ $(function() {
     });
     $('#ipOk').on('click', function() {
         if (!ipCtx) return;
+        if (ipExternal) {
+            let pick;
+            if (ipCtx.mode === 'text') {
+                pick = { mode: 'text', text: ipCtx.text || 'Go', color: ipCtx.color, size: ipCtx.size };
+            } else {
+                if (!ipCtx.url) { showToast('先点选一个图标'); return; }
+                pick = { mode: 'url', url: ipCtx.url };
+            }
+            const cb = ipExternal;
+            ipExternal = null;
+            cb(pick);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('iconPickerModal')).hide();
+            return;
+        }
         if (ipCtx.mode === 'text') {
             ipCtx.$form.data('iconPick', { mode: 'text', text: ipCtx.text || 'Go', color: ipCtx.color, size: ipCtx.size });
             ipCtx.$form.find('.f-fav-custom').removeClass('d-none')

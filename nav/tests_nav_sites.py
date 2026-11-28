@@ -245,6 +245,12 @@ class NavSiteTests(TestCase):
         self.assertContains(response, 'id="engineModal"')
         self.assertContains(response, 'id="navEngineAdd"')
         self.assertContains(response, 'id="engAddBtn"')
+        # 2026-11-28:内置引擎扩到 12 家(含 Perplexity/搜狗/360/夸克),弹窗可逐项显示/隐藏
+        for name in ('Perplexity', '搜狗', '360 搜索', '夸克'):
+            self.assertContains(response, name)
+        eng_js = static_text('js/nav-sites.js')
+        for token in ('navEngineHiddenV1', 'eng-visible', '至少保留一个搜索引擎'):
+            self.assertIn(token, eng_js)
         # 配色统一:--nav-accent token、明暗双档色板、badge 跟色 class
         self.assertIn('--nav-accent', _css('css/nav-sites.css'))
         self.assertContains(response, 'data-accent-dark')
@@ -1173,12 +1179,34 @@ class NavFilterIndexTests(TestCase):
         self.assertIn('清空恢复不能靠 :visible 判断', html)
 
     def test_index_invalidation_checks_node_identity(self):
-        """失效校验必须身份比对:数量不变但节点被替换(删1增1/编辑换节点)时也要重建。"""
+        """失效校验必须身份比对:数量不变但节点被替换(删1增1/编辑换节点)时也要重建。
+
+        2026-11-27 起改为「元素 → 条目 Map + 所在行(parentElement)」双重比对:
+        同量同节点只是行内先后变了(排序),不能算失效,否则 originalIndex 会按新顺序重算,
+        「恢复默认顺序」就失效了;节点被换掉则 Map 查不到,照样重建。
+        """
         html = (self.client.get(reverse('nav_sites')).content.decode('utf-8')
                 + static_text('css/nav-sites.css') + static_text('js/nav-sites.js') + _stars_js())
         self.assertIn('const cur = document.querySelectorAll', html)
-        self.assertIn('navIdx.nodes[i] !== cur[i]', html)
-        self.assertIn('nodes: nodes}', html)  # 建索引时存身份指纹
+        self.assertIn('const it = navIdx.elItem.get(cur[i]);', html)
+        self.assertIn('if (!it || it.parent !== cur[i].parentElement) same = false;', html)
+        self.assertIn('elItem.set(this, item)', html)   # 建索引时存元素身份
+        self.assertIn('elItem: elItem}', html)
+
+    def test_site_sort_is_index_backed_not_quadratic(self):
+        """排序比较器只许读预建 Map,不许每次比较都全量查索引(2026-11-27 性能改造的守卫)。
+
+        背景:旧实现 navSortCards → navIdxItem → navFilterIndex()(全文档 querySelectorAll +
+        逐节点身份比对)+ items.find() 线性查找,1500 站一次整表排序 2.8 秒、2400 站 5.8 秒。
+        改造后:索引本身带 元素→条目 Map;顺序没变就零 DOM 操作;真要挪动只一次性 DocumentFragment。
+        """
+        html = self._page()
+        for frag in ('function navSortKeyMap()', 'return navFilterIndex().elItem;',
+                     'NAV_SORT_COLLATOR.compare(ia.name, ib.name)',
+                     'if (!changed) return;', 'this.appendChild(frag);'):
+            self.assertIn(frag, html)
+        seg = html[html.index('function navSortCards'):html.index('window.navApplySiteSort')]
+        self.assertNotIn('navFilterIndex()', seg)   # 比较器里不许再碰索引
 
     def test_diff_write_and_group_visibility(self):
         html = (self.client.get(reverse('nav_sites')).content.decode('utf-8')
@@ -1434,7 +1462,7 @@ class NavContextMenuContractTests(TestCase):
         self.assertIn(".site-edit", js)
         self.assertIn(".site-del", js)
         self.assertIn('navigator.clipboard', js)
-        self.assertIn("data-act=\"open\"", js)   # 打开链接:旧菜单有,新菜单不能漏
+        self.assertIn("item('open'", js)   # 打开链接:旧菜单有,新菜单不能漏
 
     def test_menu_is_keyboard_operable(self):
         js = static_text('js/card-menu.js')

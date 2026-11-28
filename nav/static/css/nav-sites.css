@@ -102,6 +102,11 @@
 }
 .nav-search__eng:hover { background: color-mix(in srgb, var(--bs-body-color) 7%, transparent); color: var(--bs-body-color); }
 .nav-search__engico { font-size: .95em; opacity: .8; }
+/* 引擎徽章(2026-11-27):下拉每一项与左上切换按钮共用一颗首字母色块 */
+.eng-chip { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px;
+    border-radius: var(--nav-r-sm); color: #fff; font-size: 11px; font-weight: 700; line-height: 1;
+    flex: 0 0 18px; letter-spacing: -.02em; text-transform: none; }
+.nav-search__engico.eng-chip { width: 16px; height: 16px; flex-basis: 16px; font-size: 10px; opacity: 1; }
 /* 引擎名:自定义引擎名可能很长,限宽省略,别把输入区挤没 */
 .nav-search__engname {
     max-width: 92px;
@@ -149,6 +154,8 @@
     left: 6px;
     top: calc(100% + 8px);
     min-width: 224px;
+    max-height: min(60vh, 520px);
+    overflow-y: auto;
     padding: 5px;
     border-radius: var(--nav-r-md);
 }
@@ -247,6 +254,9 @@
     .cheve { font-size: .72em; margin-right: .4em; color: var(--bs-secondary-color); transition: transform .15s ease; }
     .cheve.rot { transform: rotate(-90deg); }
     .is-collapsed > .cat-body { display: none; }
+    /* 二级/三级 body 常带 .row/.cat-body.row,会被后面的网格布局 display:grid 覆盖;
+       非搜索态下折叠必须真正收起(搜索态仍允许展开命中结果)。 */
+    .nav-hub:not(.searching) .is-collapsed > .cat-body { display: none !important; }
     .nav-hub.searching .cat-body { display: block; }
     .nav-hub.searching .cat-body.row { display: grid; }
     .nav-hub.searching .row.g-2:has(> [data-site-item]) { display: grid; }
@@ -2096,6 +2106,11 @@ body.bulk-mode .ms-sel {
 }
 .card-menu button i { width: 14px; text-align: center; opacity: .7; }
 .card-menu hr { margin: 4px 6px; opacity: .15; }
+.card-menu-title {
+    padding: 4px 10px 5px; font-size: calc(.78rem * var(--nav-fs, 1));
+    color: var(--bs-secondary-color); letter-spacing: .02em;
+}
+.card-menu button > i.fa-check { width: auto; margin-left: auto; opacity: .8; }
 .site-moved { outline: 2px solid var(--accent); outline-offset: 2px; transition: outline-color .3s; }
 
 /* 长网址显示(2026-11-12):默认单行截断,避免长 URL 把卡片撑成两行破版;
@@ -2373,6 +2388,58 @@ body.bulk-mode .ms-sel {
 }
 /* 弹窗内容区:圆角/内边距读共享变量,两端同一口径 */
 .modal-content { border-radius: var(--nav-modal-radius); }
+/* 「隐藏分组」是访客独有的数据能力(主人书签没有分组显隐),没有主人窗口可抄尺寸;
+   宽度按主人默认档 560 走,别让 uiMakeMovable 按内容把窗压成 200px 的小条(2026-11-27) */
+#ngbHiddenModal .modal-dialog { width: min(560px, 92vw) !important; }
+#ngbHiddenModal .modal-content { width: 100%; }
+
+/* 链接检测窗(主人/访客同一块壳):两端内容多少不同,但窗口必须同宽同高,
+   所以尺寸钉在这一条共用规则里,别在任一端再写尺寸补丁(2026-11-27) */
+#linkTestModal .modal-content {
+    width: 896px; max-width: 100%; height: 575px; box-sizing: border-box;
+}
+#linkTestModal .modal-body { overflow-y: auto; }
+/* 链接检测 / AI 提示词:主人 #navAiLinkModal 与访客 #navGuestLinkModal 同一块壳。
+   同宽 980、同 header/三页签/body/footer 结构;高度钉在同一档,内容多少只滚 body。 */
+#navAiLinkModal .modal-content,
+#navGuestLinkModal .modal-content {
+    width: 980px; max-width: 100%; height: min(741px, var(--nav-modal-max-h)); box-sizing: border-box;
+}
+#navAiLinkModal .modal-body,
+#navGuestLinkModal .modal-body { overflow-y: auto; }
+#navAiLinkModal .modal-dialog,
+#navGuestLinkModal .modal-dialog {
+    max-height: calc(100% - 24px); min-height: calc(100% - 32px);
+    display: flex; align-items: center;
+}
+
+/* AI 接口:主人 #petAiModal 与访客 #navGuestAiPanel 同一块壳,760 宽 + 同一高度档;
+   内容多时只滚 body,不再一边 465 一边 557。 */
+#petAiModal .modal-content,
+#navGuestAiPanel .modal-content {
+    height: min(557px, var(--nav-modal-max-h)); box-sizing: border-box;
+}
+#petAiModal .modal-body,
+#navGuestAiPanel .modal-body { overflow-y: auto; }
+
+/* 本机统计复用主人 .nav-foot 骨架;底壳高度两端同一档,
+   访客多出的统计行只在 body 内滚。 */
+#navFootPanel .nav-foot__box,
+#navGuestStatsModal .nav-foot__box {
+    height: min(563px, calc(100vh - 2rem)); box-sizing: border-box;
+}
+#navGuestStatsModal .nav-foot__box { display: flex; flex-direction: column; }
+#navGuestStatsModal .nav-foot__top { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+/* 手机端:两端同名壳一起跟随 390×844 的实测档,不做单端补丁。 */
+@media (max-width: 767.98px) {
+    #navAiLinkModal .modal-content,
+    #navGuestLinkModal .modal-content { height: min(837px, calc(100vh - 7px)); }
+    #petAiModal .modal-content,
+    #navGuestAiPanel .modal-content { height: min(789px, calc(100vh - 52px)); }
+    #navFootPanel .nav-foot__box,
+    #navGuestStatsModal .nav-foot__box { height: 424px; max-height: calc(100vh - 24px); }
+}
 .modal-body { padding: var(--nav-modal-pad); }
 /* AI 面板内层滚动页签(主人/访客 AI 弹窗共用) */
 .nav-ai-pane { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
@@ -2397,12 +2464,12 @@ body.bulk-mode .ms-sel {
 .nav-ai-classify-dialog { width: min(1140px, 92vw) !important; height: min(90vh, 900px); max-height: var(--nav-modal-max-h); }
 /* 2026-11-25:访客 AI 配置也走 modal 外壳后与主人同宽(原来手写浮层 440,肉身 500) */
 #petAiModal .modal-dialog, #navGuestAiPanel .modal-dialog { width: min(760px, 92vw) !important; }
-/* 访客弹窗内容比主人多一节"对话":限高让 body 自己滚,footer 按钮不再被挤成竖排两行 */
-#navGuestAiPanel .modal-dialog { display: flex; flex-direction: column; max-height: min(92vh, 860px); }
+/* AI 接口窗:两端内容行数不同,壳高钉在同一档,避免访客面板比主人矮 20px(2026-11-27) */
+#petAiModal .modal-content, #navGuestAiPanel .modal-content { min-height: 465px; }
+/* 2026-11-27:访客 AI 接口面板收成主人 #petAiModal 同序列(不再含对话区/footer),只留限高让 body 自己滚 */
+#navGuestAiPanel .modal-dialog { display: flex; flex-direction: column; max-height: calc(100% - 24px); }
 #navGuestAiPanel .modal-content { max-height: 100%; }
 #navGuestAiPanel .modal-body { overflow-y: auto; }
-#navGuestAiPanel .modal-footer { flex-wrap: nowrap; }
-#navGuestAiPanel .modal-footer > * { flex: 0 0 auto; white-space: nowrap; }
 #navGuestAiPanel .modal-footer > input { flex: 1 1 auto; }
 #petAiSaveBtn { min-width: 96px; }
 /* 高级项默认收起:弹窗本来就长,按任务模型/调用记录属于排查时才展开的东西 */
@@ -2417,7 +2484,7 @@ body.bulk-mode .ms-sel {
 .nav-ai-log-row .ok { color: var(--bs-success); }
 .nav-ai-log-row .bad { color: var(--bs-warning); }
 .nav-ai-log-row .msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#navAiClassifyModal .modal-content { height: 100%; max-height: 100%; display: flex; flex-direction: column; }
+.nav-ai-classify-dialog .modal-content { height: 100%; max-height: 100%; display: flex; flex-direction: column; }
 #navAiClassifyModal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .nac-tablewrap {
     max-height: 46vh; overflow: auto; scrollbar-gutter: stable;
@@ -3442,7 +3509,11 @@ html[data-bs-theme="light"] { color-scheme: light; }
 /* D1 添加站点表单(行结构由脚本流 SF_TPL 生成)兜底:三级分类、简介各独占整行;
    列宽归 SF_TPL,此处只做结构断行,不改字段取值与回填逻辑。 */
 #siteFormPanes .row.g-2 > .col-2:has(.f-subcat2),
-#siteFormPanes .row.g-2 > .col-4:has(.f-desc) { flex: 0 0 100%; max-width: 100%; }
+#siteFormPanes .row.g-2 > .col-4:has(.f-desc),
+/* 2026-11-27:访客添加表单跟随主人同一断行规则(三级 / 简介各占一行),否则同一套网格
+   在访客窗里挤成一行,弹窗比主人矮 100px、字段宽度也对不上 */
+#navGuestEditModal .row.g-2 > .col-2:has(.nge-sub2),
+#navGuestEditModal .row.g-2 > .col-4:has(.nge-desc) { flex: 0 0 100%; max-width: 100%; }
 
 /* D7 多选态:卡片操作簇让位,避免与右上角复选框挤在一起(M8);两端同一处理 */
 body.bulk-mode .site-card-box .site-star,

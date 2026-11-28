@@ -91,4 +91,9 @@ NAV_SEARCH_ENGINES = [
     {'name': 'Bing', 'url': 'https://www.bing.com/search?q={query}'},
     {'name': 'DuckDuckGo', 'url': 'https://duckduckgo.com/?q={query}'},
     {'name': '百度', 'url': 'https://www.baidu.com/s?wd={query}'},
+    {'name': 'Perplexity', 'url': 'https://www.perplexity.ai/search?q={query}'},
+    {'name': '搜狗', 'url': 'https://www.sogou.com/web?query={query}'},
+    {'name': '360 搜索', 'url': 'https://www.so.com/s?q={query}'},
+    {'name': '夸克', 'url': 'https://quark.sm.cn/s?q={query}'},
+    {'name': 'Yandex', 'url': 'https://yandex.com/search/?text={query}'},
 ]

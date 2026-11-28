@@ -18,6 +18,8 @@
     var FORMAT = 'pinsflora-nav-local';
     var VERSION = 1;
     var BIG_KEYS = {'navCustomBg': 1};   // 大对象必须走 IDB,不能塞回 localStorage
+    // WebDAV 配置带密码,不能进整包备份(游客端 WebDAV 备份也不该把凭据传到远端)
+    var SKIP_KEYS = {'navGuestWebdavV1': 1};
     // AI 配置键:采集时擦除 Key 类字段;恢复时缺 Key 保本机当前值。
     var AI_CFG_KEY = 'navGuestAiCfgV1';
     var SENSITIVE_FIELDS = ['apiKey', 'key', 'token'];
@@ -27,7 +29,7 @@
         try {
             for (var i = 0; i < localStorage.length; i++) {
                 var k = localStorage.key(i);
-                if (k && k.indexOf('nav') === 0) out.push(k);
+                if (k && k.indexOf('nav') === 0 && !SKIP_KEYS[k]) out.push(k);
             }
         } catch (e) { /* 隐私模式读不到:当作没有 */ }
         return out;

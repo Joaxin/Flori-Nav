@@ -37,11 +37,13 @@
     // 2026-11-25:访客端卡面 ✎/× 与主人端统一——不再有 navGuestCardBtnsV1 独立开关,
     // 显隐/常显直接走 nav-sites.js 的 #setCardActions / #setShowActions 两级偏好(同一套 CSS/JS)。
 
-    // ===== 书签编辑 / 新增 =====
-    var editModal = null, editOldUrl = '', editMode = 'local';
-    // 图标长度上限:外链按短串截断;data URI 是整段图片,给 100KB 上限,防止超大 data URI 塞爆本机存储
+    // ===== 书签编辑 / 新增:与主人 #addSiteModal 同一套多 tab 表单 =====
+    var editModal = null, editOldUrl = '', editMode = 'local', ngeSeq = 0;
+    var NGE_MAX = 20;
+    var AI_LINKS_KEY = 'navAiSuggestLinks';
     var FAV_URL_MAX = 500;
     var FAV_DATA_MAX = 100 * 1024;
+
     function ensureEditModal() {
         if (editModal) return editModal;
         editModal = document.createElement('div');
@@ -50,93 +52,337 @@
         editModal.tabIndex = -1;
         editModal.setAttribute('data-no-resize', '1');
         editModal.innerHTML =
-            '<div class="modal-dialog modal-lg">' +
-            '<div class="modal-content">' +
+            '<div class="modal-dialog modal-lg"><div class="modal-content">' +
             '<div class="modal-header"><h5 class="modal-title" id="ngeTitle">编辑本机书签</h5>' +
             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
             '<div class="modal-body">' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeName">名称 <span class="text-danger">*</span></label>' +
-            '<input id="ngeName" class="form-control form-control-sm" maxlength="80" placeholder="站点名称"></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeSiteTitle">页面标题(可空,≤80 字)</label>' +
-            '<input id="ngeSiteTitle" class="form-control form-control-sm" maxlength="80" placeholder="浏览器标签页标题,留空用名称"></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeUrl">网址 <span class="text-danger">*</span></label>' +
-            '<input id="ngeUrl" class="form-control form-control-sm font-monospace" placeholder="https://example.com"></div>' +
-            '<div class="mb-2 d-flex align-items-center gap-2 flex-wrap">' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngeFetchMeta" title="按网址抓取对方的页面标题、favicon 和简介">' +
-            '<i class="fas fa-wand-magic-sparkles me-1"></i>识别标题/图标</button>' +
-            '<span id="ngeFetchStatus" class="small text-muted"></span></div>' +
-            '<div class="row g-2 mb-2"><div class="col-6"><label class="small text-muted mb-0" for="ngeCat">大类</label>' +
-            '<input id="ngeCat" class="form-control form-control-sm" list="ngeCatList" placeholder="我的导入">' +
-            '<datalist id="ngeCatList"></datalist></div>' +
-            '<div class="col-6"><label class="small text-muted mb-0" for="ngeSub">二级分类(可空)</label>' +
-            '<input id="ngeSub" class="form-control form-control-sm" placeholder="如:视频"></div></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeTags">标签(逗号分隔,最多 8 个)</label>' +
-            '<input id="ngeTags" class="form-control form-control-sm" placeholder="免费, 开源, 需代理"></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngeDesc">简介(可空)</label>' +
-            '<textarea id="ngeDesc" class="form-control form-control-sm" rows="2" maxlength="200"></textarea></div>' +
-            '<div class="ng-meta-sep">子网页</div>' +
-            '<div id="ngeChildren" class="ng-meta-rows"></div>' +
-            '<div class="mb-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="ngeAddChild">+ 添加子网页</button></div>' +
-            '<div class="ng-meta-sep">备用网址</div>' +
-            '<div id="ngeAlts" class="ng-meta-rows"></div>' +
-            '<div class="mb-2"><button type="button" class="btn btn-sm btn-outline-secondary" id="ngeAddAlt">+ 添加备用网址</button></div>' +
-            '<div class="ng-meta-sep">自定义图标(可留空;留空用首字母色块)</div>' +
-            '<div class="row g-2 mb-2"><div class="col-7"><label class="small text-muted mb-0" for="ngeFavicon">图标链接 / data URI</label>' +
-            '<input id="ngeFavicon" class="form-control form-control-sm font-monospace" placeholder="https://example.com/icon.png 或 data:image/..."></div>' +
-            '<div class="col-5"><label class="small text-muted mb-0" for="ngeIconText">文字图标(≤2 字)</label>' +
-            '<input id="ngeIconText" class="form-control form-control-sm" maxlength="2" placeholder="如 A"></div></div>' +
-            '<div class="row g-2 mb-2"><div class="col-6"><label class="small text-muted mb-0" for="ngeIconColor">底色(可空)</label>' +
-            '<input id="ngeIconColor" class="form-control form-control-sm" placeholder="#5850ec"></div>' +
-            '<div class="col-6"><label class="small text-muted mb-0" for="ngeIconSize">字号 px(8–48,可空)</label>' +
-            '<input id="ngeIconSize" type="number" min="8" max="48" class="form-control form-control-sm" placeholder="10"></div></div>' +
-            '<div class="mb-2 d-flex align-items-center gap-2 flex-wrap">' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngeLocalize">尝试本地化图标</button>' +
-            '<span id="ngeLocStatus" class="small text-muted"></span></div>' +
-            '<div id="ngeErr" class="small text-danger mt-2"></div>' +
+            '<div class="d-flex align-items-end gap-1 mb-3">' +
+            '<ul class="nav nav-tabs small flex-nowrap sf-tabs" id="ngeTabs" role="tablist"></ul>' +
+            '<button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0" id="ngeAddTab" title="再加一个站点表单(批量添加，最多 20 个)"><i class="fas fa-plus"></i></button>' +
+            '<datalist id="ngeCatList"></datalist>' +
             '</div>' +
-            '<div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>' +
-            '<button type="button" class="btn btn-sm btn-primary nav-modal-primary" id="ngeSave">保存到本机</button></div>' +
-            '</div></div>';
+            '<div class="tab-content" id="ngePanes"></div>' +
+            '<div class="form-text small mt-1">「识别标题/图标」只回填名称与图标；简介旁的「抓取」只回填简介。</div>' +
+            '<div class="text-danger small mt-2" id="ngeErr"></div>' +
+            '</div>' +
+            '<div class="modal-footer flex-wrap gap-2">' +
+            '<div class="form-check form-switch me-auto mb-0">' +
+            '<input class="form-check-input" type="checkbox" id="ngeKeepOpen">' +
+            '<label class="form-check-label small" for="ngeKeepOpen">保存后继续添加</label></div>' +
+            '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>' +
+            '<button type="button" class="btn btn-primary" id="ngeSave">保存</button>' +
+            '</div></div></div>';
         document.body.appendChild(editModal);
         document.getElementById('ngeSave').addEventListener('click', saveEdit);
-        // 2026-11-24:游客端补「识别标题/图标」——主人端添加表单早有 .f-meta,游客只能手填;
-        // 这里走同一个 /api/nav/fetch-meta/(后端 _guard_public_url 已挡内网/非法 scheme)。
-        document.getElementById('ngeFetchMeta').addEventListener('click', function () {
-            var btn = this;
-            var st = document.getElementById('ngeFetchStatus');
-            var url = (document.getElementById('ngeUrl').value || '').trim();
-            if (!url) { st.textContent = '先填写网址'; return; }
-            var tok = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1] || '';
-            btn.disabled = true;
-            st.textContent = '识别中…';
-            fetch('/api/nav/fetch-meta/', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': tok },
-                body: JSON.stringify({ url: url })
-            }).then(function (r) {
-                return r.json().catch(function () { return {}; })
-                    .then(function (d) { return { ok: r.ok, d: d || {} }; });
-            }).then(function (res) {
-                if (!res.ok) throw new Error(res.d.message || '识别失败');
-                var nameEl = document.getElementById('ngeName');
-                var titleEl = document.getElementById('ngeSiteTitle');
-                var descEl = document.getElementById('ngeDesc');
-                var favEl = document.getElementById('ngeFavicon');
+        document.getElementById('ngeAddTab').addEventListener('click', function () { if (editOldUrl) return; addPane(); });
+        editModal.addEventListener('click', onPaneClick);
+        editModal.addEventListener('change', function (ev) {
+            if (!ev.target.classList.contains('nge-ai-links')) return;
+            var on = ev.target.checked;
+            try { localStorage.setItem(AI_LINKS_KEY, on ? '1' : '0'); } catch (e) {}
+            editModal.querySelectorAll('.nge-ai-links').forEach(function (el) { el.checked = on; });
+        });
+        return editModal;
+    }
+
+    function ngeFormHtml() {
+        return '<div class="sf-form">' +
+            '<div class="row g-2">' +
+            '<div class="col-6"><label class="form-label small mb-1">名称 <span class="text-danger">*</span></label>' +
+            '<input class="form-control form-control-sm nge-name" maxlength="100" placeholder="例如： DHL Express"></div>' +
+            '<div class="col-6"><label class="form-label small mb-1">网址 <span class="text-danger">*</span></label>' +
+            '<input class="form-control form-control-sm font-monospace nge-url" maxlength="300" placeholder="dhl.com(自动加 https://)"></div>' +
+            '</div>' +
+            '<div class="d-flex align-items-center gap-2 my-2 flex-wrap">' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary nge-meta" title="抓取对方首页的 title、favicon 和 description">' +
+            '<i class="fas fa-wand-magic-sparkles me-1"></i>识别标题/图标</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-primary nge-ai" title="按名称/网址让 AI 推荐分类、标签和图标文字；分类只从本机现有清单里挑">' +
+            '<i class="fas fa-robot me-1"></i>AI 推荐</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary nge-icon" title="选择图标:纯色文字 / 在线获取 / 本地上传">' +
+            '<i class="fas fa-image me-1"></i>选择图标</button>' +
+            '<label class="form-check form-check-inline small text-muted mb-0" title="勾上才让 AI 一起给子网页与备用网址；它只给确定存在的地址，不确定就留空">' +
+            '<input class="form-check-input nge-ai-links" type="checkbox"><span class="ms-1">顺带子网页/备用</span></label>' +
+            '<img class="site-fav nge-fav d-none" alt=""><span class="site-fav fav-letter nge-fav-custom d-none"></span>' +
+            '<span class="small text-muted nge-status"></span></div>' +
+            '<div class="row g-2 mb-2">' +
+            '<div class="col-6 col-md-3"><label class="form-label small mb-1">大类</label>' +
+            '<input class="form-control form-control-sm nge-cat" maxlength="50" list="ngeCatList" placeholder="输入新名称即新建"></div>' +
+            '<div class="col-6 col-md-3"><label class="form-label small mb-1">二级分类 <span class="text-muted">(可空)</span></label>' +
+            '<input class="form-control form-control-sm nge-sub" maxlength="24" placeholder="如:视频"></div>' +
+            '<div class="col-2"><label class="form-label small mb-1">三级 <span class="text-muted">(可选)</span></label>' +
+            '<input class="form-control form-control-sm nge-sub2" maxlength="24" placeholder="如:图生视频"></div>' +
+            '<div class="col-4"><label class="form-label small mb-1">简介 ' +
+            '<button type="button" class="btn btn-link btn-sm p-0 nge-fetch-desc" title="按网址抓取对方网站的 meta description">抓取</button></label>' +
+            '<input class="form-control form-control-sm nge-desc" maxlength="200" placeholder="一句话说明用途"></div>' +
+            '</div>' +
+            '<div class="mb-2"><label class="form-label small mb-1">标签 <span class="text-muted">(可选,逗号分隔,最多 8 个;点卡片上的标签可按标签筛选)</span></label>' +
+            '<input class="form-control form-control-sm nge-tags" maxlength="120" placeholder="如:免费,常用,推理"></div>' +
+            '<button type="button" class="btn btn-sm btn-link p-0 mb-1 nge-adv-toggle" aria-expanded="false">' +
+            '<i class="fas fa-chevron-down me-1"></i>高级选项(子网页 / 备用网址)</button>' +
+            '<div class="collapse nge-adv mb-1">' +
+            '<label class="form-label small mb-1">子网页 / 子站点 <span class="text-muted">(可选,点击卡片时弹窗选择)</span></label>' +
+            '<div class="nge-children"></div>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary mt-1 nge-add-child"><i class="fas fa-plus me-1"></i>添加子页</button>' +
+            '<label class="form-label small mb-1 mt-2 d-block">备用网址 / 镜像 <span class="text-muted">(可选,同一站点资源站/备份/新域名等,卡片弹窗可选)</span></label>' +
+            '<div class="nge-alts"></div>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary mt-1 nge-add-alt"><i class="fas fa-plus me-1"></i>添加备用网址</button>' +
+            '<input type="hidden" class="nge-title"><input type="hidden" class="nge-favicon">' +
+            '<input type="hidden" class="nge-icontext"><input type="hidden" class="nge-iconcolor"><input type="hidden" class="nge-iconsize">' +
+            '</div>' +
+            '<div class="text-danger small mt-1 nge-pane-err"></div>' +
+            '</div>';
+    }
+
+    function paneList() {
+        return editModal ? Array.prototype.slice.call(editModal.querySelectorAll('#ngePanes > .tab-pane')) : [];
+    }
+    function paneField(pane, cls) { return pane ? pane.querySelector('.' + cls) : null; }
+    function activePane() {
+        var list = paneList();
+        for (var i = 0; i < list.length; i++) if (list[i].classList.contains('active')) return list[i];
+        return list[0] || null;
+    }
+    function activatePane(pane) {
+        var panes = paneList();
+        panes.forEach(function (p) { p.classList.remove('show', 'active'); });
+        pane.classList.add('show', 'active');
+        editModal.querySelectorAll('#ngeTabs .nge-tab').forEach(function (btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-pane') === '#' + pane.id);
+        });
+        var first = pane.querySelector('input:not([type=hidden]), textarea');
+        if (first) first.focus();
+    }
+    function renumberTabs() {
+        editModal.querySelectorAll('#ngeTabs .nge-tab .sf-label').forEach(function (el, i) {
+            el.textContent = '站点 ' + (i + 1);
+        });
+    }
+    function addPane(src) {
+        if (paneList().length >= NGE_MAX) { toast('最多 20 个站点表单'); return null; }
+        ensureEditModal();
+        var id = 'ngePane' + (++ngeSeq);
+        var li = document.createElement('li');
+        li.className = 'nav-item';
+        li.setAttribute('role', 'presentation');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'nav-link py-1 px-2 d-flex align-items-center gap-1 nge-tab';
+        btn.setAttribute('data-pane', '#' + id);
+        var label = document.createElement('span');
+        label.className = 'sf-label text-nowrap';
+        label.textContent = '站点';
+        var x = document.createElement('span');
+        x.className = 'sf-x text-muted nge-tab-x';
+        x.style.cssText = 'cursor:pointer;padding:0 2px';
+        x.title = '关闭此表单';
+        x.textContent = '×';
+        btn.appendChild(label); btn.appendChild(x);
+        li.appendChild(btn);
+        editModal.querySelector('#ngeTabs').appendChild(li);
+        var pane = document.createElement('div');
+        pane.className = 'tab-pane fade';
+        pane.id = id;
+        pane.setAttribute('role', 'tabpanel');
+        pane.innerHTML = ngeFormHtml();
+        editModal.querySelector('#ngePanes').appendChild(pane);
+        try { pane.querySelector('.nge-ai-links').checked = localStorage.getItem(AI_LINKS_KEY) === '1'; } catch (e) {}
+        fillPane(pane, src || {});
+        renumberTabs();
+        activatePane(pane);
+        return pane;
+    }
+    function removePane(pane) {
+        if (paneList().length <= 1) { toast('至少保留一个表单'); return; }
+        var btn = editModal.querySelector('#ngeTabs .nge-tab[data-pane="#' + pane.id + '"]');
+        if (btn && btn.parentNode) btn.parentNode.remove();
+        pane.remove();
+        renumberTabs();
+        var rest = paneList();
+        if (rest.length) activatePane(rest[0]);
+    }
+    function onPaneClick(ev) {
+        var tab = ev.target.closest('.nge-tab');
+        if (tab) {
+            if (ev.target.closest('.nge-tab-x')) {
+                var p0 = editModal.querySelector(tab.getAttribute('data-pane'));
+                if (p0) removePane(p0);
+                return;
+            }
+            var p1 = editModal.querySelector(tab.getAttribute('data-pane'));
+            if (p1) activatePane(p1);
+            return;
+        }
+        var pane = ev.target.closest('.tab-pane');
+        if (!pane) return;
+        if (ev.target.closest('.nge-adv-toggle')) {
+            setAdv(pane, !pane.querySelector('.nge-adv').classList.contains('show'));
+            return;
+        }
+        if (ev.target.closest('.nge-add-child')) { addLinkRow(pane.querySelector('.nge-children'), 'child', null); return; }
+        if (ev.target.closest('.nge-add-alt')) { addLinkRow(pane.querySelector('.nge-alts'), 'alt', null); return; }
+        if (ev.target.closest('.nge-meta')) { fetchMeta(pane, 'all'); return; }
+        if (ev.target.closest('.nge-fetch-desc')) { fetchMeta(pane, 'desc'); return; }
+        if (ev.target.closest('.nge-ai')) { aiSuggest(pane); return; }
+        if (ev.target.closest('.nge-icon')) { pickIcon(pane); return; }
+    }
+
+    function setAdv(pane, on) {
+        var box = pane.querySelector('.nge-adv');
+        if (!box) return;
+        box.classList.toggle('show', !!on);
+        var btn = pane.querySelector('.nge-adv-toggle');
+        if (!btn) return;
+        btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+        var ic = btn.querySelector('i');
+        if (ic) ic.className = 'fas fa-chevron-' + (on ? 'up' : 'down') + ' me-1';
+    }
+
+    function paintFav(pane) {
+        var img = pane.querySelector('.nge-fav');
+        var letter = pane.querySelector('.nge-fav-custom');
+        if (!img || !letter) return;
+        var fav = paneField(pane, 'nge-favicon').value.trim();
+        var text = paneField(pane, 'nge-icontext').value.trim();
+        img.classList.add('d-none');
+        letter.classList.add('d-none');
+        if (fav) {
+            img.src = fav;
+            img.classList.remove('d-none');
+        } else if (text) {
+            letter.textContent = text;
+            letter.style.background = paneField(pane, 'nge-iconcolor').value.trim() || '#5850ec';
+            letter.style.setProperty('--fav-fs', '10px');
+            letter.classList.remove('d-none');
+        }
+    }
+
+    function setStatus(pane, msg) {
+        var st = paneField(pane, 'nge-status');
+        if (st) st.textContent = msg || '';
+    }
+
+    function fetchMeta(pane, mode) {
+        var urlEl = paneField(pane, 'nge-url');
+        var status = paneField(pane, 'nge-status');
+        var url = (urlEl.value || '').trim();
+        if (!url) { status.textContent = '先填写网址'; return; }
+        var btn = pane.querySelector(mode === 'desc' ? '.nge-fetch-desc' : '.nge-meta');
+        var tok = (document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/) || [])[1] || '';
+        if (btn) btn.disabled = true;
+        status.textContent = mode === 'desc' ? '抓取简介中…' : '识别中…';
+        fetch('/api/nav/fetch-meta/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': tok },
+            body: JSON.stringify({ url: url })
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; })
+                .then(function (d) { return { ok: r.ok, d: d || {} }; });
+        }).then(function (res) {
+            if (!res.ok) throw new Error(res.d.message || '识别失败');
+            var nameEl = paneField(pane, 'nge-name');
+            var descEl = paneField(pane, 'nge-desc');
+            var favEl = paneField(pane, 'nge-favicon');
+            var titleEl = paneField(pane, 'nge-title');
+            if (mode === 'desc') {
+                if (res.d.description) descEl.value = res.d.description.slice(0, 200);
+                status.textContent = res.d.description ? '简介已抓取,可修改' : '没解析到简介,可手动填写';
+            } else {
                 if (res.d.title && !nameEl.value.trim()) nameEl.value = res.d.title.slice(0, 80);
                 if (res.d.title && !titleEl.value.trim()) titleEl.value = res.d.title.slice(0, 80);
                 if (res.d.description && !descEl.value.trim()) descEl.value = res.d.description.slice(0, 200);
                 if (res.d.favicon && !favEl.value.trim()) favEl.value = res.d.favicon;
-                st.textContent = (res.d.title || res.d.favicon || res.d.description)
+                paintFav(pane);
+                status.textContent = (res.d.title || res.d.favicon || res.d.description)
                     ? '已识别,可修改' : '没解析到标题/图标/简介,可手动填写';
-            }).catch(function (err) {
-                st.textContent = (err && err.message) || '识别失败,可手动填写';
-            }).finally(function () { btn.disabled = false; });
+            }
+        }).catch(function (err) {
+            status.textContent = (err && err.message) || '识别失败,可手动填写';
+        }).then(function () { if (btn) btn.disabled = false; });
+    }
+
+    function aiSuggest(pane) {
+        var st = paneField(pane, 'nge-status');
+        var name = paneField(pane, 'nge-name').value;
+        var url = paneField(pane, 'nge-url').value;
+        var desc = paneField(pane, 'nge-desc').value;
+        var wantLinks = !!pane.querySelector('.nge-ai-links').checked;
+        if (!window.navGuestAi || !window.navGuestAi.suggest) { st.textContent = 'AI 模块还没加载'; return; }
+        if (!(name || url).trim()) { st.textContent = '先填名称或网址'; return; }
+        var btn = pane.querySelector('.nge-ai');
+        btn.disabled = true;
+        st.textContent = 'AI 推荐中…';
+        window.navGuestAi.suggest({ name: name, url: url, description: desc, links: wantLinks }).then(function (sug) {
+            var notes = [];
+            if (sug.category) { paneField(pane, 'nge-cat').value = sug.category; notes.push('分类'); }
+            var parts = splitSubParts(sug.subcat || '');
+            if (parts[0]) { paneField(pane, 'nge-sub').value = parts[0]; notes.push('小分类'); }
+            if (parts[1]) paneField(pane, 'nge-sub2').value = parts[1];
+            if (sug.tags && sug.tags.length) {
+                var tagsEl = paneField(pane, 'nge-tags');
+                var cur = (tagsEl.value || '').split(/[,，]/).map(function (x) { return x.trim(); }).filter(Boolean);
+                var merged = cur.concat(sug.tags.filter(function (t) { return cur.indexOf(t) < 0; })).slice(0, 8);
+                tagsEl.value = merged.join(',');
+                notes.push('标签');
+            }
+            if (sug.icon_text) {
+                paneField(pane, 'nge-icontext').value = sug.icon_text;
+                paneField(pane, 'nge-favicon').value = '';
+                paintFav(pane);
+                notes.push('图标 ' + sug.icon_text);
+            }
+            if (wantLinks && sug.children && sug.children.length) {
+                var box = pane.querySelector('.nge-children');
+                sug.children.forEach(function (c) { addLinkRow(box, 'child', c); });
+                notes.push('子网页 ' + sug.children.length);
+            }
+            if (wantLinks && sug.alternates && sug.alternates.length) {
+                var abox = pane.querySelector('.nge-alts');
+                sug.alternates.forEach(function (a) { addLinkRow(abox, 'alt', a); });
+                notes.push('备用 ' + sug.alternates.length);
+            }
+            if (wantLinks && ((sug.children && sug.children.length) || (sug.alternates && sug.alternates.length))) {
+                setAdv(pane, true);
+            }
+            st.textContent = notes.length ? 'AI 已填：' + notes.join(' / ') : 'AI 没给出建议';
+        }).catch(function (err) {
+            var msg = (err && err.message) || 'AI 推荐失败';
+            if (err && err.kind === 'config') msg = '还没填 AI 接口：菜单 → AI 接口，填好地址和模型';
+            st.textContent = '✗ ' + msg;
+        }).then(function () { btn.disabled = false; });
+    }
+
+    function pickIcon(pane) {
+        if (!window.navIconPickerOpen) { toast('图标选择器还没加载'); return; }
+        var url = (paneField(pane, 'nge-url').value || '').trim();
+        var name = (paneField(pane, 'nge-name').value || '').trim();
+        var textVal = paneField(pane, 'nge-icontext').value.trim();
+        var colorVal = paneField(pane, 'nge-iconcolor').value.trim();
+        var sizeVal = parseInt(paneField(pane, 'nge-iconsize').value, 10);
+        var fav = paneField(pane, 'nge-favicon').value.trim();
+        window.navIconPickerOpen({
+            text: textVal,
+            color: /^#[0-9a-fA-F]{6}$/.test(colorVal) ? colorVal : '#5850ec',
+            size: (sizeVal >= 8 && sizeVal <= 48) ? sizeVal : 34,
+            url: /^https?:\/\//i.test(fav) ? fav : '',
+            fallbackName: name || url
+        }, function (pick) {
+            if (pick.mode === 'text') {
+                paneField(pane, 'nge-icontext').value = pick.text || '';
+                paneField(pane, 'nge-iconcolor').value = pick.color || '';
+                paneField(pane, 'nge-iconsize').value = pick.size || '';
+                paneField(pane, 'nge-favicon').value = '';
+            } else {
+                paneField(pane, 'nge-favicon').value = pick.url || '';
+                paneField(pane, 'nge-icontext').value = '';
+            }
+            paintFav(pane);
         });
-        document.getElementById('ngeAddChild').addEventListener('click', function () { addLinkRow('ngeChildren', 'child', null); });
-        document.getElementById('ngeAddAlt').addEventListener('click', function () { addLinkRow('ngeAlts', 'alt', null); });
-        document.getElementById('ngeLocalize').addEventListener('click', localizeCurrent);
-        return editModal;
+    }
+
+    function splitSubParts(v) {
+        var parts = String(v == null ? '' : v).split(/\s*\/\s*|\s*>\s*/).filter(Boolean);
+        return [parts[0] || '', parts[1] || ''];
     }
     function linkRow(kind, data) {
         var row = document.createElement('div');
@@ -165,17 +411,11 @@
         row.appendChild(name); row.appendChild(url); row.appendChild(desc); row.appendChild(del);
         return row;
     }
-    function addLinkRow(boxId, kind, data) {
-        var box = document.getElementById(boxId);
+    function addLinkRow(box, kind, data) {
         if (box) box.appendChild(linkRow(kind, data || {}));
     }
-    function clearLinkRows(boxId) {
-        var box = document.getElementById(boxId);
-        if (box) box.innerHTML = '';
-    }
-    // 收集一组链接:整行留空跳过;填了内容就必须有合法 http/https 网址
-    function collectLinks(kind, boxId, err) {
-        var box = document.getElementById(boxId);
+    function clearLinkRows(box) { if (box) box.innerHTML = ''; }
+    function collectLinks(kind, box) {
         var rows = box ? box.querySelectorAll('.nge-link-row') : [];
         var out = [];
         for (var i = 0; i < rows.length; i++) {
@@ -184,21 +424,20 @@
             var rawUrl = inputs[1].value.trim();
             var desc = inputs[2].value.trim();
             if (!name && !rawUrl && !desc) continue;
-            if (!rawUrl) { err.textContent = '第 ' + (i + 1) + ' 条链接缺少网址'; return null; }
+            if (!rawUrl) return { error: '第 ' + (i + 1) + ' 条链接缺少网址' };
             var url = /^https?:\/\//i.test(rawUrl) ? rawUrl : 'https://' + rawUrl;
             var parsed = null;
             try { parsed = new URL(url); } catch (e) { parsed = null; }
             if (!parsed || !/^https?:$/.test(parsed.protocol) || !parsed.hostname) {
-                err.textContent = '第 ' + (i + 1) + ' 条链接网址无效,需要 http/https'; return null;
+                return { error: '第 ' + (i + 1) + ' 条链接网址无效,需要 http/https' };
             }
             var item = { url: parsed.href, description: desc.slice(0, 200) };
             if (kind === 'child') item.name = (name || parsed.hostname).slice(0, 80);
             else item.name = name.slice(0, 80);
             out.push(item);
         }
-        return out;
+        return { list: out };
     }
-    // 图标字段清洗:空串回退字母图标;外链限长;data URI 只收图片且限 100KB
     function cleanFaviconInput(v) {
         var s = String(v == null ? '' : v).trim();
         if (!s) return { value: '', error: '' };
@@ -224,7 +463,6 @@
         if (!list) return;
         list.innerHTML = '';
         var names = (window.navGuestLocal.categories() || []).slice();
-        // 快照分类也进候选:访客可在同一位置新建到某个快照分类
         document.querySelectorAll('#navGroups > .nav-cat[data-collapse-id]').forEach(function (el) {
             var c = el.getAttribute('data-collapse-id') || '';
             if (c && names.indexOf(c) < 0) names.push(c);
@@ -233,6 +471,29 @@
             var o = document.createElement('option'); o.value = c; list.appendChild(o);
         });
     }
+    function fillPane(pane, src) {
+        paneField(pane, 'nge-name').value = src.name || '';
+        paneField(pane, 'nge-url').value = src.url || '';
+        paneField(pane, 'nge-cat').value = src.category || '';
+        var parts = splitSubParts(src.subcat || '');
+        paneField(pane, 'nge-sub').value = parts[0];
+        paneField(pane, 'nge-sub2').value = parts[1];
+        paneField(pane, 'nge-tags').value = src.tags ? (Array.isArray(src.tags) ? src.tags.join(', ') : String(src.tags)) : '';
+        paneField(pane, 'nge-desc').value = src.description || '';
+        paneField(pane, 'nge-title').value = src.siteTitle || '';
+        paneField(pane, 'nge-favicon').value = src.favicon || '';
+        paneField(pane, 'nge-icontext').value = src.iconText || '';
+        paneField(pane, 'nge-iconcolor').value = src.iconColor || '';
+        paneField(pane, 'nge-iconsize').value = src.iconSize || '';
+        clearLinkRows(pane.querySelector('.nge-children'));
+        clearLinkRows(pane.querySelector('.nge-alts'));
+        (src.children || []).forEach(function (c) { addLinkRow(pane.querySelector('.nge-children'), 'child', c); });
+        (src.alternates || []).forEach(function (a) { addLinkRow(pane.querySelector('.nge-alts'), 'alt', a); });
+        setStatus(pane, '');
+        pane.querySelector('.nge-pane-err').textContent = '';
+        setAdv(pane, (src.children && src.children.length) || (src.alternates && src.alternates.length));
+        paintFav(pane);
+    }
     function openEdit(url, opts) {
         ensureEditModal();
         opts = opts || {};
@@ -240,98 +501,129 @@
         editMode = snapshot ? 'snapshot' : 'local';
         editOldUrl = url || '';
         fillCats();
+        editModal.querySelector('#ngePanes').innerHTML = '';
+        editModal.querySelector('#ngeTabs').innerHTML = '';
+        document.getElementById('ngeKeepOpen').checked = false;
+        document.getElementById('ngeErr').textContent = '';
         var it = snapshot ? null : (url ? window.navGuestLocal.find(url) : null);
         var src = snapshot ? (opts.data || {}) : (it || {});
+        if (!snapshot && !url && opts.category) src = Object.assign({}, src, { category: opts.category });
         document.getElementById('ngeTitle').textContent = snapshot
             ? '编辑访客视图（只存本机）'
             : (it ? '编辑本机书签' : '添加本机书签');
-        document.getElementById('ngeName').value = src.name || '';
-        document.getElementById('ngeSiteTitle').value = src.siteTitle || '';
-        document.getElementById('ngeUrl').value = src.url || '';
-        document.getElementById('ngeCat').value = src.category || (snapshot ? '' : '我的导入');
-        document.getElementById('ngeSub').value = src.subcat || '';
-        document.getElementById('ngeTags').value = src.tags ? (Array.isArray(src.tags) ? src.tags.join(', ') : String(src.tags)) : '';
-        document.getElementById('ngeDesc').value = src.description || '';
-        clearLinkRows('ngeChildren');
-        clearLinkRows('ngeAlts');
-        (src.children || []).forEach(function (c) { addLinkRow('ngeChildren', 'child', c); });
-        (src.alternates || []).forEach(function (a) { addLinkRow('ngeAlts', 'alt', a); });
-        document.getElementById('ngeFavicon').value = src.favicon || '';
-        document.getElementById('ngeIconText').value = src.iconText || '';
-        document.getElementById('ngeIconColor').value = src.iconColor || '';
-        document.getElementById('ngeIconSize').value = src.iconSize || '';
-        document.getElementById('ngeErr').textContent = '';
-        var locStatus = document.getElementById('ngeLocStatus');
-        if (locStatus) locStatus.textContent = '';
-        var locBtn = document.getElementById('ngeLocalize');
-        if (locBtn) locBtn.disabled = false;
+        addPane(src);
         bootstrap.Modal.getOrCreateInstance(editModal).show();
     }
     window.navGuestEdit = openEdit;
 
-    function saveEdit() {
-        var name = document.getElementById('ngeName').value.trim();
-        var rawUrl = document.getElementById('ngeUrl').value.trim();
-        var cat = document.getElementById('ngeCat').value.trim() || '我的导入';
-        var sub = document.getElementById('ngeSub').value.trim();
-        var tags = document.getElementById('ngeTags').value;
-        var desc = document.getElementById('ngeDesc').value.trim();
-        var siteTitle = document.getElementById('ngeSiteTitle').value.trim().slice(0, 80);
-        var err = document.getElementById('ngeErr');
-        if (!rawUrl) { err.textContent = '网址不能为空'; return; }
+    function collectPane(pane, requireUrl) {
+        var name = paneField(pane, 'nge-name').value.trim();
+        var rawUrl = paneField(pane, 'nge-url').value.trim();
+        var cat = paneField(pane, 'nge-cat').value.trim() || '我的导入';
+        var sub = paneField(pane, 'nge-sub').value.trim();
+        var sub2 = paneField(pane, 'nge-sub2').value.trim();
+        var tags = paneField(pane, 'nge-tags').value;
+        var desc = paneField(pane, 'nge-desc').value.trim();
+        var siteTitle = paneField(pane, 'nge-title').value.trim().slice(0, 80);
+        if (!rawUrl) {
+            if (!requireUrl && !name && !desc && !tags.trim() && !sub && !sub2 &&
+                !pane.querySelector('.nge-children .nge-link-row') && !pane.querySelector('.nge-alts .nge-link-row')) {
+                return { empty: true };
+            }
+            return { error: '网址不能为空' };
+        }
         var url = /^https?:\/\//i.test(rawUrl) ? rawUrl : 'https://' + rawUrl;
         var parsed = null;
         try {
             parsed = new URL(url);
             if (!/^https?:$/.test(parsed.protocol) || !parsed.hostname) throw new Error('bad');
-        } catch (e) { err.textContent = '网址无效,需要 http/https 链接'; return; }
-        var children = collectLinks('child', 'ngeChildren', err);
-        if (children === null) return;
-        var alternates = collectLinks('alt', 'ngeAlts', err);
-        if (alternates === null) return;
-        var fav = cleanFaviconInput(document.getElementById('ngeFavicon').value);
-        if (fav.error) { err.textContent = fav.error; return; }
-        var iconText = document.getElementById('ngeIconText').value.trim().slice(0, 2);
-        var iconColor = cleanColorInput(document.getElementById('ngeIconColor').value);
-        var sizeRaw = document.getElementById('ngeIconSize').value.trim();
+        } catch (e) { return { error: '网址无效,需要 http/https 链接' }; }
+        var children = collectLinks('child', pane.querySelector('.nge-children'));
+        if (children.error) return { error: children.error };
+        var alternates = collectLinks('alt', pane.querySelector('.nge-alts'));
+        if (alternates.error) return { error: alternates.error };
+        var fav = cleanFaviconInput(paneField(pane, 'nge-favicon').value);
+        if (fav.error) return { error: fav.error };
+        var iconText = paneField(pane, 'nge-icontext').value.trim().slice(0, 2);
+        var iconColor = cleanColorInput(paneField(pane, 'nge-iconcolor').value);
+        var sizeRaw = paneField(pane, 'nge-iconsize').value.trim();
         var iconSize = 0;
         if (sizeRaw) {
             var sz = Number(sizeRaw);
-            if (!(sz >= 8 && sz <= 48)) { err.textContent = '图标字号需在 8–48 px 之间'; return; }
+            if (!(sz >= 8 && sz <= 48)) return { error: '图标字号需在 8–48 px 之间' };
             iconSize = Math.floor(sz);
         }
         name = name || parsed.hostname;
-        var payload = {
-            name: name, url: url, category: cat, subcat: sub, description: desc, tags: tags,
-            siteTitle: siteTitle,
-            children: children, alternates: alternates,
-            favicon: fav.value, iconText: iconText, iconColor: iconColor, iconSize: iconSize
+        return {
+            payload: {
+                name: name, url: url, category: cat,
+                subcat: sub && sub2 ? (sub + ' / ' + sub2) : (sub2 || sub),
+                description: desc, tags: tags, siteTitle: siteTitle,
+                children: children.list, alternates: alternates.list,
+                favicon: fav.value, iconText: iconText, iconColor: iconColor, iconSize: iconSize
+            }
         };
+    }
+
+    function saveEdit() {
+        var err = document.getElementById('ngeErr');
+        err.textContent = '';
+        var panes = paneList();
         var btn = document.getElementById('ngeSave');
-        btn.disabled = true;
         var snapshot = editMode === 'snapshot';
-        var task = snapshot
-            ? window.navGuestLocal.updateSnapshot(editOldUrl, payload)
-            : (editOldUrl ? window.navGuestLocal.patch(editOldUrl, payload) : window.navGuestLocal.addSites([payload]));
-        Promise.resolve(task).then(function (res) {
+        btn.disabled = true;
+        if (editOldUrl && !snapshot) {
+            var one = collectPane(panes[0], true);
             btn.disabled = false;
-            if (res && res.ok === false) { err.textContent = res.message || '保存失败'; return; }
+            if (one.error) { err.textContent = one.error; return; }
+            if (one.empty) { err.textContent = '网址不能为空'; return; }
+            window.navGuestLocal.patch(editOldUrl, one.payload).then(function (res) {
+                if (res && res.ok === false) { err.textContent = res.message || '保存失败'; return; }
+                bootstrap.Modal.getOrCreateInstance(editModal).hide();
+                toast('已保存本机修改');
+                window.dispatchEvent(new CustomEvent('nav-guest-site-changed', { detail: { oldUrl: editOldUrl, newUrl: one.payload.url } }));
+            }).catch(function (e2) { err.textContent = (e2 && e2.message) || '保存失败'; });
+            return;
+        }
+        var payloads = [], errors = [];
+        panes.forEach(function (pane, i) {
+            var r = collectPane(pane, false);
+            if (r.error) errors.push('第 ' + (i + 1) + ' 个：' + r.error);
+            else if (r.payload) payloads.push(r.payload);
+        });
+        if (errors.length) { btn.disabled = false; err.textContent = errors[0]; return; }
+        if (!payloads.length) { btn.disabled = false; err.textContent = '至少填一个站点'; return; }
+        var task = snapshot
+            ? window.navGuestLocal.updateSnapshot(editOldUrl, payloads[0])
+            : window.navGuestLocal.addSites(payloads);
+        Promise.resolve(task).then(function (res) {
+            if (res && res.ok === false) { btn.disabled = false; err.textContent = res.message || '保存失败'; return; }
             if (snapshot) {
                 bootstrap.Modal.getOrCreateInstance(editModal).hide();
                 toast('已保存到本机视图，主人分享的原始站点不受影响');
+                btn.disabled = false;
                 return;
             }
-            var added = res && res.added ? res.added.length : 1;
-            if (!editOldUrl && !added) {
+            var added = res && res.added ? res.added.length : payloads.length;
+            if (!added) {
+                btn.disabled = false;
                 var reason = res && res.skipped && res.skipped[0] && res.skipped[0].reason;
                 err.textContent = reason || '没有写入';
                 return;
             }
-            bootstrap.Modal.getOrCreateInstance(editModal).hide();
-            toast(editOldUrl ? '已保存本机修改' : '已添加到本机书签');
-            window.dispatchEvent(new CustomEvent('nav-guest-site-changed', {
-                detail: { oldUrl: editOldUrl, newUrl: url }
-            }));
+            var keep = document.getElementById('ngeKeepOpen').checked;
+            if (keep) {
+                editModal.querySelector('#ngePanes').innerHTML = '';
+                editModal.querySelector('#ngeTabs').innerHTML = '';
+                addPane();
+                err.textContent = '';
+                toast(added > 1 ? ('已添加 ' + added + ' 个书签，可继续填') : '已添加到本机书签，可继续填下一个');
+            } else {
+                bootstrap.Modal.getOrCreateInstance(editModal).hide();
+                toast(added > 1 ? ('已添加 ' + added + ' 个书签') : '已添加到本机书签');
+            }
+            btn.disabled = false;
+            window.dispatchEvent(new CustomEvent('nav-guest-site-changed', { detail: { added: added } }));
         }).catch(function (e2) {
             btn.disabled = false;
             err.textContent = (e2 && e2.message) || '保存失败';
@@ -339,25 +631,6 @@
     }
 
     // ===== 图标本地化(best-effort,纯浏览器直连;缓存只进本机 IDB,不回写书签) =====
-    function localizeCurrent() {
-        var url = editOldUrl || document.getElementById('ngeUrl').value.trim();
-        var status = document.getElementById('ngeLocStatus');
-        var btn = document.getElementById('ngeLocalize');
-        if (!url) { status.className = 'small text-danger ms-2'; status.textContent = '先填网址'; return; }
-        btn.disabled = true;
-        status.className = 'small text-muted ms-2';
-        status.textContent = '抓取中…';
-        Promise.resolve(window.navGuestLocal.localizeFavicons([url], {})).then(function (res) {
-            btn.disabled = false;
-            var r = (res && res[0]) || {};
-            if (r.ok) { status.className = 'small text-success ms-2'; status.textContent = '已缓存到本机'; }
-            else { status.className = 'small text-danger ms-2'; status.textContent = '未本地化:' + (r.reason || '失败'); }
-        }).catch(function () {
-            btn.disabled = false;
-            status.className = 'small text-danger ms-2';
-            status.textContent = '本地化失败';
-        });
-    }
     function localizeAll() {
         var urls = window.navGuestLocal.list().map(function (s) { return s.url; });
         if (!urls.length) { toast('本机还没有书签'); return; }
@@ -460,6 +733,9 @@
             if (menu && menu.classList.contains('dropdown-item')) {
                 menu.innerHTML = '<i class="fas fa-basket-shopping"></i> 体检篮(本机)' + (n ? '(' + n + ')' : '');
             }
+            // 抽屉里的「死链篮」页签跟主人一样带条数
+            var badge = document.getElementById('ngbTabCount');
+            if (badge) badge.textContent = n ? '（' + n + '）' : '';
         });
     }
     window.navGuestBasketRefresh = basketRefreshLabels;
@@ -475,21 +751,57 @@
         basketModal.setAttribute('data-no-resize', '1');
         basketModal.innerHTML =
             '<div class="offcanvas-header pb-1">' +
-            '<h5 class="offcanvas-title"><i class="fas fa-basket-shopping me-2"></i>体检篮 · 本机</h5>' +
+            '<h5 class="offcanvas-title"><i class="fas fa-basket-shopping me-2"></i>体检篮 ' +
+            '<small class="text-muted fw-normal fs-6 ms-1">本机</small></h5>' +
             '<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="关闭"></button></div>' +
             '<div class="offcanvas-body pt-1">' +
-            '<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">' +
-            '<button type="button" class="btn btn-sm btn-primary" id="ngbScan">体检本机书签</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" id="ngbRecheck">重测篮内地址</button>' +
-            '<span class="small text-muted ms-auto">浏览器直连检测,只判断能否连上;403/404 也会算"可连"</span>' +
+            /* 页签与主人 navBasketDrawer 逐字对齐:死链篮 / 保养 / URL 卫生,三颗等宽 btn-sm,
+               当前页签 btn-primary、其余 btn-outline-secondary(主人同款)。 */
+            '<div class="d-flex gap-2 mb-2">' +
+            '<button type="button" class="btn btn-sm btn-primary flex-grow-1" id="ngbTabBasket">' +
+            '<i class="fas fa-basket-shopping me-1"></i>死链篮<span id="ngbTabCount" class="ms-1"></span></button>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" id="ngbTabCare" ' +
+            'title="体检 + 使用情况：打不开、没测过、从没点开、很久没访问、休眠"><i class="fas fa-stethoscope me-1"></i>保养</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" id="ngbTabHygiene" ' +
+            'title="扫描本机书签可清理的 URL：跟踪参数、尾斜杠、域名大写、重复斜杠、http 升级"><i class="fas fa-broom me-1"></i>URL 卫生</button>' +
+            '</div>' +
+            '<div id="ngbPaneBasket">' +
+            '<div class="d-flex gap-1 mb-2">' +
+            '<button type="button" class="btn btn-sm btn-primary flex-grow-1" id="ngbScan">体检本机书签</button>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" id="ngbRecheck">重测篮内地址</button>' +
             '</div>' +
             '<div class="small text-muted mb-2" id="ngbStatus"></div>' +
             '<div id="ngbList"></div>' +
+            '</div>' +
+            '<div id="ngbPaneCare" class="d-none"></div>' +
+            '<div id="ngbPaneHygiene" class="d-none"></div>' +
             '</div>';
         document.body.appendChild(basketModal);
         document.getElementById('ngbScan').addEventListener('click', scanAll);
         document.getElementById('ngbRecheck').addEventListener('click', recheckBasket);
+        document.getElementById('ngbTabBasket').addEventListener('click', function () { switchBasketTab('basket'); });
+        document.getElementById('ngbTabCare').addEventListener('click', function () { switchBasketTab('care'); });
+        document.getElementById('ngbTabHygiene').addEventListener('click', function () { switchBasketTab('hygiene'); });
         return basketModal;
+    }
+    var basketTab = 'basket';
+    function switchBasketTab(tab) {
+        basketTab = tab;
+        var paneBasket = document.getElementById('ngbPaneBasket');
+        var paneCare = document.getElementById('ngbPaneCare');
+        var paneHygiene = document.getElementById('ngbPaneHygiene');
+        if (!paneBasket) return;
+        paneBasket.classList.toggle('d-none', tab !== 'basket');
+        paneCare.classList.toggle('d-none', tab !== 'care');
+        paneHygiene.classList.toggle('d-none', tab !== 'hygiene');
+        var map = { basket: 'ngbTabBasket', care: 'ngbTabCare', hygiene: 'ngbTabHygiene' };
+        Object.keys(map).forEach(function (k) {
+            var b = document.getElementById(map[k]);
+            if (b) b.className = 'btn btn-sm flex-grow-1 ' + (k === tab ? 'btn-primary' : 'btn-outline-secondary');
+        });
+        if (tab === 'basket') renderBasket();
+        else if (tab === 'care' && window.navGuestCare) window.navGuestCare.mount(paneCare, 'care');
+        else if (tab === 'hygiene' && window.navGuestCare) window.navGuestCare.mount(paneHygiene, 'url');
     }
     // 修改书签地址后把旧地址移出体检篮;监听在模块加载时就挂上,
     // 不依赖用户先打开过体检篮——否则上次会话留下的篮内旧地址会一直留着。
@@ -683,9 +995,9 @@
             });
         });
     }
-    function openBasket() {
+    function openBasket(tab) {
         ensureBasketModal();
-        renderBasket();
+        switchBasketTab(tab || 'basket');
         statusText('');
         bootstrap.Offcanvas.getOrCreateInstance(basketModal).show();
     }
@@ -819,7 +1131,7 @@
     }
     window.navGuestStatsOpen = openStats;
 
-    // ===== 工具元数据编辑(名称 / 简介 / 分类 / 文字图标 / 底色) =====
+    // ===== 工具元数据编辑(与主人 #toolEditModal 同一套字段:名称 / 分类 / 简介) =====
     var toolModal = null, toolCtxId = '';
     function ensureToolModal() {
         if (toolModal) return toolModal;
@@ -829,25 +1141,22 @@
         toolModal.tabIndex = -1;
         toolModal.setAttribute('data-no-resize', '1');
         toolModal.innerHTML =
-            '<div class="modal-dialog">' +
-            '<div class="modal-content">' +
-            '<div class="modal-header"><h5 class="modal-title">编辑本机工具</h5>' +
+            '<div class="modal-dialog"><div class="modal-content">' +
+            '<div class="modal-header"><h5 class="modal-title"><i class="fas fa-pen me-2 acc-ico"></i>编辑工具</h5>' +
             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
             '<div class="modal-body">' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="tgeName">名称</label>' +
-            '<input id="tgeName" class="form-control form-control-sm" maxlength="100"></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="tgeCat">分类</label>' +
-            '<input id="tgeCat" class="form-control form-control-sm" placeholder="我的工具"></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="tgeDesc">简介(可空)</label>' +
-            '<textarea id="tgeDesc" class="form-control form-control-sm" rows="2" maxlength="200"></textarea></div>' +
-            '<div class="row g-2 mb-2"><div class="col-5"><label class="small text-muted mb-0" for="tgeIconText">文字图标(≤2 字,可空)</label>' +
-            '<input id="tgeIconText" class="form-control form-control-sm" maxlength="2"></div>' +
-            '<div class="col-7"><label class="small text-muted mb-0" for="tgeIconColor">底色(可空)</label>' +
-            '<input id="tgeIconColor" class="form-control form-control-sm" placeholder="#5850ec"></div></div>' +
-            '<div id="tgeErr" class="small text-danger mt-2"></div>' +
+            '<div class="mb-3"><label class="form-label" for="tgeName">工具名称 <span class="text-danger">*</span></label>' +
+            '<input id="tgeName" class="form-control" maxlength="100"></div>' +
+            '<div class="mb-3"><label class="form-label" for="tgeCat">分类</label>' +
+            '<input id="tgeCat" class="form-control" maxlength="50" placeholder="我的工具"></div>' +
+            '<div class="mb-3"><label class="form-label" for="tgeDesc">简介</label>' +
+            '<input id="tgeDesc" class="form-control" maxlength="200"></div>' +
+            '<div class="form-text">只改这几项：托管地址与文件本身不动，工具存在本机的数据照常保留。</div>' +
+            '<div class="text-danger small" id="tgeErr"></div>' +
+            '<input type="hidden" id="tgeIconText"><input type="hidden" id="tgeIconColor">' +
             '</div>' +
-            '<div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>' +
-            '<button type="button" class="btn btn-sm btn-primary nav-modal-primary" id="tgeSave">保存到本机</button></div>' +
+            '<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>' +
+            '<button type="button" class="btn btn-primary" id="tgeSave"><i class="fas fa-check me-1"></i>保存</button></div>' +
             '</div></div>';
         document.body.appendChild(toolModal);
         document.getElementById('tgeSave').addEventListener('click', saveToolEdit);

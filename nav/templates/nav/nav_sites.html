@@ -125,7 +125,7 @@ document.documentElement.classList.add('nav-guest-mode');
                 {% if nav_guest_mode %}
                 <li><button type="button" class="dropdown-item nav-mi" data-guest-ai="find"><i class="fas fa-wand-magic-sparkles"></i><span><b>AI 找网站</b><small>用自带 Key,候选只存本机</small></span></button></li>
                 <li><button type="button" class="dropdown-item nav-mi" data-guest-ai="classify"><i class="fas fa-tags"></i><span><b>AI 分类</b><small>重判本机书签,补齐标签</small></span></button></li>
-                <li><button type="button" class="dropdown-item nav-mi" data-guest-ai="config"><i class="fas fa-robot"></i><span><b>AI 接口与对话</b><small>接口/Key/模型只存本机</small></span></button></li>
+                <li><button type="button" class="dropdown-item nav-mi" data-guest-ai="config"><i class="fas fa-robot"></i><span><b>AI 接口</b><small>接口/Key/模型只存本机；对话在桌宠</small></span></button></li>
                 {% else %}
                 <li><button type="button" class="dropdown-item nav-mi" data-on-click="navAiOpen"><i class="fas fa-wand-magic-sparkles"></i><span><b>AI 找网站</b><small>按分类推荐，测活去重后导入</small></span></button></li>
                 <li><button type="button" class="dropdown-item nav-mi" data-on-click="navAiClassifyOpen"><i class="fas fa-tags"></i><span><b>AI 分类</b><small>重判分类，补齐标签，逐条采纳</small></span></button></li>
@@ -174,6 +174,7 @@ document.documentElement.classList.add('nav-guest-mode');
                 <li><button type="button" class="dropdown-item" data-nav-restore data-tip="从整包备份文件恢复这台浏览器的本机数据(覆盖式)"><i class="fas fa-rotate-left"></i>整包恢复(本机)</button></li>
                 <li><button type="button" class="dropdown-item" id="navGuestExportHtml" data-tip="浏览器收藏夹格式 HTML&#10;只存这台浏览器，不写服务器"><i class="fas fa-bookmark"></i>导出书签(HTML)</button></li>
                 <li><button type="button" class="dropdown-item" id="navGuestExportGuestJson" data-tip="书签全字段 / 工具元数据 / 分组顺序与隐藏 / 本机偏好 打包成 JSON&#10;AI Key 默认不导出明文;工具 HTML 一并纳入,文件可能偏大"><i class="fas fa-file-export"></i>访客书签 JSON</button></li>
+                <li><button type="button" class="dropdown-item" data-nav-webdav data-tip="浏览器直连 WebDAV，上传 / 恢复整包备份&#10;凭据只存这台浏览器，不经过服务器；需要 WebDAV 允许 CORS"><i class="fas fa-cloud-arrow-up"></i>WebDAV 备份</button></li>
                 <li><hr class="dropdown-divider"></li>
                 <li class="nav-menu-label">本机工具</li>
                 <li class="d-flex gap-1 px-1 pt-1 pb-1">
@@ -181,9 +182,10 @@ document.documentElement.classList.add('nav-guest-mode');
                     <button type="button" class="dropdown-item flex-grow-1" data-nav-foot data-tip="本机足迹的点击热力图&#10;只存这台浏览器，不经过服务器"><i class="fas fa-fire"></i>足迹热力图</button>
                 </li>
                 <li class="d-flex gap-1 px-1 pb-1">
-                    <button type="button" class="dropdown-item flex-grow-1" data-nav-care data-tip="本机书签保养分组 / 体检记录 / 网址规整,只读写这台浏览器"><i class="fas fa-screwdriver-wrench"></i>保养维护(本机)</button>
-                    <button type="button" class="dropdown-item flex-grow-1" data-nav-localize-all data-tip="把书签图标抓回本机 IDB 缓存&#10;受浏览器跨域限制,不能保证全部成功;不做任何服务端下载;缓存随整包备份一起走"><i class="fas fa-image"></i>本地化全部图标</button>
+                    <button type="button" class="dropdown-item flex-grow-1" data-nav-care data-tip="本机书签保养分组 / 体检记录 / 网址规整,只读写这台浏览器"><i class="fas fa-screwdriver-wrench"></i>{% if nav_lang == 'en' %}Care{% else %}保养维护{% endif %}</button>
+                    <button type="button" class="dropdown-item flex-grow-1" data-nav-localize-all data-tip="把书签图标抓回本机 IDB 缓存&#10;受浏览器跨域限制,不能保证全部成功;不做任何服务端下载;缓存随整包备份一起走"><i class="fas fa-image"></i>{% if nav_lang == 'en' %}Localize icons{% else %}本地化全部图标{% endif %}</button>
                 </li>
+                <li><button type="button" class="dropdown-item" data-nav-guest-link data-tip="批量检测本机书签、复制 AI 提示词、粘贴回复预览后写入本机&#10;不发任何服务端请求"><i class="fas fa-link"></i>{% if nav_lang == 'en' %}Link check / AI prompt{% else %}链接检测 / AI 提示词{% endif %}</button></li>
                 {% else %}
                 <li class="nav-menu-label">站点</li>
                 <li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#addToolModal" data-tip="上传 HTML 工具&#10;支持 .html / .htm,单个最大 2MB;数据仅存本机"><i class="fas fa-upload"></i>上传工具</button></li>
@@ -262,7 +264,7 @@ document.documentElement.classList.add('nav-guest-mode');
                 {% endcomment %}
                 <input type="hidden" id="navEngineSel">
                 <button type="button" class="nav-search__eng" id="navEngineToggle" data-bs-toggle="dropdown" aria-expanded="false" title="切换搜索引擎(只记住在本机)">
-                    <i class="fas fa-magnifying-glass nav-search__engico" id="navEngineIcon" aria-hidden="true"></i>
+                    <span class="nav-search__engico eng-chip" id="navEngineIcon" aria-hidden="true">G</span>
                     <span class="nav-search__engname" id="navEngineLabel">Google</span>
                     <i class="fas fa-angle-down nav-search__engcar" aria-hidden="true"></i>
                 </button>
@@ -271,9 +273,9 @@ document.documentElement.classList.add('nav-guest-mode');
                 <button class="nav-search__go" type="submit" title="搜索" aria-label="搜索"><i class="fas fa-arrow-right"></i></button>
 {# 搜索胶囊右端那个 ? 已移除(2026-11-14):它打破了左右对称，说明改由设置面板提供 #}
                 <div class="dropdown-menu nav-search__menu" id="navEngineMenu">
-                    {% for e in search_engines %}<button type="button" class="dropdown-item" data-url="{{ e.url }}" data-name="{{ e.name }}">{{ e.name }}</button>{% endfor %}
+                    {% for e in search_engines %}<button type="button" class="dropdown-item" data-url="{{ e.url }}" data-name="{{ e.name }}"><span class="eng-chip" aria-hidden="true"></span><span>{{ e.name }}</span></button>{% endfor %}
                     <hr class="dropdown-divider">
-                    <button type="button" class="dropdown-item nav-search__add" id="navEngineAdd" data-bs-toggle="modal" data-bs-target="#engineModal" title="添加自定义搜索引擎(仅存本机)"><i class="fas fa-plus"></i>添加搜索引擎</button>
+                    <button type="button" class="dropdown-item nav-search__add" id="navEngineAdd" data-bs-toggle="modal" data-bs-target="#engineModal" title="添加自定义引擎，或勾选显示/隐藏内置引擎(仅存本机)"><i class="fas fa-sliders"></i>管理搜索引擎</button>
                 </div>
             </form>
             <div class="nav-suggest" id="navSuggest" role="listbox" aria-label="站内匹配结果" hidden></div>
@@ -360,14 +362,14 @@ document.documentElement.classList.add('nav-guest-mode');
                     <div class="site-name">{% if tool.favicon %}<img class="site-fav" src="{{ tool.favicon }}" loading="lazy" alt="" onerror="this.remove()">{% else %}<i class="fas fa-wrench me-1 acc-ico"></i>{% endif %}{{ tool.name }} <span class="badge site-tag">本地托管</span></div>
                     {% if tool.description %}<div class="site-desc">{{ tool.description }}</div>{% endif %}
                     <div class="tool-meta">{{ tool.category }} · {% if tool.size >= 10240 %}{% widthratio tool.size 1024 1 %} KB{% else %}{{ tool.size }} B{% endif %}{% if tool.original_filename %} · {{ tool.original_filename }}{% endif %}</div>
-                    <button type="button" class="site-star" data-url="{% url 'nav_tool_open' tool.pk %}" data-tip="加入常用收藏" aria-label="加入常用收藏"><i class="far fa-star"></i></button>
+                    <button type="button" class="site-star" data-url="{% url 'nav_tool_open' tool.pk %}" aria-label="加入常用收藏"><i class="far fa-star"></i></button>
                     <button type="button" class="tool-edit" data-id="{{ tool.pk }}" data-name="{{ tool.name }}" data-category="{{ tool.category }}" data-desc="{{ tool.description }}" data-tip="编辑名称 / 分类 / 简介" aria-label="编辑工具"><i class="fas fa-pen"></i></button>
                     <button type="button" class="tool-del" data-id="{{ tool.pk }}" data-name="{{ tool.name }}" data-tip="删除工具" aria-label="删除工具"><i class="fas fa-times"></i></button>
                 </a>
             </div>
             {% endfor %}
         </div>
-        {% if not tools and not nav_guest_mode %}
+        {% if not tools %}
         <div id="toolsEmpty" class="tools-empty">
             <span class="tools-empty-ic" aria-hidden="true"><i class="fas fa-arrow-up-from-bracket"></i></span>
             <span>+ 上传本机 HTML 小工具<span class="text-muted">（最大 2MB，仅存本地）</span></span>
@@ -708,7 +710,7 @@ document.documentElement.classList.add('nav-guest-mode');
 <div class="modal fade" id="engineModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title"><i class="fas fa-magnifying-glass-plus me-2 acc-ico"></i>自定义搜索引擎</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>
+            <div class="modal-header"><h5 class="modal-title"><i class="fas fa-magnifying-glass-plus me-2 acc-ico"></i>搜索引擎管理</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>
             <div class="modal-body">
                 <div class="mb-2"><label class="form-label small mb-1" for="engName">名称</label>
                     <input class="form-control form-control-sm" id="engName" maxlength="20" placeholder="例如：360 搜索">
@@ -718,8 +720,11 @@ document.documentElement.classList.add('nav-guest-mode');
                 </div>
                 <div class="form-text mb-2">语法：把搜索词所在的位置写成 <code>{query}</code>,搜索时自动替换成关键词。例:<code>https://www.so.com/s?q={query}</code>、<code>https://www.ecosia.org/search?aq={query}</code></div>
                 <div class="text-danger small mb-2 d-none" id="engError"></div>
-                <div class="form-text mb-1">已添加的自定义引擎(换浏览器/清缓存后需重加):</div>
-                <div id="engCustomList" style="font-size:.82rem; max-height: 160px; overflow:auto;"></div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="form-text mb-0">全部引擎：勾选显示，取消勾选即隐藏</span>
+                    <span class="form-text mb-0" id="engVisibleHint">至少保留一个</span>
+                </div>
+                <div id="engCustomList" style="font-size:.82rem; max-height: 300px; overflow:auto;"></div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button><button type="button" class="btn btn-primary" id="engAddBtn"><i class="fas fa-plus me-1"></i>添加</button></div>
         </div>
@@ -746,6 +751,7 @@ document.documentElement.classList.add('nav-guest-mode');
     {# 足迹热力图 / 整包备份(2026-11-20):都只读写本机(navStore),不碰服务端 #}
     <script src="{% static 'js/footprint.js' %}?v={{ static_version }}"></script>
     <script src="{% static 'js/nav-backup.js' %}?v={{ static_version }}"></script>
+    {% if nav_guest_mode %}<script src="{% static 'js/nav-webdav.js' %}?v={{ static_version }}"></script>{% endif %}
     <script src="{% static 'js/stars-filter.js' %}?v={{ static_version }}"></script>
     {% comment %}
     超级搜索框(2026-11-13):站内匹配面板 + 键盘导航。必须在 stars-filter.js 之后 ——
@@ -758,6 +764,57 @@ document.documentElement.classList.add('nav-guest-mode');
     <script src="{% static 'js/calendar-converter.js' %}?v={{ static_version }}"></script>
     <script src="{% static 'js/china-cities.js' %}?v={{ static_version }}"></script>
     <script src="{% static 'js/pet.js' %}?v={{ static_version }}"></script>
+
+{% if nav_guest_mode %}
+<!-- 游客 WebDAV：前端直连，配置只存 localStorage；与「整包备份」共用同一格式 -->
+<div class="modal fade" id="navWebdavModal" tabindex="-1" aria-labelledby="navWebdavTitle">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="navWebdavTitle"><i class="fas fa-cloud me-2 acc-ico"></i>WebDAV 备份</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2 small mb-3">
+                    <i class="fas fa-triangle-exclamation me-1"></i>浏览器直连 WebDAV：服务器必须允许跨域（PROPFIND / PUT / GET 与 Authorization 头）。不支持时会提示 CORS，不会回落到服务端代理。
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small mb-1" for="navDavUrl">目录 URL <span class="text-danger">*</span></label>
+                    <input class="form-control form-control-sm font-monospace" id="navDavUrl" maxlength="500" spellcheck="false" placeholder="https://dav.example.com/remote.php/dav/files/user/nav/">
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="navDavUser">用户名</label>
+                        <input class="form-control form-control-sm" id="navDavUser" maxlength="200" autocomplete="username" spellcheck="false">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="navDavPass">密码</label>
+                        <input class="form-control form-control-sm" id="navDavPass" type="password" maxlength="200" autocomplete="current-password" spellcheck="false">
+                    </div>
+                </div>
+                <div class="form-text mb-2">目录要先在 WebDAV 里建好；凭据只存这台浏览器，整包备份不会带密码。</div>
+                <div class="d-flex gap-2 flex-wrap mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="navDavTest"><i class="fas fa-plug me-1"></i>测试连接</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="navDavBackup"><i class="fas fa-cloud-arrow-up me-1"></i>立即备份</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="navDavList"><i class="fas fa-list me-1"></i>读取备份列表</button>
+                </div>
+                <div id="navDavStatus" class="small mt-2 text-muted"></div>
+                <hr class="my-2">
+                <div class="mb-1">
+                    <label class="form-label small mb-1" for="navDavFiles">远程备份</label>
+                    <select class="form-select form-select-sm" id="navDavFiles"></select>
+                </div>
+                <div class="form-text">只列出 nav_backup*.json。恢复会覆盖这台浏览器的本机数据，服务端站点库不受影响。</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link btn-sm text-danger me-auto" id="navDavForget">清除本机配置</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-danger" id="navDavRestore" disabled><i class="fas fa-rotate-left me-1"></i>恢复所选</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- 全部设置抽屉：从齿轮下拉的「全部设置 →」打开。id 仍是 navSettingsMenu,
      原有 #navSettingsMenu 上的委托绑定(复选框重算界面模式、tab 记忆)全部照旧 -->
@@ -781,8 +838,9 @@ document.documentElement.classList.add('nav-guest-mode');
                 <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-view" data-bs-toggle="tab" data-bs-target="#setTabView" type="button" role="tab"><i class="fas fa-palette me-1"></i>外观</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-content" data-bs-toggle="tab" data-bs-target="#setTabContent" type="button" role="tab"><i class="fas fa-table-columns me-1"></i>布局</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-fx" data-bs-toggle="tab" data-bs-target="#setTabFx" type="button" role="tab"><i class="fas fa-wand-magic-sparkles me-1"></i>效果</button></li>
-                {# 2026-11-25:第 4 个 tab 两端都渲染(游客=本机排序,主人=维护+排序),tab 数量/顺序完全对齐;管理员段仍只在主人端 #}
-                <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-sort" data-bs-toggle="tab" data-bs-target="#setTabSort" type="button" role="tab"><i class="fas fa-screwdriver-wrench me-1"></i>{% if nav_guest_mode %}排序{% else %}维护{% endif %}</button></li>
+                {% comment %}2026-11-27:第 4 个 tab 两端同名「维护」,骨架也同一套:分类排序 → 维护动作;
+                   访客只能做本机动作(图标资产 / 本机窗口入口),管理员段仍只在主人端{% endcomment %}
+                <li class="nav-item" role="presentation"><button class="nav-link py-1 px-2" id="tabBtn-sort" data-bs-toggle="tab" data-bs-target="#setTabSort" type="button" role="tab"><i class="fas fa-screwdriver-wrench me-1"></i>{% if nav_lang == 'en' %}Maintain{% else %}维护{% endif %}</button></li>
             </ul>
             <div class="tab-content">
                 <div class="tab-pane fade show active" id="setTabView" role="tabpanel">
@@ -1142,8 +1200,8 @@ document.documentElement.classList.add('nav-guest-mode');
                 </div>
                 <div class="tab-pane fade" id="setTabSort" role="tabpanel">
                     {% if nav_guest_mode %}
-                    <div class="nav-set-partition">本机排序</div>
-                    <div class="form-text small mb-2" style="margin-left:0">只调整这台浏览器上的分组顺序与显隐，不写主人库；保存后刷新保持。不含管理员开关。</div>
+                    <div class="nav-set-partition">本机偏好 · 分类排序</div>
+                    <div class="form-text small mb-2" style="margin-left:0">只调整这台浏览器上的分组顺序与显隐，不写主人库；保存后刷新保持。</div>
                     {% else %}
                     <div class="nav-set-partition">本机偏好 · 分类排序</div>
                     <div class="form-text small mb-2" style="margin-left:0">调顺序/显隐后点"保存排序"生效；隐藏的分类不在页面显示</div>
@@ -1170,8 +1228,31 @@ document.documentElement.classList.add('nav-guest-mode');
                         <button type="button" class="btn btn-sm btn-outline-secondary" id="catOrderReset" title="清掉自定义顺序与显隐，恢复内置排序">恢复默认</button>
                     </div>
 
+                    {% if nav_guest_mode %}
+                    {% comment %}2026-11-27:访客第 4 个 tab 不再只剩一块排序。与主人「维护」同序列:
+                       排序 → 图标资产 → 维护动作;主人那三段是服务端运维,访客这里换成等位的本机动作{% endcomment %}
+                    <div class="nav-set-partition">本机维护</div>
+                    <div class="nav-set-h">图标资产</div>
+                    <div class="d-flex gap-2 align-items-center mb-3 flex-wrap">
+                        <span class="form-text small text-nowrap me-1">图标本地化</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-localize-all title="把书签图标下载到本机缓存；受浏览器跨域限制，不能保证全部成功"><i class="fas fa-image me-1"></i>一键本地化</button>
+                        <span class="form-text small" id="navGuestFavLocalResult"></span>
+                    </div>
+                    <div class="nav-set-h">本机窗口</div>
+                    <div class="form-text small mb-2" style="margin-left:0">统计 / 足迹 / 体检篮（保养、URL 卫生）三个窗口，和「更多」菜单里的是同一套。</div>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-stats><i class="fas fa-chart-simple me-1"></i>本机统计</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-foot><i class="fas fa-fire me-1"></i>足迹</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-basket="nav"><i class="fas fa-basket-shopping me-1"></i>体检篮</button>
+                    </div>
+                    <div class="nav-set-h">分组</div>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-guest-hidden title="列出并恢复已隐藏的分组"><i class="fas fa-eye-slash me-1"></i>隐藏分组</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-nav-guest-reset-order title="还原分组上下顺序与显隐"><i class="fas fa-rotate-left me-1"></i>恢复默认分组顺序</button>
+                    </div>
+                    {% endif %}
+
                     {% if not nav_guest_mode %}
-                    <div class="nav-set-partition">管理员系统维护</div>
                     <div class="nav-set-h">游客页内容</div>
                     <div class="d-flex gap-2 align-items-center mb-2 flex-wrap">
                         <label class="form-label small mb-0 text-nowrap" for="navGuestScope">显示范围</label>
@@ -2175,23 +2256,18 @@ document.documentElement.classList.add('nav-guest-mode');
         var tmp = a.seq; a.seq = b.seq; b.seq = tmp;
         saveSites().then(render);
     }
-    function legacyCopy(text) {
-        var ta = document.createElement('textarea');
-        ta.value = text;
-        ta.setAttribute('readonly', '');
-        ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-        document.body.appendChild(ta);
-        var ok = false;
-        try { ta.select(); ok = document.execCommand('copy'); } catch (e) { ok = false; }
-        document.body.removeChild(ta);
-        toast(ok ? '已复制链接' : '复制失败，请手动复制');
-    }
-    function copyText(text) {
-        if (!text) return;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(function () { toast('已复制链接'); }, function () { legacyCopy(text); });
-        } else { legacyCopy(text); }
-    }
+    // 共享 card-menu.js 只认这一个适配口:上移/下移落本机顺序,置顶/置底落 navGuestBatch。
+    // 菜单 DOM / 定位 / 键盘 / 长按全部由 card-menu.js 统一负责,本页不再自建第二套菜单。
+    window.navGuestLocalCard = {
+        move: function (url, act) {
+            var it = findSite(url);
+            if (!it) return;
+            if (act === 'up' || act === 'down') { moveInGroup(it, act === 'up' ? -1 : 1); return; }
+            if ((act === 'pin-top' || act === 'pin-bottom') && window.navGuestBatch) {
+                window.navGuestBatch.siteAct(url, act === 'pin-top' ? 'top' : 'bottom');
+            }
+        }
+    };
     function renameCat(oldName) {
         if (!window.navPrompt) return;
         window.navPrompt({ title: '重命名分组', value: oldName, placeholder: '新分组名' }).then(function (nn) {
@@ -2271,6 +2347,10 @@ document.documentElement.classList.add('nav-guest-mode');
 
     // ---------- 卡片 ----------
     function siteCard(it, archivedView) {
+        // 子页/备用数量必须在建 <a> 前算好:原先声明在下方,var 提升导致
+        // data-has-sub 永远拿不到值,带子页的本机卡点了不弹共享 #subModal。
+        var childN = (it.children || []).length;
+        var altN = (it.alternates || []).length;
         var col = document.createElement('div');
         col.className = 'col-md-4 col-lg-3' + (archivedView ? ' site-archived' : '');
         col.setAttribute('data-site-item', '');
@@ -2288,6 +2368,13 @@ document.documentElement.classList.add('nav-guest-mode');
         }
         var a = document.createElement('a');
         a.className = 'site-card'; a.href = it.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        if (childN || altN) {
+            // 与主人 _nav_site_card.html 同契约:带子页/备用时点主卡由 stars-filter.js
+            // 打开同一个 #subModal(主站/子页/备用富行),不再用访客自建小面板。
+            a.setAttribute('data-has-sub', '1');
+            a.setAttribute('data-main-url', it.url);
+            a.setAttribute('data-name', it.name || it.url);
+        }
         a.addEventListener('click', function () { bumpClick(it.url); });
         var nameRow = document.createElement('div'); nameRow.className = 'site-name';
         var favwrap = document.createElement('span'); favwrap.className = 'site-favwrap';
@@ -2340,8 +2427,6 @@ document.documentElement.classList.add('nav-guest-mode');
         title.textContent = it.name || it.url;
         var meta = document.createElement('span'); meta.className = 'site-meta';
         meta.textContent = it.description || hostOf(it.url);
-        var childN = (it.children || []).length;
-        var altN = (it.alternates || []).length;
         if (childN || altN) {
             var badgeRow = document.createElement('span'); badgeRow.className = 'ng-meta-badges';
             if (childN) { var b1 = document.createElement('span'); b1.className = 'ng-meta-badge'; b1.title = '子网页'; b1.textContent = '子 ' + childN; badgeRow.appendChild(b1); }
@@ -2370,7 +2455,6 @@ document.documentElement.classList.add('nav-guest-mode');
         star.type = 'button';
         star.className = 'site-star';
         star.setAttribute('data-url', it.url);
-        star.setAttribute('data-tip', '加入常用收藏');
         star.setAttribute('aria-label', '加入常用收藏');
         var starIcon = document.createElement('i'); starIcon.className = 'far fa-star';
         star.appendChild(starIcon);
@@ -2404,6 +2488,26 @@ document.documentElement.classList.add('nav-guest-mode');
             actions.appendChild(pin); actions.appendChild(edit); actions.appendChild(del);
         }
         box.appendChild(actions);
+        if (childN) {
+            var subsWrap = document.createElement('div'); subsWrap.className = 'site-subs d-none';
+            (it.children || []).forEach(function (sub) {
+                var subA = document.createElement('a');
+                subA.className = 'site-sub'; subA.href = sub.url;
+                subA.setAttribute('data-name', sub.name || sub.url);
+                subsWrap.appendChild(subA);
+            });
+            box.appendChild(subsWrap);
+        }
+        if (altN) {
+            var altsWrap = document.createElement('div'); altsWrap.className = 'site-alts d-none';
+            (it.alternates || []).forEach(function (alt) {
+                var altA = document.createElement('a');
+                altA.className = 'site-alt'; altA.href = alt.url;
+                altA.setAttribute('data-name', alt.name || alt.url);
+                altsWrap.appendChild(altA);
+            });
+            box.appendChild(altsWrap);
+        }
 
         col.appendChild(box);
         return col;
@@ -2447,10 +2551,13 @@ document.documentElement.classList.add('nav-guest-mode');
         card.appendChild(name); card.appendChild(meta); card.appendChild(row);
         return card;
     }
-    function subTitleEl(label, count) {
+    function subTitleEl(label, count, cls) {
         var t = document.createElement('div');
-        t.className = 'nav-sub-title collapsible';
+        t.className = (cls || 'nav-sub-title') + ' collapsible';
         t.title = '点击折叠/展开';
+        var che = document.createElement('i');
+        che.className = 'fas fa-chevron-down cheve';
+        t.appendChild(che);
         t.appendChild(document.createTextNode(label + ' '));
         var c = document.createElement('span');
         c.className = 'text-muted fw-normal small';
@@ -2458,12 +2565,61 @@ document.documentElement.classList.add('nav-guest-mode');
         t.appendChild(c);
         return t;
     }
-    function catBtn(label, tip, onClick) {
+    // 本机分类头的操作菜单:与主人 .nav-cat-menu / .nav-cat-more / dropdown-menu 同一套标记,
+    // 不再用一排 ↑↓✎ 裸按钮(游客端此前是另一套长相)。
+    function catMenuItem(icon, label, onClick, danger, attrs) {
+        var li = document.createElement('li');
         var b = document.createElement('button');
-        b.type = 'button'; b.className = 'btn btn-sm btn-outline-secondary py-0 px-1';
-        b.title = tip; b.textContent = label;
-        b.addEventListener('click', onClick);
-        return b;
+        b.type = 'button'; b.className = 'dropdown-item' + (danger ? ' text-danger' : '');
+        if (attrs) Object.keys(attrs).forEach(function (k) { b.setAttribute(k, attrs[k]); });
+        var ic = document.createElement('i'); ic.className = 'fas ' + icon + ' me-2';
+        b.appendChild(ic);
+        b.appendChild(document.createTextNode(label));
+        b.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); onClick(); });
+        li.appendChild(b);
+        return li;
+    }
+    function catMenuEl(catName, isFirst) {
+        var wrap = document.createElement('div');
+        wrap.className = 'dropdown nav-cat-menu';
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'nav-cat-more';
+        btn.setAttribute('data-bs-toggle', 'dropdown');
+        btn.setAttribute('data-bs-auto-close', 'true');
+        btn.title = '分类操作\n新建站点 / 重命名 / 隐藏 / 排序';
+        btn.setAttribute('aria-label', '分类操作');
+        var dots = document.createElement('i'); dots.className = 'fas fa-ellipsis'; btn.appendChild(dots);
+        var ul = document.createElement('ul');
+        ul.className = 'dropdown-menu dropdown-menu-end shadow-sm small';
+        ul.appendChild(catMenuItem('fa-plus', '在此分类新建站点', function () {
+            if (window.navGuestEdit) window.navGuestEdit(null, { category: catName });
+        }));
+        ul.appendChild(catMenuItem('fa-pen', '重命名分类', function () { renameCat(catName); }));
+        ul.appendChild(catMenuItem('fa-eye-slash', '隐藏这个分类', function () {
+            setCatHidden(catName, true).then(function () { toast('已隐藏「' + catName + '」'); });
+        }));
+        ul.appendChild(document.createElement('hr')).className = 'dropdown-divider';
+        ul.appendChild(catMenuItem('fa-arrow-up', '上移', function () { moveCat(catName, -1); }));
+        ul.appendChild(catMenuItem('fa-arrow-down', '下移', function () { moveCat(catName, 1); }));
+        if (isFirst) {
+            ul.appendChild(document.createElement('hr')).className = 'dropdown-divider';
+            ul.appendChild(catMenuItem('fa-check-square', '多选本机书签', function () { bulkMode = true; render(); }, false, { 'data-ngb-enter': '' }));
+            ul.appendChild(catMenuItem('fa-trash-can', '清空本机导入', function () {
+                function doClear() {
+                    sites = [];
+                    saveSites().then(function () {
+                        storeRemove(BOOK_KEY); storeRemove(TOOL_KEY); storeRemove(ORDER_KEY);
+                        render(); toast('本机导入已清空');
+                    });
+                }
+                if (window.navConfirm) {
+                    window.navConfirm({ title: '清空我的导入', body: '只删除这台浏览器里导入的书签，主人分享的站点不受影响。', danger: true, confirmLabel: '清空' })
+                        .then(function (ok) { if (ok) doClear(); });
+                } else { doClear(); }
+            }, true));
+        }
+        wrap.appendChild(btn); wrap.appendChild(ul);
+        return wrap;
     }
 
     // 工具分组两级排序:先对齐书签大类顺序 → 未对齐的按首次出现;再被工具手动顺序键覆盖
@@ -2598,37 +2754,13 @@ document.documentElement.classList.add('nav-guest-mode');
         var root = document.createElement('div');
         root.id = 'navGuestImports';
 
-        // #11 统一工具条钩子:#navBulkBar 容器 / #navBulkCount 计数 / [data-bulk-act] 动作 / #navBulkExit 退出
+        // #11 统一工具条钩子:容器先建空,按多选态由 nav-guest-batch.js 画成与主人 #navMsBar
+        // 同一形态(已选 N 项 / 打开 / 收藏 / 删除 / 更多 / 退出 + 更多浮层),不再常驻一排裸按钮。
         var bulkBar = document.createElement('div');
         bulkBar.className = 'ng-bulkbar';
         bulkBar.id = 'navBulkBar';
-        var bulkToggle = document.createElement('button');
-        bulkToggle.type = 'button';
-        bulkToggle.id = 'navBulkExit';
-        bulkToggle.className = 'btn btn-sm btn-outline-secondary py-0 px-2';
-        bulkToggle.setAttribute('data-bulk-act', 'exit');
-        bulkToggle.textContent = bulkMode ? ibT('退出多选') : ibT('多选');
-        bulkToggle.addEventListener('click', function () { bulkMode = !bulkMode; render(); });
-        bulkBar.appendChild(bulkToggle);
-        var bulkCount = document.createElement('span');
-        bulkCount.className = 'small';
-        bulkCount.id = 'navBulkCount';
-        bulkCount.setAttribute('data-bulk-count', '');
-        bulkCount.textContent = ibT('已选 {n} 项').replace('{n}', String(selectedUrls().length));
-        bulkBar.appendChild(bulkCount);
-        if (bulkMode) {
-            var openBtn = document.createElement('button');
-            openBtn.type = 'button'; openBtn.className = 'btn btn-sm btn-outline-primary py-0 px-2';
-            openBtn.setAttribute('data-bulk-act', 'open');
-            openBtn.textContent = ibT('打开选中');
-            openBtn.addEventListener('click', bulkOpen);
-            var copyBtn = document.createElement('button');
-            copyBtn.type = 'button'; copyBtn.className = 'btn btn-sm btn-outline-secondary py-0 px-2';
-            copyBtn.setAttribute('data-bulk-act', 'copy');
-            copyBtn.textContent = ibT('复制链接');
-            copyBtn.addEventListener('click', bulkCopy);
-            bulkBar.appendChild(openBtn); bulkBar.appendChild(copyBtn);
-        }
+        bulkBar.setAttribute('data-ngb-host', '');
+        root.setAttribute('data-bulk', bulkMode ? '1' : '0');
         root.appendChild(bulkBar);
         syncBulkBody();
 
@@ -2637,37 +2769,21 @@ document.documentElement.classList.add('nav-guest-mode');
             var total = bucket.direct.length + Object.keys(bucket.subs).reduce(function (n, k) { return n + bucket.subs[k].length; }, 0);
             var cat = document.createElement('div'); cat.className = 'nav-cat';
             cat.setAttribute('data-category', catName);
-            var title = document.createElement('div'); title.className = 'nav-cat-title';
+            // 与主人静态分类同构:data-collapse-id + .collapsible + .cheve,
+            // 折叠事件与 navCollapsed 持久化才能认到本机分类(此前本机分类点不动)
+            cat.setAttribute('data-collapse-id', catName);
+            var title = document.createElement('div'); title.className = 'nav-cat-title collapsible';
+            title.title = '点击折叠/展开';
+            var catChe = document.createElement('i');
+            catChe.className = 'fas fa-chevron-down cheve';
+            title.appendChild(catChe);
             title.appendChild(document.createTextNode(catName + ' '));
             var count = document.createElement('span');
             count.className = 'text-muted fw-normal small'; count.textContent = String(total);
             title.appendChild(count);
 
-            var act = document.createElement('span');
-            act.className = 'd-flex gap-1 align-items-center'; act.style.marginLeft = 'auto';
-            act.appendChild(catBtn('↑', '上移分组', function () { moveCat(catName, -1); }));
-            act.appendChild(catBtn('↓', '下移分组', function () { moveCat(catName, 1); }));
-            act.appendChild(catBtn('✎', '重命名分组', function () { renameCat(catName); }));
-            if (ci === 0) {
-                var clear = document.createElement('button');
-                clear.type = 'button';
-                clear.className = 'btn btn-sm btn-outline-secondary py-0 px-2';
-                clear.textContent = '清空';
-                clear.addEventListener('click', function () {
-                    function doClear() {
-                        sites = [];
-                        saveSites().then(function () {
-                            storeRemove(BOOK_KEY); storeRemove(TOOL_KEY); storeRemove(ORDER_KEY);
-                            render(); toast('本机导入已清空');
-                        });
-                    }
-                    if (window.navConfirm) {
-                        window.navConfirm({ title: '清空我的导入', body: '只删除这台浏览器里导入的书签，主人分享的站点不受影响。', danger: true, confirmLabel: '清空' })
-                            .then(function (ok) { if (ok) doClear(); });
-                    } else { doClear(); }
-                });
-                act.appendChild(clear);
-            }
+            var act = catMenuEl(catName, ci === 0);
+            act.style.marginLeft = 'auto';
             title.appendChild(act);
 
             var body = document.createElement('div'); body.className = 'cat-body';
@@ -2680,12 +2796,14 @@ document.documentElement.classList.add('nav-guest-mode');
                 var parts = splitSub(key);
                 var subs = bucket.subs[key];
                 var sub = document.createElement('div'); sub.className = 'nav-sub mb-2';
+                sub.setAttribute('data-collapse-id', catName + '/' + parts[0]);
                 sub.appendChild(subTitleEl(parts[0], subs.length));
                 var subBody = document.createElement('div');
                 if (parts.length > 1) {
                     subBody.className = 'cat-body';
                     var l2 = document.createElement('div'); l2.className = 'nav-sub2 mb-2';
-                    l2.appendChild(subTitleEl(parts.slice(1).join(' / '), subs.length));
+                    l2.setAttribute('data-collapse-id', catName + '/' + key);
+                    l2.appendChild(subTitleEl(parts.slice(1).join(' / '), subs.length, 'nav-sub2-title'));
                     var l2Body = document.createElement('div'); l2Body.className = 'cat-body row g-2';
                     sortSites(subs).forEach(function (it) { l2Body.appendChild(siteCard(it)); });
                     l2.appendChild(l2Body);
@@ -2713,168 +2831,24 @@ document.documentElement.classList.add('nav-guest-mode');
             arc.appendChild(arow); root.appendChild(arc);
         }
         groups.insertBefore(root, groups.firstChild);
+        // 本机导入区每次 render 都重建 DOM;这里把 navCollapsed 里已折的块重新落上,
+        // 否则折叠一次后任何排序/编辑触发 render 就全弹开(主人静态 DOM 不受影响)。
+        try {
+            var collapsed = JSON.parse(localStorage.getItem('navCollapsed') || '[]');
+            if (Array.isArray(collapsed) && collapsed.length) {
+                var cset = new Set(collapsed);
+                root.querySelectorAll('[data-collapse-id]').forEach(function (w) {
+                    if (!cset.has(w.getAttribute('data-collapse-id'))) return;
+                    w.classList.add('is-collapsed');
+                    var h = w.querySelector('.collapsible');
+                    if (h) h.classList.add('rot');
+                });
+            }
+        } catch (e) { /* localStorage 坏值不挡渲染 */ }
         if (window.syncStarButtons) window.syncStarButtons();
         renderHooks.forEach(function (fn) { try { fn(); } catch (e) { /* ignore */ } });
         applySnapshotOverrides();
     }
-
-    // ---------- 访客本机卡片:右键 / 长按菜单(全部本机动作,不调服务端) ----------
-    var gMenu = null, gCurrent = null, gPressTimer = null, gPressStart = null, gSwallow = false;
-    var linkPanel = null, gLastX = 0, gLastY = 0;
-
-    function gMenuBuild(it, archivedView) {
-        if (gMenu) { gMenu.remove(); gMenu = null; }
-        gMenu = document.createElement('div');
-        gMenu.id = 'navGuestCardMenu';
-        gMenu.className = 'card-menu';
-        var defs = archivedView
-            ? [['open', '打开链接', 'fa-up-right-from-square'], ['restore', '恢复', 'fa-rotate-left'], ['del', '彻底删除', 'fa-trash-can']]
-            : [
-                ['open', '打开链接', 'fa-up-right-from-square'],
-                ['copy', '复制链接', 'fa-link'],
-                ['star', '星标', 'fa-star'],
-                ['edit', '编辑', 'fa-pen'],
-                ['pin', it && it.pinned ? '取消置顶' : '置顶', 'fa-arrow-up-long'],
-                ['up', '上移', 'fa-chevron-up'],
-                ['down', '下移', 'fa-chevron-down'],
-                ['top', '置顶到分组顶', 'fa-angle-double-up'],
-                ['bottom', '置底分组末', 'fa-angle-double-down'],
-                ['recat', '换分类', 'fa-folder-open'],
-                ['archive', '归档', 'fa-box-archive'],
-                ['del', '删除', 'fa-trash-can']
-            ];
-        if (!archivedView && it) {
-            var childN = (it.children || []).length;
-            var altN = (it.alternates || []).length;
-            if (childN) defs.splice(2, 0, ['children', '子网页 (' + childN + ')', 'fa-diagram-project']);
-            if (altN) defs.splice(3, 0, ['alts', '备用网址 (' + altN + ')', 'fa-arrow-right-arrow-left']);
-        }
-        defs.forEach(function (d) {
-            if (d[0] === 'edit' || d[0] === 'archive') gMenu.appendChild(document.createElement('hr'));
-            var b = document.createElement('button');
-            b.type = 'button'; b.setAttribute('data-act', d[0]);
-            if (d[0] === 'del') b.classList.add('text-danger');
-            var ic = document.createElement('i');
-            ic.className = 'fas ' + d[2];
-            b.appendChild(ic);
-            b.appendChild(document.createTextNode(d[1]));
-            b.addEventListener('click', function () { gOnAct(d[0]); });
-            gMenu.appendChild(b);
-        });
-        document.body.appendChild(gMenu);
-    }
-    function gHide() { if (gMenu) gMenu.classList.remove('show'); gCurrent = null; }
-    function gShow(x, y, col) {
-        gCurrent = col;
-        gLastX = x; gLastY = y;
-        var it = findSite(col.dataset.url);
-        gMenuBuild(it, !!(it && it.archived));
-        if (window.navTip && window.navTip.hide) window.navTip.hide();
-        gMenu.classList.add('show');
-        gMenu.style.left = '0px'; gMenu.style.top = '0px';
-        var w = gMenu.offsetWidth, h = gMenu.offsetHeight;
-        var vw = window.innerWidth, vh = window.innerHeight;
-        var left = (x + w > vw - 8) ? x - w : x;
-        var top = (y + h > vh - 8) ? y - h : y;
-        left = Math.max(8, Math.min(left, Math.max(8, vw - w - 8)));
-        top = Math.max(8, Math.min(top, Math.max(8, vh - h - 8)));
-        gMenu.style.left = Math.round(left) + 'px';
-        gMenu.style.top = Math.round(top) + 'px';
-    }
-    function gOnAct(act) {
-        var col = gCurrent; gHide();
-        if (!col) return;
-        var url = col.dataset.url;
-        var it = findSite(url);
-        if (act === 'open') { if (url) window.open(url, '_blank', 'noopener'); return; }
-        if (act === 'copy') { copyText(url); return; }
-        if (act === 'children' || act === 'alts') { openLinkPanel(it, act, gLastX, gLastY); return; }
-        if (!it) return;
-        if (act === 'star') { var s = col.querySelector('.site-star'); if (s) s.click(); return; }
-        if (act === 'edit') { var e = col.querySelector('.ng-edit'); if (e) e.click(); return; }
-        if (act === 'pin') { togglePin(url); return; }
-        if (act === 'up') { moveInGroup(it, -1); return; }
-        if (act === 'down') { moveInGroup(it, 1); return; }
-        if (act === 'top' || act === 'bottom' || act === 'recat') {
-            if (window.navGuestBatch) window.navGuestBatch.siteAct(url, act);
-            return;
-        }
-        if (act === 'archive') { archiveSite(it); return; }
-        if (act === 'restore') { restoreSite(it); return; }
-        if (act === 'del') { deleteSite(it); }
-    }
-    function hideLinkPanel() { if (linkPanel) { linkPanel.remove(); linkPanel = null; } }
-    function openLinkPanel(it, kind, x, y) {
-        hideLinkPanel();
-        var list = kind === 'children' ? (it.children || []) : (it.alternates || []);
-        if (!list.length) return;
-        linkPanel = document.createElement('div');
-        linkPanel.id = 'ngMetaLinkPanel';
-        linkPanel.className = 'card-menu ng-meta-links show';
-        var head = document.createElement('div');
-        head.className = 'ng-meta-links-title';
-        head.textContent = kind === 'children' ? '子网页' : '备用网址';
-        linkPanel.appendChild(head);
-        list.forEach(function (link) {
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'ng-meta-link-row';
-            b.addEventListener('click', function () { window.open(link.url, '_blank', 'noopener'); hideLinkPanel(); });
-            var nm = document.createElement('span'); nm.className = 'ng-meta-link-name'; nm.textContent = link.name || link.url;
-            var ur = document.createElement('span'); ur.className = 'ng-meta-link-url'; ur.textContent = link.url;
-            b.appendChild(nm); b.appendChild(ur);
-            linkPanel.appendChild(b);
-        });
-        document.body.appendChild(linkPanel);
-        var w = linkPanel.offsetWidth, h = linkPanel.offsetHeight;
-        var vw = window.innerWidth, vh = window.innerHeight;
-        var left = (x + w > vw - 8) ? x - w : x;
-        var top = (y + h > vh - 8) ? y - h : y;
-        linkPanel.style.left = Math.max(8, Math.min(left, Math.max(8, vw - w - 8))) + 'px';
-        linkPanel.style.top = Math.max(8, Math.min(top, Math.max(8, vh - h - 8))) + 'px';
-    }
-    document.addEventListener('contextmenu', function (e) {
-        var col = e.target.closest ? e.target.closest('#navGuestImports [data-site-item]') : null;
-        if (!col) { gHide(); return; }
-        if (e.ctrlKey || e.metaKey) return;
-        e.preventDefault(); e.stopPropagation();
-        gShow(e.clientX, e.clientY, col);
-    });
-    document.addEventListener('pointerdown', function (e) {
-        if (e.pointerType !== 'touch') return;
-        var col = e.target.closest ? e.target.closest('#navGuestImports [data-site-item]') : null;
-        if (!col) return;
-        gPressStart = { x: e.clientX, y: e.clientY, col: col };
-        clearTimeout(gPressTimer);
-        gPressTimer = setTimeout(function () {
-            gPressTimer = null;
-            if (!gPressStart) return;
-            gShow(gPressStart.x, gPressStart.y, gPressStart.col);
-            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (err) { } }
-        }, 550);
-    }, { passive: true });
-    document.addEventListener('pointermove', function (e) {
-        if (!gPressStart) return;
-        if (Math.abs(e.clientX - gPressStart.x) > 10 || Math.abs(e.clientY - gPressStart.y) > 10) {
-            clearTimeout(gPressTimer); gPressTimer = null; gPressStart = null;
-        }
-    }, { passive: true });
-    document.addEventListener('pointerup', function (e) {
-        var was = !!(gPressStart && gMenu && gMenu.classList.contains('show'));
-        clearTimeout(gPressTimer); gPressTimer = null; gPressStart = null;
-        if (was && e.pointerType === 'touch') { gSwallow = true; setTimeout(function () { gSwallow = false; }, 400); }
-    }, { passive: true });
-    document.addEventListener('click', function (e) {
-        if (gSwallow) { e.preventDefault(); e.stopPropagation(); gSwallow = false; return; }
-        if (gMenu && gMenu.classList.contains('show') && !e.target.closest('#navGuestCardMenu')) gHide();
-        if (linkPanel && !e.target.closest('#ngMetaLinkPanel')) hideLinkPanel();
-    }, true);
-    document.addEventListener('keydown', function (e) {
-        if (!gMenu || !gMenu.classList.contains('show')) return;
-        if (e.key === 'Escape') { e.preventDefault(); gHide(); hideLinkPanel(); }
-    });
-    document.addEventListener('scroll', function () { gHide(); hideLinkPanel(); }, { passive: true, capture: true });
-    window.addEventListener('resize', function () { gHide(); hideLinkPanel(); });
 
     // ---------- 事件绑定 ----------
     btn.addEventListener('click', function () { input.value = ''; input.click(); });
@@ -3122,12 +3096,11 @@ document.documentElement.classList.add('nav-guest-mode');
         row.className = 'site-tags';
         if (subs) {
             var b1 = document.createElement('span'); b1.className = 'badge site-tag';
-            b1.setAttribute('data-tip', '含 ' + subs + ' 个子网页\n左键点卡片先选子页');
             b1.textContent = {% if nav_lang == 'en' %}(subs + ' subs'){% else %}('子页 ' + subs){% endif %}; row.appendChild(b1);
         }
         if (alts) {
             var b2 = document.createElement('span'); b2.className = 'badge site-tag';
-            b2.setAttribute('data-tip', '备用网址'); b2.textContent = {% if nav_lang == 'en' %}(alts + ' alt'){% else %}('备用 ' + alts){% endif %}; row.appendChild(b2);
+            b2.textContent = {% if nav_lang == 'en' %}(alts + ' alt'){% else %}('备用 ' + alts){% endif %}; row.appendChild(b2);
         }
         tags.forEach(function (t) {
             var chip = document.createElement('span'); chip.className = 'site-tagchip';
@@ -3163,6 +3136,27 @@ document.documentElement.classList.add('nav-guest-mode');
             else { a.removeAttribute('data-has-sub'); a.removeAttribute('data-main-url'); a.removeAttribute('data-name'); }
         }
     }
+    function moveSnapshotCardToCategory(col, category) {
+        var root = document.getElementById('navGroups');
+        if (!root || !col || !category) return false;
+        var target = null;
+        root.querySelectorAll(':scope > .nav-cat[data-collapse-id]').forEach(function (cat) {
+            if (!target && cat.getAttribute('data-collapse-id') === category) target = cat;
+        });
+        if (!target) return false;
+        var body = target.querySelector('.cat-body');
+        if (!body) return false;
+        var row = null;
+        Array.prototype.forEach.call(body.children, function (ch) {
+            if (!row && ch.classList && ch.classList.contains('row') && ch.classList.contains('g-2')) row = ch;
+        });
+        if (!row) row = body.querySelector('.row.g-2');
+        if (!row) { row = document.createElement('div'); row.className = 'row g-2'; body.appendChild(row); }
+        row.appendChild(col);
+        col.setAttribute('data-cat', category);
+        return true;
+    }
+
     function applySnapshotOverrides() {
         var root = document.getElementById('navGroups');
         if (!root) return;
@@ -3221,7 +3215,11 @@ document.documentElement.classList.add('nav-guest-mode');
             if (p.tags || p.children || p.alternates) rebuildSnapshotTags(col, p, p.tags || []);
             var search = [p.name || '', p.url || key, p.category || col.getAttribute('data-cat') || '', p.subcat || '', p.description || '', (p.tags || []).join(' ')].join(' ').toLowerCase();
             col.setAttribute('data-search', search);
-            if (p.category) col.setAttribute('data-cat', p.category);
+            if (p.category) {
+                var oldCat = col.getAttribute('data-cat') || '';
+                col.setAttribute('data-cat', p.category);
+                if (oldCat !== p.category) moveSnapshotCardToCategory(col, p.category);
+            }
             var editBtn = col.querySelector('.site-edit');
             if (editBtn) {
                 ['name', 'url', 'category', 'subcat', 'desc', 'title', 'favicon'].forEach(function (k) {
@@ -3242,6 +3240,9 @@ document.documentElement.classList.add('nav-guest-mode');
             var count = cat.querySelector('.nav-cat-title > span.text-muted');
             if (count) count.textContent = String(n);
         });
+        if (window.navGuestSnapshot && typeof window.navGuestSnapshot.applyOrder === 'function') {
+            window.navGuestSnapshot.applyOrder();
+        }
     }
 
     function listTools() { return tools.map(function (t) { return { id: t.id, name: t.name, category: t.category, description: t.description, size: t.size, iconText: t.iconText || '', iconColor: t.iconColor || '', updatedAt: t.updatedAt || null }; }); }

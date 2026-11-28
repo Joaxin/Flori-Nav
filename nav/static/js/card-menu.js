@@ -22,8 +22,7 @@
 
     // 主客共用同一套卡片菜单(2026-11-21):容器/定位翻边/键盘 ↑↓·Esc/长按防误触全复用。
     // 主人端动作走服务端写库;访客端动作只碰本机(localStorage / navStore / 内存书签),
-    // 不调任何 owner 写接口、不写服务器 DB。访客本机书签卡(#navGuestImports)由模板内联
-    // gMenu 自有菜单接管,这里不再重复弹层,避免双层菜单打架。
+    // 不调任何 owner 写接口、不写服务器 DB。本机导入卡与快照卡共用同一套菜单。
     var GUEST = !!window.NAV_GUEST_MODE;
 
     var MENU_ID = 'navCardMenu';
@@ -33,6 +32,14 @@
     var pressStart = null;
     var swallowClick = false;   // 长按松手后那一次 click 要吃掉
     var focusBack = null;
+    var menuMode = 'actions';
+    var menuX = 0, menuY = 0;
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
 
     function csrf() {
         var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
@@ -62,43 +69,61 @@
         focusBack = null;
     }
 
+    function item(act, icon, label, cls) {
+        return '<button type="button" role="menuitem" data-act="' + act + '"' +
+            (cls ? ' class="' + cls + '"' : '') + '><i class="fas ' + icon + '"></i>' + label + '</button>';
+    }
+
+    function actionItems() {
+        var out = [
+            item('open', 'fa-up-right-from-square', T('打开链接')),
+            item('edit', 'fa-pen', T('编辑')),
+            item('star', 'fa-star', T('星标')),
+            item('copy', 'fa-link', T('复制链接')),
+            item('move', 'fa-folder-open', T('移动到分类')),
+            '<hr>'
+        ];
+        out.push(
+            item('pin-top', 'fa-arrow-up-long', T('置顶')),
+            item('pin-bottom', 'fa-arrow-down-long', T('置底')),
+            item('up', 'fa-chevron-up', T('上移')),
+            item('down', 'fa-chevron-down', T('下移')),
+            '<hr>',
+            item('del', 'fa-trash', T('删除'), 'text-danger')
+        );
+        return out.join('');
+    }
+
     function build() {
         if (menu) return menu;
         menu = document.createElement('div');
         menu.id = MENU_ID;
         menu.className = 'card-menu';
         menu.setAttribute('role', 'menu');
-        var items;
-        if (GUEST) {
-            // 访客态:只保留本机可落地的五项;快照数据没有书签级排序持久化,
-            // 不提供置顶/置底/上移/下移(见 docs/并行改造/09-访客卡片菜单.md §4)。
-            items = [
-                '<button type="button" role="menuitem" data-act="open"><i class="fas fa-up-right-from-square"></i>' + T('打开链接') + '</button>',
-                '<button type="button" role="menuitem" data-act="edit"><i class="fas fa-pen"></i>' + T('编辑') + '</button>',
-                '<button type="button" role="menuitem" data-act="star"><i class="fas fa-star"></i>' + T('星标') + '</button>',
-                '<button type="button" role="menuitem" data-act="copy"><i class="fas fa-link"></i>' + T('复制链接') + '</button>',
-                '<hr>',
-                '<button type="button" role="menuitem" data-act="del" class="text-danger"><i class="fas fa-trash"></i>' + T('删除本机书签') + '</button>'
-            ];
-        } else {
-            items = [
-                '<button type="button" role="menuitem" data-act="open"><i class="fas fa-up-right-from-square"></i>' + T('打开链接') + '</button>',
-                '<button type="button" role="menuitem" data-act="edit"><i class="fas fa-pen"></i>' + T('编辑') + '</button>',
-                '<button type="button" role="menuitem" data-act="star"><i class="fas fa-star"></i>' + T('星标') + '</button>',
-                '<button type="button" role="menuitem" data-act="copy"><i class="fas fa-link"></i>' + T('复制链接') + '</button>',
-                '<hr>',
-                '<button type="button" role="menuitem" data-act="pin-top"><i class="fas fa-arrow-up-long"></i>' + T('置顶') + '</button>',
-                '<button type="button" role="menuitem" data-act="pin-bottom"><i class="fas fa-arrow-down-long"></i>' + T('置底') + '</button>',
-                '<button type="button" role="menuitem" data-act="up"><i class="fas fa-chevron-up"></i>' + T('上移') + '</button>',
-                '<button type="button" role="menuitem" data-act="down"><i class="fas fa-chevron-down"></i>' + T('下移') + '</button>',
-                '<hr>',
-                '<button type="button" role="menuitem" data-act="del" class="text-danger"><i class="fas fa-trash"></i>' + T('删除') + '</button>'
-            ];
-        }
-        menu.innerHTML = items.join('');
-        document.body.appendChild(menu);
         menu.addEventListener('click', onAct);
+        document.body.appendChild(menu);
         return menu;
+    }
+
+    // 访客本机归档卡只有「打开 / 恢复 / 彻底删除」三项;其余卡片走同一套 10 项动作。
+    function isLocalCard(col) {
+        return !!(GUEST && col && col.closest('#navGuestImports'));
+    }
+
+    function actionItemsFor(col) {
+        if (isLocalCard(col) && col.classList.contains('site-archived')) {
+            return item('open', 'fa-up-right-from-square', T('打开链接')) +
+                item('restore', 'fa-rotate-left', T('恢复')) +
+                '<hr>' +
+                item('del', 'fa-trash', T('彻底删除'), 'text-danger');
+        }
+        return actionItems();
+    }
+
+    function renderActions(col) {
+        var el = build();
+        menuMode = 'actions';
+        el.innerHTML = actionItemsFor(col || current);
     }
 
     function cardUrl(col) {
@@ -106,11 +131,10 @@
         return a ? a.href : '';
     }
 
-    // 访客态可挂菜单的卡片:快照书签卡。本机导入书签卡(#navGuestImports)由模板内联
-    // gMenu 自有菜单接管;HTML 工具卡(#toolsSection)有自己的工具钮,不进书签菜单。
+    // 访客态可挂菜单的卡片:快照书签卡 + 本机导入书签卡。
+    // HTML 工具卡(#toolsSection)有自己的工具钮,不进书签菜单。
     function guestCard(col) {
         if (!col) return null;
-        if (col.closest('#navGuestImports')) return null;
         if (col.closest('#toolsSection')) return null;
         if (!col.querySelector('a.site-card')) return null;
         return col;
@@ -189,7 +213,17 @@
             if (s) s.click();
             return;
         }
+        if (act === 'restore') {
+            var rBtn = col.querySelector('.ng-edit');
+            if (rBtn) rBtn.click();
+            return;
+        }
         if (act === 'edit') {
+            if (isLocalCard(col)) {
+                var leBtn = col.querySelector('.ng-edit');
+                if (leBtn) leBtn.click();
+                return;
+            }
             // 快照卡:走访客编辑组件(navGuestEdit,{snapshot,data});兜底点卡片自带编辑钮
             if (window.navGuestSnapshot && typeof window.navGuestSnapshot.editSite === 'function') {
                 window.navGuestSnapshot.editSite(col);
@@ -199,7 +233,24 @@
             }
             return;
         }
+        if (act === 'pin-top' || act === 'pin-bottom' || act === 'up' || act === 'down') {
+            if (isLocalCard(col)) {
+                if (window.navGuestLocalCard && typeof window.navGuestLocalCard.move === 'function') {
+                    window.navGuestLocalCard.move(url, act);
+                }
+                return;
+            }
+            if (window.navGuestSnapshot && typeof window.navGuestSnapshot.reorder === 'function') {
+                window.navGuestSnapshot.reorder(col, act);
+            }
+            return;
+        }
         if (act === 'del') {
+            if (isLocalCard(col)) {
+                var ldBtn = col.querySelector('.ng-del');
+                if (ldBtn) ldBtn.click();
+                return;
+            }
             // 快照卡:本机隐藏覆盖表(deleteSnapshot),确认框走 navConfirm;兜底点删除钮
             if (window.navGuestSnapshot && typeof window.navGuestSnapshot.hideSite === 'function') {
                 window.navGuestSnapshot.hideSite(col);
@@ -213,8 +264,24 @@
     function onAct(e) {
         var btn = e.target.closest('button[data-act]');
         if (!btn || !current) return;
+        // 菜单内点击不再冒泡到 document 的"点外部关闭":分类视图会在事件中途换 innerHTML,
+        // 原按钮已脱离文档,冒泡到 document 时会被误判成点到了菜单外。
+        e.stopPropagation();
         var act = btn.getAttribute('data-act');
         var col = current;
+        if (act === 'move') { renderCategories(col); return; }
+        if (act === 'back') {
+            renderActions(col);
+            placeMenu(menuX, menuY);
+            focusFirst();
+            return;
+        }
+        if (act === 'cat') {
+            var cat = btn.getAttribute('data-cat') || '';
+            hide();
+            moveToCategory(col, cat);
+            return;
+        }
         hide();
         if (GUEST) { guestAct(act, col); return; }
         if (act === 'open') {
@@ -229,13 +296,14 @@
         reorder(act, col);
     }
 
-    function show(x, y, col) {
-        current = col;
-        focusBack = document.activeElement;
-        var el = build();
-        // 气泡是 fixed + 高层级,先让位,免得盖住菜单第一行
-        if (window.navTip && window.navTip.hide) window.navTip.hide();
-        el.classList.add('show');
+    function focusFirst() {
+        var first = menu && menu.querySelector('button[data-act]');
+        if (first) { try { first.focus({ preventScroll: true }); } catch (e) { try { first.focus(); } catch (e2) {} } }
+    }
+
+    function placeMenu(x, y) {
+        var el = menu;
+        if (!el) return;
         el.style.left = '0px';
         el.style.top = '0px';
         var w = el.offsetWidth, h = el.offsetHeight;
@@ -246,9 +314,139 @@
         top = Math.max(8, Math.min(top, Math.max(8, vh - h - 8)));
         el.style.left = Math.round(left) + 'px';
         el.style.top = Math.round(top) + 'px';
+    }
 
-        var first = el.querySelector('button[data-act]');
-        if (first) { try { first.focus({ preventScroll: true }); } catch (e) { try { first.focus(); } catch (e2) {} } }
+    function currentCat(col) {
+        var edit = col ? col.querySelector('.site-edit') : null;
+        return String(col && (col.getAttribute('data-cat') || (edit && edit.getAttribute('data-category'))) || '');
+    }
+
+    function categoriesFor(col) {
+        var out = [];
+        function add(name) {
+            name = String(name || '').trim();
+            if (name && out.indexOf(name) < 0) out.push(name);
+        }
+        if (GUEST && col && col.closest('#navGuestImports') && window.navGuestLocal && typeof window.navGuestLocal.categories === 'function') {
+            try { (window.navGuestLocal.categories() || []).forEach(add); } catch (e) {}
+        } else {
+            document.querySelectorAll('#navGroups > .nav-cat[data-collapse-id]').forEach(function (cat) {
+                add(cat.getAttribute('data-collapse-id'));
+            });
+        }
+        add(currentCat(col));
+        return out;
+    }
+
+    function renderCategories(col) {
+        var cats = categoriesFor(col);
+        if (!cats.length) { toast(T('没有可用的分类')); return; }
+        var cur = currentCat(col);
+        var el = build();
+        var rows = ['<button type="button" role="menuitem" data-act="back"><i class="fas fa-arrow-left"></i>' + T('返回') + '</button>',
+                    '<div class="card-menu-title">' + T('移动到分类') + '</div>'];
+        cats.forEach(function (name) {
+            var same = name === cur;
+            rows.push('<button type="button" role="menuitem" data-act="cat" data-cat="' + esc(name) + '" title="' + esc(name) + '">' +
+                '<i class="fas fa-folder"></i>' + esc(name) +
+                (same ? '<i class="fas fa-check ms-auto" aria-hidden="true"></i>' : '') + '</button>');
+        });
+        menuMode = 'categories';
+        el.innerHTML = rows.join('');
+        el.classList.add('show');
+        placeMenu(menuX, menuY);
+        var firstCat = el.querySelector('button[data-act="cat"]') || el.querySelector('button[data-act]');
+        if (firstCat) { try { firstCat.focus({ preventScroll: true }); } catch (e) { try { firstCat.focus(); } catch (e2) {} } }
+    }
+
+    function updateCatCount(cat) {
+        if (!cat) return;
+        var n = cat.querySelectorAll('[data-site-item]').length;
+        var count = cat.querySelector('.nav-cat-title > span.text-muted');
+        if (count) count.textContent = String(n);
+    }
+
+    /* 同一套 DOM 迁移:主人后端成功后、访客写本机覆盖表后都用它把卡片放进目标分类 */
+    function moveCardToCategory(col, cat) {
+        if (!col || !cat) return false;
+        var target = null;
+        document.querySelectorAll('#navGroups > .nav-cat[data-collapse-id]').forEach(function (el) {
+            if (!target && el.getAttribute('data-collapse-id') === cat) target = el;
+        });
+        if (!target) return false;
+        var body = target.querySelector('.cat-body');
+        if (!body) return false;
+        var row = null;
+        Array.prototype.forEach.call(body.children, function (ch) {
+            if (!row && ch.classList && ch.classList.contains('row') && ch.classList.contains('g-2')) row = ch;
+        });
+        if (!row) row = body.querySelector('.row.g-2');
+        if (!row) { row = document.createElement('div'); row.className = 'row g-2'; body.appendChild(row); }
+        var oldCat = col.closest('.nav-cat');
+        row.appendChild(col);
+        col.setAttribute('data-cat', cat);
+        var edit = col.querySelector('.site-edit');
+        if (edit) {
+            edit.setAttribute('data-category', cat);
+            edit.setAttribute('data-subcat', '');
+        }
+        if (oldCat && oldCat !== target) updateCatCount(oldCat);
+        updateCatCount(target);
+        col.classList.add('site-moved');
+        setTimeout(function () { col.classList.remove('site-moved'); }, 900);
+        return true;
+    }
+
+    function ownerMove(col, cat) {
+        var id = Number(col.getAttribute('data-id'));
+        if (!id) { toast(T('这个站点没有可移动的 id')); return; }
+        api('/api/nav/move/', { id: id, category: cat, subcat: '' }).then(function (res) {
+            if (!res || res.status !== 'success') { toast((res && res.message) || T('移动失败')); return; }
+            moveCardToCategory(col, cat);
+            toast(T('已移动到 {cat}').replace('{cat}', cat));
+        }).catch(function () { toast(T('移动失败')); });
+    }
+
+    function guestMove(col, cat) {
+        var key = String(col.getAttribute('data-orig-url') || col.getAttribute('data-url') || '');
+        var L = window.navGuestLocal;
+        if (!key || !L) { toast(T('访客本机数据未就绪')); return; }
+        if (isLocalCard(col)) {
+            if (typeof L.setSiteCategory !== 'function') { toast(T('访客本机数据未就绪')); return; }
+            Promise.resolve(L.setSiteCategory(key, cat, '')).then(function (res) {
+                toast(res && res.ok ? T('已移动到 {cat}').replace('{cat}', cat) : ((res && res.message) || T('移动失败')));
+            });
+            return;
+        }
+        if (typeof L.updateSnapshot !== 'function') { toast(T('访客本机数据未就绪')); return; }
+        Promise.resolve(L.updateSnapshot(key, { category: cat, subcat: '' })).then(function (res) {
+            if (!res || !res.ok) { toast((res && res.message) || T('移动失败')); return; }
+            moveCardToCategory(col, cat);
+            if (window.navGuestSnapshot && typeof window.navGuestSnapshot.applyOrder === 'function') {
+                window.navGuestSnapshot.applyOrder();
+            }
+            toast(T('已移动到 {cat}').replace('{cat}', cat));
+        });
+    }
+
+    function moveToCategory(col, cat) {
+        if (!col || !cat) return;
+        if (cat === currentCat(col)) { toast(T('已经在该分类')); return; }
+        if (GUEST) guestMove(col, cat); else ownerMove(col, cat);
+    }
+
+    function show(x, y, col) {
+        current = col;
+        focusBack = document.activeElement;
+        menuX = x;
+        menuY = y;
+        var el = build();
+        renderActions(col);
+        // 气泡是 fixed + 高层级,先让位,免得盖住菜单第一行
+        if (window.navTip && window.navTip.hide) window.navTip.hide();
+        el.classList.add('show');
+        placeMenu(x, y);
+        focusFirst();
     }
 
     /* ---------- 右键 ---------- */

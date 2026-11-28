@@ -219,47 +219,49 @@
 
     /* ---------- 访客端:#navGuestEditModal(JS 动态构建) ---------- */
 
-    function refreshGuestSubList() {
-        if (!universe) return;
-        var catInput = document.getElementById('ngeCat');
+    function guestPanes(modal) {
+        return Array.prototype.slice.call(modal.querySelectorAll('#ngePanes > .tab-pane'));
+    }
+    function refreshGuestSubList(pane) {
+        if (!universe || !pane) return;
+        var catInput = pane.querySelector('.nge-cat');
+        var subInput = pane.querySelector('.nge-sub');
+        if (!catInput || !subInput) return;
         var modal = document.getElementById(GUEST_MODAL);
-        if (!modal) return;
-        var subInput = document.getElementById('ngeSub');
-        var subList = ensureDatalist(modal, 'ngeSubList', subInput);
-        var cat = trim(catInput && catInput.value);
+        var subList = ensureDatalist(modal, 'ngeSubList_' + pane.id, subInput);
+        var cat = trim(catInput.value);
         fillOptions(subList, (universe.subMap[cat] || []).concat(universe.seconds));
     }
 
     function ensureGuestModal() {
         var modal = document.getElementById(GUEST_MODAL);
         if (!modal) return;
-        var catInput = document.getElementById('ngeCat');
-        var subInput = document.getElementById('ngeSub');
-        if (!catInput || !subInput) return;
-
-        // 访客大类候选:与既有 fillCats() 结果取并集(去重),不清空既有选项。
         var catList = document.getElementById('ngeCatList');
         if (catList) fillOptions(catList, universe.cats);
-        refreshGuestSubList();
+        guestPanes(modal).forEach(refreshGuestSubList);
 
         if (modal.dataset.cascadeBound !== '1') {
             modal.dataset.cascadeBound = '1';
-            lastParentValue.set(catInput, trim(catInput.value));
-            catInput.addEventListener('input', onGuestCatChange);
-            catInput.addEventListener('change', onGuestCatChange);
+            // 多表单共用一套委托:按当前 pane 找大类/二级,新增 tab 后也不用重绑。
+            modal.addEventListener('input', onGuestDelegate);
+            modal.addEventListener('change', onGuestDelegate);
         }
     }
 
-    function onGuestCatChange(e) {
+    function onGuestDelegate(e) {
         var input = e.target;
+        if (!input || !input.classList) return;
+        if (!input.classList.contains('nge-cat')) return;
+        var pane = input.closest('.tab-pane');
+        if (!pane) return;
         var next = trim(input.value);
-        var prev = lastParentValue.has(input) ? lastParentValue.get(input) : null;
-        if (prev === next) return;
+        if (lastParentValue.get(input) === next) return;
         lastParentValue.set(input, next);
-
-        var sub = document.getElementById('ngeSub');
-        if (sub && sub.value) sub.value = ''; // 不清空即不回流:直接写 value
-        refreshGuestSubList();
+        var sub = pane.querySelector('.nge-sub');
+        var sub2 = pane.querySelector('.nge-sub2');
+        if (sub && sub.value) sub.value = '';
+        if (sub2 && sub2.value) sub2.value = '';
+        refreshGuestSubList(pane);
     }
 
     /* ---------- 挂载 / 卸载 ---------- */

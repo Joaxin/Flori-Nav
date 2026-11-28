@@ -7,6 +7,9 @@
     if (!window.NAV_GUEST_MODE || !window.navGuestLocal) return;
 
     var RENAME_KEY = 'navGuestCatRenameV1';
+    var SNAP_ORDER_KEY = 'navGuestSnapshotOrderV1';
+    var snapOrder = {};
+    try { snapOrder = JSON.parse(localStorage.getItem(SNAP_ORDER_KEY) || '{}') || {}; } catch (e) { snapOrder = {}; }
     var renameMap = {};
     try { renameMap = JSON.parse(localStorage.getItem(RENAME_KEY) || '{}') || {}; } catch (e) { renameMap = {}; }
     var bulkOn = false;
@@ -35,6 +38,72 @@
     function cardKey(col) {
         return String(col.getAttribute('data-orig-url') || col.getAttribute('data-url') || '');
     }
+    function saveSnapOrder() {
+        try { localStorage.setItem(SNAP_ORDER_KEY, JSON.stringify(snapOrder)); } catch (e) { /* ignore */ }
+    }
+    function cardsIn(parent) {
+        if (!parent) return [];
+        return Array.prototype.filter.call(parent.children, function (el) {
+            return el.matches && el.matches('[data-site-item]') && !el.closest('#navGuestImports');
+        });
+    }
+    function saveParentOrder(parent) {
+        cardsIn(parent).forEach(function (col, i) {
+            var key = cardKey(col);
+            if (key) snapOrder[key] = i + 1;
+        });
+        saveSnapOrder();
+    }
+    /* 快照卡片的置顶/置底/上移/下移:只改这台浏览器的显示顺序。
+       顺序表写在 localStorage;不动服务端排序,也不改主人库。 */
+    function reorderSnapshot(col, act) {
+        var parent = col && col.parentElement;
+        if (!parent) return;
+        var cards = cardsIn(parent);
+        var idx = cards.indexOf(col);
+        if (idx < 0) return;
+        if (act === 'pin-top') {
+            if (cards[0] !== col) parent.insertBefore(col, cards[0]);
+        } else if (act === 'pin-bottom') {
+            if (cards[cards.length - 1] !== col) parent.appendChild(col);
+        } else if (act === 'up' && idx > 0) {
+            parent.insertBefore(col, cards[idx - 1]);
+        } else if (act === 'down' && idx < cards.length - 1) {
+            parent.insertBefore(cards[idx + 1], col);
+        } else {
+            return;
+        }
+        saveParentOrder(parent);
+        col.classList.add('site-moved');
+        setTimeout(function () { col.classList.remove('site-moved'); }, 900);
+        toast(T('顺序已保存到本机，只影响这台浏览器'));
+    }
+    /* 载入/刷新后按本机顺序表重排;只处理有记录的父容器,不碰没动过的分组 */
+    function applySnapshotOrder() {
+        var root = document.getElementById('navGroups');
+        if (!root) return;
+        var parents = [];
+        root.querySelectorAll('[data-site-item]').forEach(function (col) {
+            if (col.closest('#navGuestImports')) return;
+            var p = col.parentElement;
+            if (p && parents.indexOf(p) < 0) parents.push(p);
+        });
+        parents.forEach(function (parent) {
+            var cards = cardsIn(parent);
+            var has = false;
+            cards.forEach(function (c) { if (snapOrder[cardKey(c)] != null) has = true; });
+            if (!has) return;
+            cards.sort(function (a, b) {
+                var ka = snapOrder[cardKey(a)] == null ? 999999 : snapOrder[cardKey(a)];
+                var kb = snapOrder[cardKey(b)] == null ? 999999 : snapOrder[cardKey(b)];
+                return ka - kb;
+            });
+            var frag = document.createDocumentFragment();
+            cards.forEach(function (c) { frag.appendChild(c); });
+            parent.appendChild(frag);
+        });
+    }
+
     function catOf(el) {
         var cat = el.closest ? el.closest('.nav-cat') : null;
         return cat ? String(cat.getAttribute('data-collapse-id') || '') : '';
@@ -125,9 +194,12 @@
         if (!window.navGuestEdit) return;
         window.navGuestEdit('', {});
         // openEdit 是同步 show modal,这里补上分类
-        var catInput = document.getElementById('ngeCat');
+        var modal = document.getElementById('navGuestEditModal');
+        var pane = modal && modal.querySelector('#ngePanes > .tab-pane.show.active') || modal && modal.querySelector('#ngePanes > .tab-pane');
+        if (!pane) return;
+        var catInput = pane.querySelector('.nge-cat');
         if (catInput) catInput.value = presetCat || catOf(el) || '';
-        var nameInput = document.getElementById('ngeName');
+        var nameInput = pane.querySelector('.nge-name');
         if (nameInput) setTimeout(function () { try { nameInput.focus(); } catch (e) {} }, 40);
     }
     function editSnapshot(col) {
@@ -296,7 +368,11 @@
         var top = document.getElementById('navBulkToggle');
         if (top) top.classList.toggle('active', bulkOn);
     }
-    window.navGuestSnapshot = { toggleBulk: toggleBulk, editSite: editSnapshot, hideSite: hideSnapshot, renderHiddenBar: renderHiddenBar };
+    window.navGuestSnapshot = { toggleBulk: toggleBulk, editSite: editSnapshot, hideSite: hideSnapshot,
+                                reorder: reorderSnapshot, applyOrder: applySnapshotOrder,
+                                renderHiddenBar: renderHiddenBar };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applySnapshotOrder);
+    else setTimeout(applySnapshotOrder, 0);
     // #11 统一多选 API:快照站点这条路径不再自成一套,状态与动作以同形方法挂到
     // window.navGuestSnapshotBulk,由 nav-guest-batch.js 在 ready 末尾按当前页主内容路由进
     // window.navBulk(enter/exit/isActive/count/render/selectAll),与主人侧、本机书签侧同一口径。

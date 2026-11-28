@@ -397,19 +397,23 @@ jQuery(function ($) {
         const pos = new Map();
         const items = [];
         const nodes = [];
+        const elItem = new Map();   // 元素 → 条目,排序比较器 O(1) 取键(2026-11-27)
         $('[data-site-item]').each(function() {
             pos.set(this, items.length);
             let tags = [];
             try { tags = JSON.parse(this.getAttribute('data-tags') || '[]'); } catch (e) { tags = []; }
             if (!Array.isArray(tags)) tags = [];
             const name = String(this.getAttribute('data-name') || '');
-            items.push({el: this, hay: String(this.getAttribute('data-search') || '').toLowerCase(),
+            const item = {el: this, hay: String(this.getAttribute('data-search') || '').toLowerCase(),
                         tags: tags.map(t => String(t)),
                         name: name,
                         initial: String(this.getAttribute('data-initial') || '').toLowerCase(),
                         clicks: Number(this.getAttribute('data-clicks')) || 0,
                         created: Number(this.getAttribute('data-created')) || 0,
-                        originalIndex: items.length});
+                        originalIndex: items.length,
+                        parent: this.parentElement};
+            items.push(item);
+            elItem.set(this, item);
             nodes.push(this);
         });
         function group(sel) {
@@ -424,16 +428,18 @@ jQuery(function ($) {
             });
             return out;
         }
-        navIdx = {items: items, subs: group('.nav-sub, .nav-sub2'), cats: group('[data-category]'), nodes: nodes};
+        navIdx = {items: items, subs: group('.nav-sub, .nav-sub2'), cats: group('[data-category]'), nodes: nodes, elItem: elItem};
     }
     function navFilterIndex() {
-        // 原生计数 + 元素身份双重失效判断:删卡片/撤销/删1增1/编辑换节点后索引自动重建,
-        // 不依赖调用方手动刷新(数量不变但节点全换的场景,只比数量会漏)
+        // 数量 + 元素身份 + 所在行(parentElement)三重校验:删卡片/撤销/删1增1/编辑换节点/换分类都重建。
+        // 2026-11-27 起不再按“文档顺序”比对——排序只改同一行内的先后,不应让索引失效,
+        // 否则 originalIndex 会被按新顺序重算,“恢复默认顺序”就失效了。
         const cur = document.querySelectorAll('[data-site-item]');
         if (navIdx && navIdx.nodes.length === cur.length) {
             let same = true;
             for (let i = 0; i < cur.length && same; i++) {
-                if (navIdx.nodes[i] !== cur[i]) same = false;
+                const it = navIdx.elItem.get(cur[i]);
+                if (!it || it.parent !== cur[i].parentElement) same = false;
             }
             if (same) return navIdx;
         }
@@ -453,25 +459,36 @@ jQuery(function ($) {
         const v = localStorage.getItem(NAV_SORT_KEY);
         return ['usage', 'name', 'created'].includes(v) ? v : 'default';
     }
-    function navSortCards(a, b, mode) {
-        const ia = navIdxItem(a), ib = navIdxItem(b);
+    /* 2026-11-27 性能改造:原来每次比较都走 navIdxItem → navFilterIndex()
+       (全文档 querySelectorAll + 逐节点身份比对)再 items.find() 线性查找,
+       1500 站时一次排序要 2.8 秒、2400 站 5.8 秒,全堵在主线程。
+       现在排序键一次性建表,比较只读缓存字段;顺序没变就一次 DOM 都不动,
+       真要挪动也只用 DocumentFragment 整批替换,不再逐个 appendChild。 */
+    const NAV_SORT_COLLATOR = new Intl.Collator('zh-Hans-CN');
+    const NAV_SORT_EMPTY = {name: '', clicks: 0, created: 0, originalIndex: 0};
+    function navSortKeyMap() {
+        return navFilterIndex().elItem;   // 索引本身就是 元素→条目 的 Map,直接复用
+    }
+    function navSortCards(a, b, mode, map) {
+        const ia = map.get(a) || NAV_SORT_EMPTY, ib = map.get(b) || NAV_SORT_EMPTY;
         if (mode === 'usage') return (ib.clicks - ia.clicks) || ia.originalIndex - ib.originalIndex;
         if (mode === 'created') return (ib.created - ia.created) || ia.originalIndex - ib.originalIndex;
-        if (mode === 'name') return ia.name.localeCompare(ib.name, 'zh-Hans-CN') || ia.originalIndex - ib.originalIndex;
+        if (mode === 'name') return NAV_SORT_COLLATOR.compare(ia.name, ib.name) || ia.originalIndex - ib.originalIndex;
         return ia.originalIndex - ib.originalIndex;
-    }
-    function navIdxItem(el) {
-        const idx = navFilterIndex();
-        const hit = idx.items.find(it => it.el === el);
-        return hit || {name: '', clicks: 0, created: 0, originalIndex: 0};
     }
     window.navApplySiteSort = function(mode) {
         mode = mode || navSortModeGet();
+        const map = navSortKeyMap();
         $(SORT_ROW_SEL).each(function() {
             const cards = Array.from(this.querySelectorAll(':scope > [data-site-item]'));
             if (cards.length < 2) return;
-            cards.sort((a, b) => navSortCards(a, b, mode));
-            cards.forEach(c => this.appendChild(c));
+            const sorted = cards.slice().sort((a, b) => navSortCards(a, b, mode, map));
+            let changed = false;
+            for (let i = 0; i < cards.length && !changed; i++) if (sorted[i] !== cards[i]) changed = true;
+            if (!changed) return;             // 默认顺序/已排好:零 DOM 操作
+            const frag = document.createDocumentFragment();
+            for (let i = 0; i < sorted.length; i++) frag.appendChild(sorted[i]);
+            this.appendChild(frag);
         });
     };
     window.navSetSortMode = function(mode) {

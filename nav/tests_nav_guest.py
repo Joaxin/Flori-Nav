@@ -164,12 +164,12 @@ class DualEndSkeletonParityTests(TestCase):
             self.assertNotIn('{#', html, name)
             self.assertNotIn('#}', html, name)
 
-    def test_fourth_tab_text_differs_but_slot_is_same(self):
+    def test_fourth_tab_is_maintain_on_both(self):
+        """2026-11-27 改口径:第 4 个 tab 两端同名「维护」(原先是主人维护/访客排序)。"""
         owner, guest = self._pages()
-        self.assertIn('id="tabBtn-sort"', owner)
-        self.assertIn('id="tabBtn-sort"', guest)
-        self.assertIn('维护', owner)
-        self.assertIn('排序', guest)
+        for name, html in (('owner', owner), ('guest', guest)):
+            seg = html[html.index('id="tabBtn-sort"'):][:160]
+            self.assertIn('维护', seg, name)
 
 
 class GuestParityTests(TestCase):
@@ -228,13 +228,13 @@ class GuestParityTests(TestCase):
     def test_guest_local_bookmark_actions_and_tools(self):
         # A 类本机能力:批量打开/复制、单条删除/编辑/置顶、分组改名/排序、点击常用排序、本机 HTML 工具
         html = self.client.get(reverse('nav_guest')).content.decode('utf-8')
-        for token in ['ng-check', 'bulkOpen', 'bulkCopy', '打开选中', '复制链接']:
+        for token in ['ng-check', 'bulkOpen', 'bulkCopy', '多选', 'data-ngb-enter', 'navBulkBar']:
             self.assertIn(token, html)
         for token in ['ng-pin', 'ng-edit', 'ng-del', 'togglePin', 'editSite', 'deleteSite']:
             self.assertIn(token, html)
         for token in ['navGuestAddBtn', 'addSite']:
             self.assertIn(token, html)
-        for token in ['navGuestCardMenu', 'archiveSite', 'restoreSite', 'moveInGroup', 'archived', '已归档']:
+        for token in ['card-menu.js', 'navGuestLocalCard', 'archiveSite', 'restoreSite', 'moveInGroup', 'archived', '已归档']:
             self.assertIn(token, html)
         for token in ['renameCat', 'moveCat', 'navGuestCatOrderV1', 'bumpClick', 'clicks']:
             self.assertIn(token, html)
@@ -443,7 +443,8 @@ class GuestLocalAiTests(TestCase):
         self.assertNotIn('apiKey = entry', ai)
 
     def test_local_management_basket_stats_and_tags(self):
-        for token in ('navGuestEditModal', 'ngeName', 'ngeTags', 'ngeSave',
+        for token in ('navGuestEditModal', 'nge-name', 'nge-tags', 'ngeSave',
+                      'ngePanes', 'ngeAddTab', 'nge-ai-links', 'nge-fetch-desc',
                       'navGuestBasketV1', 'ngbScan', 'navGuestStatsModal',
                       'ngs-grid', 'navGuestStatsOpen', 'data-nav-basket', 'data-nav-stats'):
             self.assertIn(token, self.template) if token.startswith('data-nav-') else self.assertIn(token, self.mg_js)
@@ -575,18 +576,24 @@ class GuestSchemaV2Tests(TestCase):
         # 线 B:批量 / 分组显隐排序 / 站点换分类只调冻结 API,控件令牌齐全
         for token in ('bulkSetPinned', 'bulkArchive', 'bulkMove', 'bulkAddTags',
                       'bulkRemoveTags', 'bulkDelete', 'setCatHidden', 'moveCatTo',
-                      'resetCatOrder', 'moveSiteTo', 'setSiteCategory', 'groupOrder',
-                      'tagVocab', 'categories', 'onRender', 'navGuestBatch'):
+                      'resetCatOrder', 'moveSiteTo', 'groupOrder',
+                      'categories', 'onRender', 'navGuestBatch'):
             self.assertIn(token, self.batch_js)
         # 弹层与入口令牌
-        for token in ('ngbMoveModal', 'ngbTagModal', 'ngbHiddenModal', 'data-ngb-restore',
+        # 2026-11-27:批量条与主人 #navMsBar 同形态(打开/收藏/删除/更多/退出 + 更多浮层),
+        # 移动/加标签改条内联控件,原来只属于访客的 ngbMoveModal / ngbTagModal 已删除;
+        # 页脚只剩「隐藏分组」这一件访客独有的数据能力,仍是本机小弹窗。
+        for token in ('ngbHiddenModal', 'data-ngb-restore', 'navBulkBar',
                       '隐藏分组', '恢复默认分组顺序', '批量删除本机书签', '本机存储空间不足'):
             self.assertIn(token, self.batch_js)
-        # 全选 / 取消全选:纳入全部本机书签(含归档),状态随 selected 表回填勾选框
-        for token in ('全选', '取消全选', 'allSelected', 'allBookmarkUrls', 'L.list()'):
+        # 全选:纳入全部本机书签(含归档),状态随 selected 表回填勾选框
+        for token in ('全选', 'allSelected', 'allBookmarkUrls', 'L.list()'):
             self.assertIn(token, self.batch_js)
-        # 模板右键菜单补项:置顶/置底/换分类分支委托给 batch 模块
-        for token in ('置顶到分组顶', '置底分组末', '换分类', 'window.navGuestBatch'):
+        # 右键菜单已收口到共享 card-menu.js:动作文案在共享脚本,本机适配口在模板
+        card_menu = (Path(__file__).resolve().parent / 'static' / 'js' / 'card-menu.js').read_text(encoding='utf-8')
+        for token in ('置顶', '置底', '移动到分类'):
+            self.assertIn(token, card_menu)
+        for token in ('window.navGuestBatch', 'setSiteCategory', 'window.navGuestLocalCard'):
             self.assertIn(token, self.template)
         # 新样式类落在访客区段 CSS
         css = (Path(__file__).resolve().parent / 'static' / 'css' / 'nav-sites.css').read_text(encoding='utf-8')
@@ -680,12 +687,12 @@ class GuestMetadataLineTests(TestCase):
 
     def test_edit_modal_carries_child_alt_and_icon_fields(self):
         # 编辑弹窗:子网页 / 备用网址多行增删 + 图标四件套,字段名与 schema v2 一致
-        for token in ('ngeChildren', 'ngeAlts', 'ngeAddChild', 'ngeAddAlt',
-                      'ngeFavicon', 'ngeIconText', 'ngeIconColor', 'ngeIconSize',
+        for token in ('nge-children', 'nge-alts', 'nge-add-child', 'nge-add-alt',
+                      'nge-favicon', 'nge-icontext', 'nge-iconcolor', 'nge-iconsize',
                       'collectLinks', 'cleanFaviconInput'):
             self.assertIn(token, self.mg_js)
         # 页面标题:输入框回填 + 进保存 payload(编辑 patch / 新增 addSites 共用)
-        self.assertIn('ngeSiteTitle', self.mg_js)
+        self.assertIn('nge-title', self.mg_js)
         self.assertIn("src.siteTitle", self.mg_js)
         self.assertIn('siteTitle: siteTitle', self.mg_js)
         # 保存时新字段随 payload 落盘(编辑 patch / 新增 addSites 共用)
@@ -703,9 +710,14 @@ class GuestMetadataLineTests(TestCase):
             self.assertIn(token, self.template)
 
     def test_card_menu_opens_child_and_alternate_link_panel(self):
-        for token in ('children', 'alts', 'openLinkPanel', 'hideLinkPanel',
-                      'ngMetaLinkPanel', '子网页', '备用网址'):
+        # 访客本机卡不再自建 ngMetaLinkPanel;按主人 _nav_site_card.html 的 data-has-sub
+        # + site-sub/site-alt 契约,复用 stars-filter.js 的同一个 #subModal。
+        for token in ('data-has-sub', 'data-main-url', 'site-subs', 'site-alt',
+                      '子网页', '备用网址'):
             self.assertIn(token, self.template)
+        stars = (Path(__file__).resolve().parent / 'static' / 'js' / 'stars-filter.js').read_text(encoding='utf-8')
+        self.assertIn('site-card[data-has-sub]', stars)
+        self.assertNotIn('ngMetaLinkPanel', self.template)
 
     def test_tool_meta_edit_and_grouped_render(self):
         # 工具元数据编辑弹窗经 updateToolMeta 落盘;工具按分类分组渲染,空分类归「我的工具」
@@ -768,7 +780,7 @@ class GuestFavLocalizeTests(TestCase):
         self.assertNotIn('faviconLocalize', self.template[local_start:])
 
     def test_localize_entries_in_manage_and_template(self):
-        for token in ('尝试本地化图标', 'ngeLocalize', 'localizeCurrent', 'localizeAll'):
+        for token in ('localizeAll', 'localizeFavicons'):
             self.assertIn(token, self.mg_js)
         for token in ('本地化全部图标', '不做任何服务端下载', '整包备份'):
             self.assertIn(token, self.template)
@@ -817,7 +829,7 @@ class GuestLinkCheckPromptTests(TestCase):
 
     def test_link_check_view_and_probe(self):
         js = self.care_js
-        for token in ('ngcTabLink', '链接检测', "switchView('link')", 'runLinkCheck',
+        for token in ('navGuestLinkModal', '链接检测', "switchView('link')", 'runLinkCheck',
                       'concurrency = 4', 'PROBE_TIMEOUT = 7000', 'linkSelected', 'recordCheck'):
             self.assertIn(token, js)
         for state in ("'all'", "'dead'", "'untested'", "'ok'"):
@@ -1086,9 +1098,10 @@ class S1MenuAndLoginContractTests(TestCase):
 
     def test_upload_icons_and_new_tips(self):
         # C7:两处上传工具图标换 fa-upload;导出书签/统计/足迹补 tooltip,说清数据侧
-        # 2026-11-25:访客端去掉「上传工具」入口(顶栏菜单 + 工具区空态),主人端保留
+        # 2026-11-28:工具区空态改为双端共用——访客点同一块 #toolsEmpty
+        # 也进本机工具上传;不再为了隐藏入口把整块删掉(那会让访客页面比主人矮 48px)
         self.assertNotIn('id="navGuestToolBtn"', self.guest)
-        self.assertNotIn('id="toolsEmpty"', self.guest)
+        self.assertIn('id="toolsEmpty"', self.guest)
         self.assertIn('<i class="fas fa-upload"></i>上传工具', self.owner)
         self.assertNotIn('<i class="fas fa-screwdriver-wrench"></i>上传工具', self.guest)
         self.assertNotIn('<i class="fas fa-screwdriver-wrench"></i>上传工具', self.owner)

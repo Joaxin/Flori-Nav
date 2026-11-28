@@ -3440,7 +3440,7 @@ jQuery(function ($) {
     // 聊天输入气泡(dsh-pet shared/chat 思路:单行输入贴着宠物,Enter 发送,Esc/点外关闭)
     function petAiQuickOpen() {
         if (window.NAV_GUEST_MODE && !(window.navGuestAi && window.navGuestAi.configured())) {
-            petSay('先填本机接口和模型,我才能聊天~ 点「AI 接口与对话」', 3600);
+            petSay('先填本机接口和模型,我才能聊天~ 点「AI 接口」', 3600);
             if (window.openGuestLocalAiPanel) window.openGuestLocalAiPanel();
             return;
         }
@@ -4059,7 +4059,7 @@ jQuery(function ($) {
     // DeepSeek 余额:按已用百分比分档播「余额-」动画(池子早就搬好了,今天终于接上)
     window.petAiBalance = function() {
         if (petAiReady === false) {
-            petSay(window.NAV_GUEST_MODE ? '还没填本机接口,查不了余额~ 点「AI 接口与对话」配置'
+            petSay(window.NAV_GUEST_MODE ? '还没填本机接口,查不了余额~ 点「AI 接口」配置'
                 : '还没接 AI 接口,查不了余额~ 点顶栏「AI 接口」配置', 3600);
             return;
         }

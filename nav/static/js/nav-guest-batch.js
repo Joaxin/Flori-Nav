@@ -31,9 +31,8 @@
     function rootEl() { return document.getElementById('navGuestImports'); }
 
     function isBulkMode(root) {
-        var bar = root && root.querySelector('.ng-bulkbar');
-        // 不再靠中文「退出多选」判态:英文环境下文案会变(2026-11-26)
-        return !!(bar && bar.querySelector('[data-bulk-act="open"]'));
+        // 2026-11-27:判态改读 render() 写在容器上的 data-bulk,不再依赖某颗按钮是否存在
+        return !!(root && root.getAttribute('data-bulk') === '1');
     }
 
     // ---------- 勾选收集与同步 ----------
@@ -69,6 +68,9 @@
         cb.onchange = function () {
             if (cb.checked) selected[u] = true;
             else delete selected[u];
+            // 勾选变化即时刷新「已选 N 项」与禁用态,不必等下一次整块重渲染
+            var bar = document.getElementById('navBulkBar');
+            if (bar && bar.getAttribute('data-built') === '1') refreshBar(bar);
         };
     }
     function syncCheckboxes(root) {
@@ -150,128 +152,6 @@
                 confirmLabel: T('恢复默认')
             }).then(function (ok) { if (ok) doReset(); });
         } else { doReset(); }
-    }
-
-    // ---------- 移动 / 换分类弹层 ----------
-    function ensureMoveModal() {
-        if (moveModal) return moveModal;
-        moveModal = document.createElement('div');
-        moveModal.className = 'modal fade';
-        moveModal.id = 'ngbMoveModal';
-        moveModal.tabIndex = -1;
-        moveModal.setAttribute('data-no-resize', '1');
-        moveModal.innerHTML =
-            '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-            '<div class="modal-header"><h5 class="modal-title" id="ngbMoveTitle">' + T('移动到分组') + '</h5>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + T('关闭') + '"></button></div>' +
-            '<div class="modal-body">' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngbMoveCat">' + T('大类(可选已有,也可直接新建)') + '</label>' +
-            '<input id="ngbMoveCat" class="form-control form-control-sm" list="ngbMoveCatList" maxlength="50" placeholder="' + T('我的导入') + '">' +
-            '<datalist id="ngbMoveCatList"></datalist></div>' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngbMoveSub">' + T('小分类(可留空,二级 / 三级)') + '</label>' +
-            '<input id="ngbMoveSub" class="form-control form-control-sm" maxlength="80" placeholder="' + T('二级 / 三级') + '"></div>' +
-            '<div id="ngbMoveErr" class="small text-danger mt-2"></div></div>' +
-            '<div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + T('取消') + '</button>' +
-            '<button type="button" class="btn btn-sm btn-primary nav-modal-primary" id="ngbMoveSave">' + T('移动到本机分组') + '</button></div>' +
-            '</div></div>';
-        document.body.appendChild(moveModal);
-        document.getElementById('ngbMoveSave').addEventListener('click', saveMove);
-        return moveModal;
-    }
-    function openMove(ctx) {
-        ensureMoveModal();
-        moveCtx = ctx;
-        var list = document.getElementById('ngbMoveCatList');
-        list.innerHTML = '';
-        (L.categories() || []).forEach(function (c) {
-            var o = document.createElement('option'); o.value = c; list.appendChild(o);
-        });
-        var it = ctx.single ? L.find(ctx.url) : null;
-        document.getElementById('ngbMoveTitle').textContent = ctx.single ? T('更换分类') : T('移动 {n} 个书签').replace('{n}', String(ctx.urls.length));
-        document.getElementById('ngbMoveCat').value = it ? (it.category || '') : '';
-        document.getElementById('ngbMoveSub').value = it ? (it.subcat || '') : '';
-        document.getElementById('ngbMoveErr').textContent = '';
-        bootstrap.Modal.getOrCreateInstance(moveModal).show();
-    }
-    function saveMove() {
-        var cat = document.getElementById('ngbMoveCat').value.trim();
-        var sub = document.getElementById('ngbMoveSub').value.trim();
-        var err = document.getElementById('ngbMoveErr');
-        if (!cat) { err.textContent = T('大类不能为空'); return; }
-        var btn = document.getElementById('ngbMoveSave');
-        btn.disabled = true;
-        var task = moveCtx.single
-            ? L.setSiteCategory(moveCtx.url, cat, sub)
-            : L.bulkMove(moveCtx.urls, { category: cat, subcat: sub });
-        Promise.resolve(task).then(function (res) {
-            btn.disabled = false;
-            if (!res || res.ok === false) { err.textContent = (res && res.message) || T('本机存储空间不足,未保存'); return; }
-            bootstrap.Modal.getOrCreateInstance(moveModal).hide();
-            toast(moveCtx.single ? T('已更换分类') : T('已移动 {n} 个书签').replace('{n}', String(res.updated || 0)));
-        }).catch(function () { btn.disabled = false; err.textContent = T('操作失败,请重试'); });
-    }
-
-    // ---------- 标签弹层(加 / 删) ----------
-    function splitTags(raw) {
-        var parts = String(raw || '').split(/[,，、;；\s]+/);
-        var out = [], seen = {};
-        parts.forEach(function (t) {
-            t = String(t == null ? '' : t).trim().slice(0, 10);
-            if (t && !seen[t] && out.length < 8) { seen[t] = 1; out.push(t); }
-        });
-        return out;
-    }
-    function ensureTagModal() {
-        if (tagModal) return tagModal;
-        tagModal = document.createElement('div');
-        tagModal.className = 'modal fade';
-        tagModal.id = 'ngbTagModal';
-        tagModal.tabIndex = -1;
-        tagModal.setAttribute('data-no-resize', '1');
-        tagModal.innerHTML =
-            '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-            '<div class="modal-header"><h5 class="modal-title" id="ngbTagTitle">' + T('批量标签') + '</h5>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + T('关闭') + '"></button></div>' +
-            '<div class="modal-body">' +
-            '<div class="mb-2"><label class="small text-muted mb-0" for="ngbTagInput">' + T('标签(逗号分隔,最多 8 个)') + '</label>' +
-            '<input id="ngbTagInput" class="form-control form-control-sm" list="ngbTagList" placeholder="' + T('免费, 开源, 需代理') + '"></div>' +
-            '<datalist id="ngbTagList"></datalist>' +
-            '<div id="ngbTagErr" class="small text-danger mt-2"></div></div>' +
-            '<div class="modal-footer"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + T('取消') + '</button>' +
-            '<button type="button" class="btn btn-sm btn-primary nav-modal-primary" id="ngbTagSave">' + T('应用到本机书签') + '</button></div>' +
-            '</div></div>';
-        document.body.appendChild(tagModal);
-        document.getElementById('ngbTagSave').addEventListener('click', saveTags);
-        return tagModal;
-    }
-    function openTag(mode, urls) {
-        ensureTagModal();
-        tagCtx = { mode: mode, urls: urls };
-        var list = document.getElementById('ngbTagList');
-        list.innerHTML = '';
-        (L.tagVocab() || []).forEach(function (t) {
-            var o = document.createElement('option'); o.value = t; list.appendChild(o);
-        });
-        document.getElementById('ngbTagTitle').textContent = mode === 'add' ? T('批量加标签') : T('批量删标签');
-        document.getElementById('ngbTagInput').value = '';
-        document.getElementById('ngbTagErr').textContent = '';
-        bootstrap.Modal.getOrCreateInstance(tagModal).show();
-    }
-    function saveTags() {
-        var tags = splitTags(document.getElementById('ngbTagInput').value);
-        var err = document.getElementById('ngbTagErr');
-        if (!tags.length) { err.textContent = T('请输入至少一个标签'); return; }
-        var btn = document.getElementById('ngbTagSave');
-        btn.disabled = true;
-        var task = tagCtx.mode === 'add'
-            ? L.bulkAddTags(tagCtx.urls, tags)
-            : L.bulkRemoveTags(tagCtx.urls, tags);
-        Promise.resolve(task).then(function (res) {
-            btn.disabled = false;
-            if (!res || res.ok === false) { err.textContent = T('本机存储空间不足,未保存'); return; }
-            bootstrap.Modal.getOrCreateInstance(tagModal).hide();
-            report(res, tagCtx.mode === 'add' ? '已批量加标签' : '已批量删标签');
-        }).catch(function () { btn.disabled = false; err.textContent = T('操作失败,请重试'); });
     }
 
     // ---------- 隐藏分组入口 ----------
@@ -356,50 +236,145 @@
         });
     }
 
+    // ---------- 多选工具条:与主人 #navMsBar 同一形态 ----------
     function enhanceBar(root) {
-        var bar = root.querySelector('.ng-bulkbar');
-        if (!bar || bar.querySelector('[data-ngb-bar]')) return;
-        // 隐藏分组入口常驻,不依赖多选模式
-        bar.appendChild(barBtn(T('隐藏分组'), T('列出并恢复已隐藏的分组'), 'btn-outline-secondary', openHidden));
-        bar.appendChild(barBtn(T('恢复默认分组顺序'), T('还原分组上下顺序与显隐'), 'btn-outline-secondary', actResetOrder));
-        if (!isBulkMode(root)) return;
-        bar.appendChild(barBtn(allSelected(allBookmarkUrls()) ? T('取消全选') : T('全选'),
-            T('勾选 / 取消勾选全部本机书签(含归档区)'), 'btn-outline-primary', toggleSelectAll, 'all'));
-        bar.appendChild(barBtn(T('星标'), T('批量星标选中'), 'btn-outline-primary', function () { actPinned(true); }, 'pin'));
-        bar.appendChild(barBtn(T('取消星标'), T('批量取消星标'), 'btn-outline-secondary', function () { actPinned(false); }, 'unpin'));
-        bar.appendChild(barBtn(T('归档'), T('批量归档选中'), 'btn-outline-secondary', function () { actArchive(true); }, 'archive'));
-        bar.appendChild(barBtn(T('唤醒'), T('批量恢复到主列表'), 'btn-outline-secondary', function () { actArchive(false); }, 'wake'));
-        bar.appendChild(barBtn(T('移动…'), T('批量移动到其他大类 / 小分类'), 'btn-outline-secondary', function () {
-            var urls = needUrls(); if (urls) openMove({ single: false, urls: urls });
-        }, 'move'));
-        bar.appendChild(barBtn(T('加标签…'), T('批量给选中书签加标签'), 'btn-outline-secondary', function () {
-            var urls = needUrls(); if (urls) openTag('add', urls);
-        }, 'addtag'));
-        bar.appendChild(barBtn(T('删标签…'), T('批量给选中书签删标签'), 'btn-outline-secondary', function () {
-            var urls = needUrls(); if (urls) openTag('remove', urls);
-        }, 'deltag'));
-        bar.appendChild(barBtn(T('删除'), T('批量删除选中书签(仅本机)'), 'btn-outline-danger', actDelete, 'delete'));
+        var bar = root.querySelector('#navBulkBar');
+        if (!bar) return;
+        var on = isBulkMode(root);
+        bar.style.display = on ? 'flex' : 'none';
+        if (!on) { bar.innerHTML = ''; bar.removeAttribute('data-built'); return; }
+        if (bar.getAttribute('data-built') !== '1') buildBar(bar);
+        refreshBar(bar);
     }
+
+    function buildBar(bar) {
+        var cats = L.categories() || [];
+        var subMap = (L.subs && L.subs()) || {};
+        bar.setAttribute('data-built', '1');
+        bar.innerHTML =
+            '<b class="small" id="navBulkCount" data-bulk-count></b>' +
+            '<button class="btn btn-sm btn-primary" data-bulk-act="open" data-ngb-act="open">' + T('打开') + '</button>' +
+            '<button class="btn btn-sm btn-outline-primary" data-ngb-act="pin">' + T('收藏') + '</button>' +
+            '<button class="btn btn-sm btn-outline-danger" data-ngb-act="delete">' + T('删除') + '</button>' +
+            '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="more">' + T('更多') + '<i class="fas fa-chevron-up ms-1" style="font-size:.7em"></i></button>' +
+            '<button class="btn btn-sm btn-outline-secondary" id="navBulkExit" data-bulk-act="exit" data-bulk-exit data-ngb-act="exit">' + T('退出') + '</button>' +
+            '<div class="ms-more-panel d-none" id="ngbMore">' +
+              '<div class="ms-more-row">' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="copy">' + T('复制链接') + '</button>' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="all">' + T('全选当前可见') + '</button>' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="unpin">' + T('取消收藏') + '</button>' +
+              '</div>' +
+              '<div class="ms-more-row">' +
+                '<select id="ngbCat" class="form-select form-select-sm" style="width:auto"><option value="">' + T('换分类到…') + '</option>' + cats.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('') + '</select>' +
+                '<select id="ngbSub" class="form-select form-select-sm" style="width:auto"><option value="">' + T('(清空小分类)') + '</option></select>' +
+                '<button class="btn btn-sm btn-outline-primary" data-ngb-act="move">' + T('换分类') + '</button>' +
+              '</div>' +
+              '<div class="ms-more-row">' +
+                '<input id="ngbTags" class="form-control form-control-sm" style="width:150px" placeholder="' + T('标签,逗号分隔') + '">' +
+                '<button class="btn btn-sm btn-outline-primary" data-ngb-act="addtag">' + T('加标签') + '</button>' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="deltag">' + T('删标签') + '</button>' +
+              '</div>' +
+              '<div class="ms-more-row">' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="archive">💤 ' + T('休眠') + '</button>' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="wake">↩ ' + T('唤醒') + '</button>' +
+              '</div>' +
+              '<div class="ms-more-row">' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="hidden">' + T('隐藏分组') + '</button>' +
+                '<button class="btn btn-sm btn-outline-secondary" data-ngb-act="reset">' + T('恢复默认分组顺序') + '</button>' +
+              '</div>' +
+            '</div>';
+        var catSel = bar.querySelector('#ngbCat');
+        var subSel = bar.querySelector('#ngbSub');
+        function syncSubs() {
+            var cat = catSel.value;
+            subSel.innerHTML = '<option value="">' + T('(清空小分类)') + '</option>' +
+                (subMap[cat] || []).map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+        }
+        catSel.addEventListener('change', syncSubs);
+        syncSubs();
+        bar.addEventListener('click', function (ev) {
+            var b = ev.target.closest('[data-ngb-act]');
+            if (!b) return;
+            var act = b.getAttribute('data-ngb-act');
+            var urls = currentUrls();
+            if (act === 'more') {
+                var panel = bar.querySelector('#ngbMore');
+                var open = panel.classList.toggle('d-none') === false;
+                b.setAttribute('aria-expanded', open ? 'true' : 'false');
+                var ic = b.querySelector('i');
+                if (ic) ic.className = 'fas fa-chevron-' + (open ? 'down' : 'up') + ' ms-1';
+                return;
+            }
+            if (act === 'exit') { if (window.navGuestBulk) window.navGuestBulk.exit(); return; }
+            if (act === 'all') { toggleSelectAll(); return; }
+            if (act === 'hidden') { openHidden(); return; }
+            if (act === 'reset') { actResetOrder(); return; }
+            if (act === 'copy') {
+                if (!urls.length) { toast(T('先勾选书签')); return; }
+                var text = urls.map(function (u) { var it = L.find(u) || {}; return (it.name ? it.name + ' ' : '') + u; }).join('\n');
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function () {
+                        toast(T('已复制 {n} 条链接').replace('{n}', String(urls.length)));
+                    });
+                } else { toast(T('当前浏览器不支持剪贴板')); }
+                return;
+            }
+            if (!urls.length) { toast(T('先勾选书签')); return; }
+            if (act === 'open') { urls.forEach(function (u) { window.open(u, '_blank'); }); return; }
+            if (act === 'pin') { actPinned(true); return; }
+            if (act === 'unpin') { actPinned(false); return; }
+            if (act === 'archive') { actArchive(true); return; }
+            if (act === 'wake') { actArchive(false); return; }
+            if (act === 'delete') { actDelete(); return; }
+            if (act === 'move') {
+                var cat = catSel.value.trim();
+                var sub = subSel.value.trim();
+                if (!cat) { toast(T('先选目标大类')); return; }
+                L.bulkMove(urls, { category: cat, subcat: sub }).then(function () {
+                    toast(T('已移动到 {cat}').replace('{cat}', cat));
+                });
+                return;
+            }
+            if (act === 'addtag' || act === 'deltag') {
+                var tags = (bar.querySelector('#ngbTags').value || '').split(/[,，]/).map(function (t) { return t.trim(); }).filter(Boolean);
+                if (!tags.length) { toast(T('先填标签')); return; }
+                var p = act === 'addtag' ? L.bulkAddTags(urls, tags) : L.bulkRemoveTags(urls, tags);
+                Promise.resolve(p).then(function () { toast(act === 'addtag' ? T('已加标签') : T('已删标签')); });
+                return;
+            }
+        });
+    }
+
+    function refreshBar(bar) {
+        var n = currentUrls().length;
+        var c = bar.querySelector('[data-bulk-count]');
+        if (c) c.textContent = T('已选 {n} 项').replace('{n}', String(n));
+        bar.querySelectorAll('[data-ngb-act]').forEach(function (b) {
+            var act = b.getAttribute('data-ngb-act');
+            if (['pin', 'unpin', 'archive', 'wake', 'move', 'addtag', 'deltag', 'delete', 'copy'].indexOf(act) >= 0) b.disabled = n === 0;
+        });
+    }
+
+    // ---------- 设置面板「分组」入口(工具条只在多选态出现,这两件事常驻设置里) ----------
+    document.addEventListener('click', function (ev) {
+        if (ev.target.closest('[data-nav-guest-hidden]')) { ev.preventDefault(); openHidden(); }
+        else if (ev.target.closest('[data-nav-guest-reset-order]')) { ev.preventDefault(); actResetOrder(); }
+    });
 
     // ---------- 卡片右键菜单分支(模板 gOnAct 调用) ----------
     function siteAct(url, act) {
         if (!L.find(url)) return;
         if (act === 'top') L.moveSiteTo(url, 'top').then(paintSite);
         else if (act === 'bottom') L.moveSiteTo(url, 'bottom').then(paintSite);
-        else if (act === 'recat') openMove({ single: true, url: url });
+        // 单个站点的「换分类」交给本机编辑弹窗(与主人点 ✎ 进同一个大表单),不再自开小窗
+        else if (act === 'recat') { if (window.navGuestEdit) window.navGuestEdit(url); }
     }
     window.navGuestBatch = { siteAct: siteAct };
 
     // ---------- 0 项禁用:批量动作按钮在未勾选时置灰;全选/分组维护项不受限 ----------
-    var BAR_ACT_ACTS = ['pin', 'unpin', 'archive', 'wake', 'move', 'addtag', 'deltag', 'delete'];
     function syncBarDisabled(root) {
-        var bar = root && root.querySelector('.ng-bulkbar');
-        if (!bar) return;
-        var n = currentUrls().length;
-        bar.querySelectorAll('[data-ngb-bar]').forEach(function (b) {
-            var act = b.getAttribute('data-ngb-act') || '';
-            b.disabled = n === 0 && BAR_ACT_ACTS.indexOf(act) >= 0;
-        });
+        var bar = root && root.querySelector('#navBulkBar');
+        if (bar) refreshBar(bar);
     }
 
     // ---------- 多选工具栏扩展 ----------
@@ -427,6 +402,20 @@
     });
 
     // #11 统一多选 API:访客侧同形挂到 window.navBulk,与主人 batch.js 共用方法名与工具条钩子。
+    // 菜单「多选」在访客页总入口:快照有卡片时交给快照多选,否则切本机导入多选。
+    // 捕获阶段截住,避免共享的 batch.js(主人多选)在访客页也画一条空的 #navMsBar。
+    document.addEventListener('click', function (ev) {
+        if (!ev.target.closest('#navBulkToggle')) return;
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        var snap = document.querySelector('#navGroups [data-site-item]') ? window.navGuestSnapshotBulk : null;
+        if (snap) { (snap.active && snap.active()) ? snap.exit() : snap.enter(); return; }
+        if (window.navGuestBulk) {
+            if (window.navGuestBulk.active()) window.navGuestBulk.exit();
+            else window.navGuestBulk.enter();
+        }
+    }, true);
+
     // 延迟到 jQuery ready 队列末尾再挂:batch.js 的主人侧方法也在 ready 回调里合并,
     // 访客委托必须后挂盖过它,否则访客页 enter/exit 会走到主人闭包(空选中集合)而不是内联 bulkMode 桥。
     jQuery(function () {

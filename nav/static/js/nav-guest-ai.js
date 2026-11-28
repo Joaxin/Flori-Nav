@@ -185,7 +185,7 @@
         var resolvedModel = '';
         return loadCfg().then(function (c) {
             if (!c.baseUrl || !c.model) {
-                var cfgErr = new AiError('还没填接口地址和模型:点「AI 接口与对话」填好再试(只存本机)。', 'config');
+                var cfgErr = new AiError('还没填接口地址和模型:点「AI 接口」填好再试(只存本机)。', 'config');
                 appendLog({ task: logTask, model: modelFor(modelTask), ok: false,
                     elapsed_ms: Date.now() - started, error: cfgErr.message });
                 throw cfgErr;
@@ -317,6 +317,80 @@
                     });
             }
         });
+    }
+
+    // ===== AI 推荐分类/标签/图标文字(与主人端 /api/nav/ai/suggest/ 同口径,只是走本机 Key 直连) =====
+    function localCatList() {
+        var cats = (window.navGuestLocal && window.navGuestLocal.categories()) || [];
+        return cats.length ? cats : ['我的导入'];
+    }
+    function localTagVocab() {
+        try {
+            return (window.navGuestLocal && window.navGuestLocal.tagVocab()) || [];
+        } catch (e) { return []; }
+    }
+    function parseSuggest(text) {
+        var arr = extractJsonArray(text);
+        var d = arr && arr[0];
+        if (!d || typeof d !== 'object') throw new Error('AI 没给出建议');
+        var cats = localCatList();
+        var cat = String(d.category || '').trim().slice(0, 50);
+        if (cat && cats.indexOf(cat) < 0) cat = '';       // 只从库里现有大类里挑,不自造
+        var tags = [];
+        if (Array.isArray(d.tags)) {
+            d.tags.slice(0, 5).forEach(function (t) {
+                if (t && typeof t === 'object') t = t.name;
+                t = String(t || '').trim().slice(0, 10);
+                if (t && tags.indexOf(t) < 0) tags.push(t);
+            });
+        }
+        function links(arr, needName) {
+            var out = [];
+            (Array.isArray(arr) ? arr : []).slice(0, 6).forEach(function (x) {
+                if (!x || typeof x !== 'object') return;
+                var u = String(x.url || '').trim().slice(0, 300);
+                if (!/^https?:\/\//i.test(u)) return;
+                var item = { url: u, description: String(x.description || '').trim().slice(0, 200) };
+                item.name = String(x.name || '').trim().slice(0, 80);
+                if (needName && !item.name) item.name = '子页面';
+                out.push(item);
+            });
+            return out;
+        }
+        return {
+            category: cat,
+            subcat: String(d.subcat || '').trim().slice(0, 50),
+            tags: tags,
+            icon_text: String(d.icon_text || '').trim().slice(0, 2),
+            children: links(d.children, true),
+            alternates: links(d.alternates, false),
+            new_category: !!d.new_category
+        };
+    }
+    function suggestSite(info) {
+        info = info || {};
+        var name = String(info.name || '').trim().slice(0, 80);
+        var url = String(info.url || '').trim().slice(0, 300);
+        var desc = String(info.description || '').trim().slice(0, 200);
+        if (!name && !url) return Promise.reject(new AiError('先填名称或网址', 'input'));
+        var cats = localCatList();
+        var vocab = localTagVocab().slice(0, 80);
+        var wantLinks = !!info.links;
+        var system = '你是网址导航站的书签归类助手。只输出一个 JSON 数组,数组里只有一个对象,'
+            + '字段: category(大类,必须从给定清单里选), subcat(小分类,可空), tags(字符串数组,最多 5 个),'
+            + 'icon_text(1-2 个字的图标文字)'
+            + (wantLinks ? ', children(子网页数组,可空), alternates(备用网址数组,可空)' : '')
+            + '。不要解释,不要代码围栏。';
+        var user = '现有大类:' + cats.join('、') + '\n'
+            + (vocab.length ? '现有标签词表(优先复用):' + vocab.join('、') + '\n' : '')
+            + '约束: category 必须是现有大类之一;tags 优先用词表里的词;icon_text 中文取前两字、英文取首字母。\n'
+            + '站点: 名称「' + name + '」 网址 ' + url + (desc ? ' 简介「' + desc + '」' : '') + '\n'
+            + (wantLinks
+                ? 'children/alternates 里每项 {"name":"名称","url":"https://...","description":"一句话"};'
+                    + '只给该站确定存在、可直接打开的地址,不确定就留空数组,绝不要猜路径。'
+                : '不要输出 children 或 alternates 字段。');
+        return chatJson(system, user, parseSuggest, { task: 'suggest', temperature: 0.2, timeout: wantLinks ? 60 : 45, maxTokens: wantLinks ? 600 : 200 })
+            .then(function (r) { return r.value; });
     }
 
     // ===== 提示词构造(与 nav/ai.py 同构) =====
@@ -607,285 +681,183 @@
         var m = (window.bootstrap && bootstrap.Modal) ? bootstrap.Modal.getInstance(panel) : null;
         if (m) m.hide(); else if (panel) panel.classList.remove('show');
     }
+    function setVal(id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; }
     function openPanel() {
         if (!panel) buildPanel();
         bootstrap.Modal.getOrCreateInstance(panel).show();
         loadCfg().then(function (c) {
-            document.getElementById('gaiBase').value = c.baseUrl;
-            document.getElementById('gaiKey').value = c.apiKey;
-            document.getElementById('gaiModel').value = c.model;
-            document.getElementById('gaiClassifyModel').value = c.modelClassify;
-            document.getElementById('gaiPetModel').value = c.modelPet;
-            document.getElementById('gaiRounds').value = c.memoryRounds;
-            document.getElementById('gaiPersona').value = c.persona;
+            setVal('gaiBase', c.baseUrl);
+            setVal('gaiKey', c.apiKey);
+            setVal('gaiModel', c.model);
+            setVal('gaiClassifyModel', c.modelClassify);
         });
-        syncPanelSwitches();
         renderLogs();
-        loadHistory().then(renderHistory);
     }
+    function panelStatus(text, kind) {
+        // 与主人同壳:不再往面板里加诊断行(会把窗撑高),详情挂到状态徽章的 title 上
+        var el = document.getElementById('gaiAiStatus');
+        if (!el) return;
+        el.title = text || '';
+        if (kind === 'danger') el.dataset.diag = text || '';
+    }
+    function panelBadge(text, kind) {
+        var el = document.getElementById('gaiAiStatus');
+        if (!el) return;
+        el.className = 'badge ms-1 bg-' + (kind || 'secondary');
+        el.textContent = text;
+    }
+    function fillModelMenu(menuId, targetId, models) {
+        var menu = document.getElementById(menuId);
+        if (!menu) return;
+        menu.innerHTML = '';
+        (models || []).forEach(function (m) {
+            var item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'dropdown-item small';
+            item.textContent = m;
+            item.addEventListener('click', function () { setVal(targetId, m); });
+            menu.appendChild(item);
+        });
+        if (!menu.children.length) {
+            var none = document.createElement('span');
+            none.className = 'dropdown-item small text-muted disabled';
+            none.textContent = '还没检测到模型';
+            menu.appendChild(none);
+        }
+    }
+    function detectModels(silent) {
+        if (!silent) panelStatus('正在拉取模型列表…', 'muted');
+        return fetchModels().then(function (res) {
+            if (!res.ok) {
+                panelBadge('连不上', 'danger');
+                panelStatus('✗ ' + res.error, 'danger');
+                return;
+            }
+            var models = res.models || [];
+            fillModelMenu('gaiModelMenu', 'gaiModel', models);
+            fillModelMenu('gaiClassifyModelMenu', 'gaiClassifyModel', models);
+            panelBadge('已连上', 'success');
+            panelStatus('✓ 读到 ' + models.length + ' 个模型（浏览器直连，跨域受限时不保证全量）', 'success');
+        });
+    }
+    // 接口面板与主人端 #petAiModal 同一套骨架：状态行 → 地址/Key 两列 → 模型 + ▾ → 检测/测试 → 高级 → 保存 → 调用日志
     function buildPanel() {
-        // 2026-11-25:改用与主人端 #petAiModal 同一套 Bootstrap modal 外壳 ——
-        // modal-dialog 同宽(500px)、带遮罩、ESC/data-bs-dismiss 关闭、header/body/footer 三段式;
-        // 不再手写 fixed 浮层(原来 440px 无遮罩,只算"观感接近",骨架并不一致)。
         panel = document.createElement('div');
         panel.id = 'navGuestAiPanel';
         panel.className = 'modal fade';
         panel.tabIndex = -1;
         panel.setAttribute('data-no-resize', '1');
-        var dialog = document.createElement('div');
-        dialog.className = 'modal-dialog';
-        var content = document.createElement('div');
-        content.className = 'modal-content';
-
-        var head = document.createElement('div');
-        head.className = 'modal-header';
-        var title = document.createElement('h5');
-        title.className = 'modal-title';
-        title.innerHTML = '<i class="fas fa-robot me-2"></i>AI 接口 <small class="text-muted fw-normal fs-6">仅本机：Key 不出浏览器</small>';
-        var close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'btn-close';
-        close.setAttribute('data-bs-dismiss', 'modal');
-        close.setAttribute('aria-label', '关闭');
-        head.appendChild(title); head.appendChild(close);
-
-        var body = document.createElement('div');
-        body.className = 'modal-body';
-
-        var baseEl = field('接口地址,如 https://api.deepseek.com', 'text', 'gaiBase');
-        var keyEl = field('API Key(只存本机)', 'password', 'gaiKey');
-        var modelEl = field('默认模型,如 deepseek-chat', 'text', 'gaiModel');
-        var classifyModelEl = field('分类模型(可留空=用默认)', 'text', 'gaiClassifyModel');
-        var petModelEl = field('桌宠模型(留空跟随默认)', 'text', 'gaiPetModel');
-        var roundsEl = field('记忆轮数 0-20', 'number', 'gaiRounds');
-        roundsEl.min = '0'; roundsEl.max = '20';
-        var personaEl = document.createElement('textarea');
-        personaEl.id = 'gaiPersona';
-        personaEl.className = 'form-control form-control-sm';
-        personaEl.rows = 2;
-        personaEl.placeholder = '桌宠人设(可留空,只存本机)';
-
-        var saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'btn btn-sm btn-primary';
-        saveBtn.textContent = '保存配置';
-        saveBtn.addEventListener('click', function () {
+        panel.innerHTML =
+            '<div class="modal-dialog"><div class="modal-content">' +
+            '<div class="modal-header"><h5 class="modal-title"><i class="fas fa-robot me-2"></i>AI 接口 ' +
+            '<small class="text-muted fw-normal fs-6">仅本机：Key 不出浏览器</small></h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
+            '<div class="modal-body">' +
+            '<div class="small mb-2">填一份 OpenAI 兼容接口（DeepSeek 只是最常见的例子）。「AI 找网站」和桌宠的聊天、AI 碎碎念、查余额都用这一份。不接也完全不影响——找网站有手动模式，桌宠本地碎碎念、动画、互动一切照旧。</div>' +
+            '<div class="mb-2"><span class="small fw-bold">接口状态</span> <span id="gaiAiStatus" class="badge bg-secondary ms-1">未检测</span>' +
+            '<button class="btn btn-sm btn-link p-0 text-decoration-none ms-2" id="gaiBalanceBtn" type="button">💰 查余额</button>' +
+            '</div>' +
+            '<div class="d-flex gap-2 flex-wrap nav-ai-config-row">' +
+            '<div class="nav-ai-field nav-ai-field-base"><label class="small text-muted mb-1" for="gaiBase">接口地址（Base URL）</label>' +
+            '<input id="gaiBase" class="form-control form-control-sm" placeholder="https://api.deepseek.com" aria-label="AI 接口地址"></div>' +
+            '<div class="nav-ai-field nav-ai-field-key"><label class="small text-muted mb-1" for="gaiKey">API Key</label>' +
+            '<input id="gaiKey" type="password" class="form-control form-control-sm" placeholder="只存本机" autocomplete="off" aria-label="AI API Key"></div></div>' +
+            '<div class="mt-2"><label class="small text-muted mb-1" for="gaiModel">模型</label>' +
+            '<div class="input-group input-group-sm" style="position:relative">' +
+            '<input id="gaiModel" class="form-control form-control-sm" placeholder="如 deepseek-chat，或点 ▾ 从检测结果里选" aria-label="AI 模型名">' +
+            '<button class="btn btn-outline-secondary" type="button" id="gaiModelBtn" data-bs-toggle="dropdown" aria-expanded="false" title="从检测到的模型里选">▾</button>' +
+            '<div class="dropdown-menu" id="gaiModelMenu" style="top:100%;right:0;left:auto;min-width:100%;width:max-content;max-width:min(520px,92vw);max-height:260px;overflow:auto"></div></div></div>' +
+            '<div class="d-flex align-items-center gap-2 mt-2 flex-wrap">' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary" id="gaiModelsBtn">检测模型</button>' +
+            '<span id="gaiTestBadge" class="badge bg-secondary d-none">可用 0/0</span>' +
+            '<button type="button" class="btn btn-sm btn-outline-secondary" id="gaiTestAllBtn" title="逐个真发一次最小请求，标出哪些模型能用">测试全部</button>' +
+            '<span id="gaiModelsHint" class="small text-muted">填好接口地址后自动检测（本机网关如 Magpie：http://127.0.0.1:3425/v1）</span></div>' +
+            '<details class="nav-ai-adv mt-2"><summary class="small text-muted">高级：按任务分配模型（可选，空 = 跟随默认模型）</summary>' +
+            '<div class="d-flex gap-2 flex-wrap mt-2"><div class="nav-ai-field">' +
+            '<label class="small text-muted mb-1" for="gaiClassifyModel">分类模型</label>' +
+            '<div class="input-group input-group-sm" style="position:relative">' +
+            '<input id="gaiClassifyModel" class="form-control form-control-sm" placeholder="默认（跟随主模型）" autocomplete="off">' +
+            '<button class="btn btn-outline-secondary" type="button" id="gaiClassifyModelBtn" data-bs-toggle="dropdown" aria-expanded="false" title="从检测到的模型里选">▾</button>' +
+            '<div class="dropdown-menu" id="gaiClassifyModelMenu" style="top:100%;right:0;left:auto;min-width:100%;width:max-content;max-width:min(520px,92vw);max-height:260px;overflow:auto"></div></div></div></div>' +
+            '<div class="small text-muted mt-1">找网站固定用上面的默认模型；这里只覆盖分类，建议选低温、稳定的模型。桌宠模型在「宠物设置 → 💬 聊天」里改。</div></details>' +
+            '<div class="small text-muted mt-3">「AI 找网站」弹窗里的接口设置是同一份，两边改都生效；桌宠人设、记忆轮数、桌宠模型、碎碎念开关在「宠物设置 → 💬 聊天」里改。</div>' +
+            '<div class="d-flex align-items-center justify-content-between gap-2 mt-2">' +
+            '<button class="btn btn-sm btn-link text-danger p-0 text-decoration-none" id="gaiClearChatBtn" type="button" title="清空桌宠的对话记忆">清除记忆（不可恢复）</button>' +
+            '<div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary" id="gaiTestCurrentBtn" type="button">测当前模型</button>' +
+            '<button class="btn btn-sm btn-success px-4" id="gaiSaveBtn">保存</button></div></div>' +
+            '<div class="small mt-1" id="gaiSaveHint" aria-live="polite"></div>' +
+            '<details class="nav-ai-adv mt-2"><summary class="small text-muted">最近 AI 调用（排查用，只留摘要）</summary>' +
+            '<div class="d-flex align-items-center gap-2 mt-2">' +
+            '<button class="btn btn-sm btn-outline-secondary" id="gaiLogBtn" type="button">刷新记录</button>' +
+            '<button class="btn btn-sm btn-outline-danger" id="gaiLogClearBtn" type="button">清空日志</button>' +
+            '<span class="small text-muted">接口挂了 / 模型拒答 / 解析失败，这里能看出是哪一步</span></div>' +
+            '<div id="gaiLogBox" class="nav-ai-log-list mt-2"></div></details>' +
+            '</div></div></div>';
+        document.body.appendChild(panel);
+        var hint = document.getElementById('gaiSaveHint');
+        function say(text, cls) { if (hint) { hint.className = 'small mt-1 text-' + (cls || 'muted'); hint.textContent = text || ''; } }
+        document.getElementById('gaiSaveBtn').addEventListener('click', function () {
+            var cur = cfg();
             saveCfg({
-                baseUrl: baseEl.value, apiKey: keyEl.value, model: modelEl.value,
-                modelClassify: classifyModelEl.value, modelPet: petModelEl.value,
-                persona: personaEl.value, memoryRounds: roundsEl.value
+                baseUrl: document.getElementById('gaiBase').value,
+                apiKey: document.getElementById('gaiKey').value,
+                model: document.getElementById('gaiModel').value,
+                modelClassify: document.getElementById('gaiClassifyModel').value,
+                modelPet: cur.modelPet, memoryRounds: cur.memoryRounds, persona: cur.persona
             }).then(function (ok) {
-                toast(ok ? '已保存本机配置' : '本机存储失败,配置没有保存');
+                say(ok ? '✓ 已保存本机配置' : '✗ 本机存储失败，配置没有保存', ok ? 'success' : 'danger');
+                if (ok) panelBadge('已保存', 'success');
             });
         });
-
-        var actions = document.createElement('div');
-        actions.className = 'd-flex gap-2';
-        var findBtn = document.createElement('button');
-        findBtn.type = 'button'; findBtn.className = 'btn btn-sm btn-outline-primary';
-        findBtn.textContent = 'AI 找站';
-        findBtn.addEventListener('click', function () { hidePanel(); openFind(); });
-        var classBtn = document.createElement('button');
-        classBtn.type = 'button'; classBtn.className = 'btn btn-sm btn-outline-primary';
-        classBtn.textContent = 'AI 分类';
-        classBtn.addEventListener('click', function () { hidePanel(); openClassify(); });
-        var clearBtn = document.createElement('button');
-        clearBtn.type = 'button'; clearBtn.className = 'btn btn-sm btn-outline-secondary';
-        clearBtn.textContent = '清空对话';
-        clearBtn.addEventListener('click', function () {
-            function doClear() { saveHistory([]).then(function () { renderHistory([]); toast('本机对话记忆已清空'); }); }
+        document.getElementById('gaiModelsBtn').addEventListener('click', function () { detectModels(); });
+        document.getElementById('gaiTestAllBtn').addEventListener('click', function () {
+            panelStatus('正在逐个测试模型…', 'muted');
+            var tb = document.getElementById('gaiTestBadge');
+            testAllModels().then(function (res) {
+                if (!res.ok) { panelStatus('✗ ' + res.error, 'danger'); return; }
+                var oks = res.models.filter(function (r) { return r.ok; });
+                var fails = res.models.filter(function (r) { return !r.ok; });
+                if (tb) { tb.classList.remove('d-none'); tb.textContent = '可用 ' + oks.length + '/' + res.models.length; }
+                var line = '✓ ' + oks.length + ' 个可用' + (fails.length ? '；✗ ' + fails.length + ' 个失败：' + fails.map(function (r) { return r.model + '(' + r.error + ')'; }).join(';').slice(0, 180) : '');
+                panelStatus(line, fails.length ? 'warning' : 'success');
+            });
+        });
+        document.getElementById('gaiTestCurrentBtn').addEventListener('click', function () {
+            var model = document.getElementById('gaiModel').value || cfg().model;
+            panelStatus('正在测试当前模型…', 'muted');
+            testModel(model).then(function (r) {
+                panelStatus((r.ok ? '✓ ' : '✗ ') + r.model + ' · ' + (r.elapsed_ms / 1000).toFixed(1) + 's' + (r.ok ? '' : ' · ' + r.error), r.ok ? 'success' : 'danger');
+            });
+        });
+        document.getElementById('gaiBalanceBtn').addEventListener('click', function () {
+            toast('查询余额中…');
+            balance().then(function (r) {
+                toast(r.status === 'ok'
+                    ? ('💰 余额 ' + (r.total_balance || '—') + ' ' + (r.currency || '') + (r.is_available ? '' : '（账号不可用）'))
+                    : ('✗ ' + (r.message || '查询失败')));
+                renderLogs();
+            });
+        });
+        document.getElementById('gaiClearChatBtn').addEventListener('click', function () {
+            function doClear() {
+                saveHistory([]).then(function () { say('✓ 本机对话记忆已清空', 'success'); toast('本机对话记忆已清空'); });
+            }
             if (window.navConfirm) {
-                window.navConfirm({ title: '清空对话记忆', body: '只清这台浏览器里的对话记录,不动书签。', danger: true, confirmLabel: '清空' })
+                window.navConfirm({ title: '清空对话记忆', body: '只清这台浏览器里的对话记录，不动书签与配置。', danger: true, confirmLabel: '清空' })
                     .then(function (ok) { if (ok) doClear(); });
             } else { doClear(); }
         });
-        actions.appendChild(findBtn); actions.appendChild(classBtn); actions.appendChild(clearBtn);
-
-        // 模型候选:浏览器直连 {baseUrl}/models;探测只记成败/耗时/错误,不伪装服务端代理
-        var modelWrap = document.createElement('div');
-        modelWrap.style.cssText = 'display:flex;flex-direction:column;gap:6px';
-        var modelHint = document.createElement('div');
-        modelHint.className = 'small text-muted';
-        modelHint.textContent = '模型列表与探测均为浏览器直连,受 CORS/no-cors 限制;上游未开放跨域时可能失败,本站不做服务端代理,也不承诺读到跨域详情。';
-        var modelSel = document.createElement('select');
-        modelSel.id = 'gaiModelList';
-        modelSel.className = 'form-select form-select-sm';
-        modelSel.innerHTML = '<option value="">(在接口拉取模型候选)</option>';
-        var modelBtns = document.createElement('div');
-        modelBtns.className = 'd-flex gap-2 flex-wrap';
-        var btnModels = document.createElement('button');
-        btnModels.type = 'button'; btnModels.className = 'btn btn-sm btn-outline-secondary';
-        btnModels.textContent = '拉取模型列表';
-        var btnTestCur = document.createElement('button');
-        btnTestCur.type = 'button'; btnTestCur.className = 'btn btn-sm btn-outline-primary';
-        btnTestCur.textContent = '测试当前模型';
-        var btnTestAll = document.createElement('button');
-        btnTestAll.type = 'button'; btnTestAll.className = 'btn btn-sm btn-outline-primary';
-        btnTestAll.textContent = '测试全部模型';
-        var modelStatus = document.createElement('div');
-        modelStatus.id = 'gaiModelStatus';
-        modelStatus.className = 'small text-muted';
-        modelBtns.appendChild(btnModels); modelBtns.appendChild(btnTestCur); modelBtns.appendChild(btnTestAll);
-        modelWrap.appendChild(modelHint); modelWrap.appendChild(modelSel);
-        modelWrap.appendChild(modelBtns); modelWrap.appendChild(modelStatus);
-
-        // 本机开关:直接读写既有 localStorage,与桌宠设置弹窗同一批键,不造第二份同义键
-        var swWrap = document.createElement('div');
-        swWrap.style.cssText = 'display:flex;flex-direction:column;gap:4px';
-        function switchRow(id, label, checked) {
-            var wrap = document.createElement('div');
-            wrap.className = 'form-check form-switch m-0';
-            var ck = document.createElement('input');
-            ck.type = 'checkbox'; ck.className = 'form-check-input'; ck.id = id; ck.checked = !!checked;
-            var lb = document.createElement('label');
-            lb.className = 'form-check-label small'; lb.setAttribute('for', id); lb.textContent = label;
-            wrap.appendChild(ck); wrap.appendChild(lb);
-            return ck;
-        }
-        var swWhisper = switchRow('gaiSwWhisper', '碎碎念(桌宠定时说话)', localStorage.getItem('navPetWhisper') !== '0');
-        var swReasoning = switchRow('gaiSwReasoning', '显示思考详情', localStorage.getItem('navPetChatReasoning') !== '0');
-        var swCopy = switchRow('gaiSwCopy', '回复下方显示复制按钮', localStorage.getItem('navPetChatCopy') === '1');
-        swWhisper.addEventListener('change', function () { localStorage.setItem('navPetWhisper', this.checked ? '1' : '0'); });
-        swReasoning.addEventListener('change', function () { localStorage.setItem('navPetChatReasoning', this.checked ? '1' : '0'); });
-        swCopy.addEventListener('change', function () { localStorage.setItem('navPetChatCopy', this.checked ? '1' : '0'); });
-
-        // 调用日志区:任务/模型/成败/耗时/时间/错误,可二次确认清空
-        var logWrap = document.createElement('div');
-        logWrap.style.cssText = 'display:flex;flex-direction:column;gap:4px';
-        var logHead = document.createElement('div');
-        logHead.className = 'd-flex align-items-center gap-2';
-        var logTitle = document.createElement('span');
-        logTitle.className = 'small fw-semibold me-auto';
-        logTitle.textContent = '调用日志(环形 100 条)';
-        var btnLogRefresh = document.createElement('button');
-        btnLogRefresh.type = 'button'; btnLogRefresh.className = 'btn btn-sm btn-outline-secondary';
-        btnLogRefresh.textContent = '刷新';
-        var btnLogClear = document.createElement('button');
-        btnLogClear.type = 'button'; btnLogClear.className = 'btn btn-sm btn-outline-danger';
-        btnLogClear.textContent = '清空日志';
-        logHead.appendChild(logTitle); logHead.appendChild(btnLogRefresh); logHead.appendChild(btnLogClear);
-        var logBox = document.createElement('div');
-        logBox.id = 'gaiLogBox';
-        logBox.style.cssText = 'max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:2px';
-        logWrap.appendChild(logHead); logWrap.appendChild(logBox);
-
-        msgsBox = document.createElement('div');
-        msgsBox.style.cssText = 'flex:1;min-height:150px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:2px 0';
-
-        var foot = document.createElement('div');
-        foot.className = 'modal-footer';
-        inputEl = document.createElement('input');
-        inputEl.type = 'text';
-        inputEl.className = 'form-control form-control-sm';
-        inputEl.placeholder = '输入消息,Enter 发送…';
-        var sendBtn = document.createElement('button');
-        sendBtn.type = 'button';
-        sendBtn.className = 'btn btn-sm btn-success';
-        sendBtn.textContent = '发送';
-
-        function push(role, text) {
-            var div = document.createElement('div');
-            div.className = 'nav-pet-msg ' + (role === 'user' ? 'user' : 'pet');
-            div.textContent = text;
-            msgsBox.appendChild(div);
-            msgsBox.scrollTop = msgsBox.scrollHeight;
-            return loadHistory().then(function (h) {
-                h = h || []; h.push({ role: role === 'user' ? 'user' : 'assistant', text: text }); saveHistory(h);
-            });
-        }
-        function send() {
-            var text = (inputEl.value || '').trim();
-            if (!text || busy) return;
-            if (!configured()) { toast('先填接口地址和模型(Key 按接口要求填)'); return; }
-            busy = true;
-            var base = cfg();
-            var payload = { role: 'user', text: text };
-            push('user', text);
-            inputEl.value = '';
-            loadHistory().then(function (h) {
-                var memory = h.slice(-(Math.max(1, base.memoryRounds) * 2));
-                return chat(text, memory);
-            }).then(function (d) {
-                if (d.status !== 'ok') throw new AiError(d.message || '对话失败', 'chat');
-                push('pet', d.reply);
-            }).catch(function (err) {
-                push('pet', (err && err.message) || '连接失败');
-            }).then(function () { busy = false; });
-        }
-        sendBtn.addEventListener('click', send);
-        inputEl.addEventListener('keydown', function (ev) {
-            if (ev.key === 'Enter') { ev.preventDefault(); send(); }
-        });
-
-        foot.appendChild(inputEl); foot.appendChild(sendBtn);
-        var cfgWrap = document.createElement('div');
-        cfgWrap.style.cssText = 'display:flex;flex-direction:column;gap:6px';
-        cfgWrap.appendChild(baseEl); cfgWrap.appendChild(keyEl); cfgWrap.appendChild(modelEl);
-        cfgWrap.appendChild(classifyModelEl); cfgWrap.appendChild(petModelEl);
-        cfgWrap.appendChild(roundsEl); cfgWrap.appendChild(personaEl);
-        cfgWrap.appendChild(saveBtn);
-        body.appendChild(cfgWrap); body.appendChild(document.createElement('hr'));
-        body.appendChild(actions);
-        body.appendChild(document.createElement('hr'));
-        body.appendChild(modelWrap);
-        body.appendChild(document.createElement('hr'));
-        body.appendChild(swWrap);
-        body.appendChild(document.createElement('hr'));
-        body.appendChild(logWrap);
-        // 对话区跟配置同处 modal-body(原来是一块独立的贴边滚动区)
-        var chatHead = document.createElement('div');
-        chatHead.className = 'nav-set-h mt-2';
-        chatHead.textContent = '对话';
-        body.appendChild(chatHead);
-        body.appendChild(msgsBox);
-        content.appendChild(head); content.appendChild(body); content.appendChild(foot);
-        dialog.appendChild(content); panel.appendChild(dialog);
-        document.body.appendChild(panel);
-
-        btnModels.addEventListener('click', function () {
-            modelStatusLine('正在拉取模型列表…', 'muted');
-            fetchModels().then(function (res) {
-                if (!res.ok) { modelStatusLine(res.error, 'danger'); return; }
-                modelSel.innerHTML = '';
-                var empty = document.createElement('option');
-                empty.value = ''; empty.textContent = '(跟随默认模型)';
-                modelSel.appendChild(empty);
-                res.models.forEach(function (m) {
-                    var o = document.createElement('option'); o.value = m; o.textContent = m; modelSel.appendChild(o);
-                });
-                modelStatusLine('✓ 读到 ' + res.models.length + ' 个模型(浏览器直连,跨域受限时下同不保证)', 'success');
-            });
-        });
-        modelSel.addEventListener('change', function () {
-            if (modelSel.value) modelEl.value = modelSel.value;
-        });
-        btnTestCur.addEventListener('click', function () {
-            modelStatusLine('正在测试当前模型…', 'muted');
-            testModel(cfg().model).then(function (r) {
-                modelStatusLine((r.ok ? '✓ ' : '✗ ') + r.model + ' · ' + (r.elapsed_ms / 1000).toFixed(1) + 's'
-                    + (r.ok ? '' : ' · ' + r.error), r.ok ? 'success' : 'danger');
-            });
-        });
-        btnTestAll.addEventListener('click', function () {
-            modelStatusLine('正在逐个测试模型…', 'muted');
-            testAllModels().then(function (res) {
-                if (!res.ok) { modelStatusLine(res.error, 'danger'); return; }
-                var oks = res.models.filter(function (r) { return r.ok; });
-                var fails = res.models.filter(function (r) { return !r.ok; });
-                var line = '✓ ' + oks.length + ' 个可用' + (fails.length ? ';✗ ' + fails.length + ' 个失败' : '');
-                if (fails.length) {
-                    line += ':' + fails.map(function (r) { return r.model + '(' + r.error + ')'; }).join(';').slice(0, 180);
-                }
-                modelStatusLine(line, fails.length ? 'warning' : 'success');
-            });
-        });
-        btnLogRefresh.addEventListener('click', renderLogs);
-        btnLogClear.addEventListener('click', function () {
+        document.getElementById('gaiLogBtn').addEventListener('click', renderLogs);
+        document.getElementById('gaiLogClearBtn').addEventListener('click', function () {
             function doClear() { clearLogsStore().then(function () { renderLogs(); toast('调用日志已清空'); }); }
             if (window.navConfirm) {
-                window.navConfirm({ title: '清空调用日志', body: '只清这台浏览器里的 AI 调用记录,不动配置与书签。',
-                    danger: true, confirmLabel: '清空' }).then(function (ok) { if (ok) doClear(); });
+                window.navConfirm({ title: '清空调用日志', body: '只清这台浏览器里的 AI 调用记录，不动配置与书签。', danger: true, confirmLabel: '清空' })
+                    .then(function (ok) { if (ok) doClear(); });
             } else { doClear(); }
+        });
+        panel.addEventListener('shown.bs.modal', function () {
+            if (configured()) detectModels(true);
+            else panelBadge('未配置', 'secondary');
         });
     }
     window.openGuestLocalAiPanel = openPanel;
@@ -1010,85 +982,62 @@
         return ok ? Promise.resolve() : Promise.reject(new Error('copy failed'));
     }
 
-    // ===== AI 找站 / 分类 模态 =====
-    var modal = null, modalTab = 'find';
-    function ensureModal() {
-        if (modal) return modal;
-        modal = document.createElement('div');
-        modal.className = 'modal fade';
-        modal.id = 'navGuestAiModal';
-        modal.tabIndex = -1;
-        modal.setAttribute('data-no-resize', '1');
-        modal.innerHTML =
-            '<div class="modal-dialog modal-lg nav-ai-dialog">' +
-            '<div class="modal-content nav-ai-content">' +
-            '<div class="modal-header"><h5 class="modal-title"><i class="fas fa-wand-magic-sparkles me-2 acc-ico"></i>AI · 本机书签</h5>' +
+    // ===== AI 找网站 / AI 分类：两个独立 modal，与主人端 #navAiModal / #navAiClassifyModal 同壳 =====
+    var findModal = null, classModal = null;
+    function ensureFindModal() {
+        if (findModal) return findModal;
+        findModal = document.createElement('div');
+        findModal.className = 'modal fade';
+        findModal.id = 'navGuestAiModal';
+        findModal.tabIndex = -1;
+        findModal.setAttribute('data-no-resize', '1');
+        findModal.innerHTML =
+            '<div class="modal-dialog modal-lg nav-ai-dialog"><div class="modal-content nav-ai-content">' +
+            '<div class="modal-header"><h5 class="modal-title"><i class="fas fa-wand-magic-sparkles me-2"></i>AI 找网站 ' +
+            '<small class="text-muted fw-normal fs-6">生成候选 → 检测能否连上 → 去重导入本机</small></h5>' +
             '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
             '<div class="modal-body nav-ai-body">' +
-            '<div class="d-flex align-items-center gap-2 mb-2">' +
-            '<div class="btn-group btn-group-sm" role="group">' +
-            '<button type="button" class="btn btn-outline-secondary active" data-gai-tab="find">AI 找站</button>' +
-            '<button type="button" class="btn btn-outline-secondary" data-gai-tab="classify">AI 分类</button>' +
-            '</div>' +
-            '<span class="small text-muted" id="gaiModalHint">自带 Key 直连,候选/结果只写本机</span>' +
-            '</div>' +
-            '<div id="gaiPaneFind" class="nav-ai-pane">' +
+            '<div class="nav-ai-form">' +
             '<div class="row g-2 mb-2">' +
-            '<div class="col-md-4"><label class="small text-muted mb-0" for="gaiCat">大类</label><select id="gaiCat" class="form-select form-select-sm"></select></div>' +
-            '<div class="col-md-4"><label class="small text-muted mb-0" for="gaiSub">小分类(可空)</label><input id="gaiSub" class="form-control form-control-sm" placeholder="如 设计素材"></div>' +
-            '<div class="col-md-2"><label class="small text-muted mb-0" for="gaiCount">条数</label><input id="gaiCount" type="number" min="1" max="15" value="8" class="form-control form-control-sm"></div>' +
-            '<div class="col-md-2 d-flex align-items-end"><button type="button" class="btn btn-sm btn-primary w-100" id="gaiGenerate">生成候选</button></div>' +
+            '<div class="col-md-5"><label class="small text-muted mb-0" for="gaiCat">大类</label><select id="gaiCat" class="form-select form-select-sm"></select></div>' +
+            '<div class="col-md-4"><label class="small text-muted mb-0" for="gaiSub">小分类(可选)</label><select id="gaiSub" class="form-select form-select-sm"><option value="">(不指定，大类直属)</option></select></div>' +
+            '<div class="col-md-3"><label class="small text-muted mb-0" for="gaiCount">条数</label><input id="gaiCount" type="number" min="1" max="15" value="8" class="form-control form-control-sm"></div>' +
             '</div>' +
-            '<textarea id="gaiScene" class="form-control form-control-sm mb-2" rows="2" placeholder="场景与要求,例如:免费的设计素材站 / 适合学 Python 的文档站"></textarea>' +
-            '<div class="d-flex align-items-center gap-2 mb-2 flex-wrap">' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" id="gaiPrompt">只出提示词(复制)</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#gaiManual">手动粘贴 AI 回复</button>' +
-            '<label class="form-check small mb-0 ms-auto"><input class="form-check-input" type="checkbox" id="gaiCheckAlive" checked> 导入前检测能否连上</label>' +
+            '<label class="small text-muted mb-1" for="gaiScene">补充要求（类似网站 / 额外限制，可不填）</label>' +
+            '<textarea id="gaiScene" class="form-control mb-2" rows="2" placeholder="例如：只要免费额度的大模型站、要有中文界面、能本地部署的软件" aria-label="补充要求"></textarea>' +
+            '<div class="d-flex align-items-center gap-2 flex-wrap mb-2">' +
+            '<button class="btn btn-primary nav-modal-primary" id="gaiGenerate"><i class="fas fa-wand-magic-sparkles me-1"></i>生成候选网站</button>' +
+            '<label class="form-check small mb-0 ms-auto"><input class="form-check-input" type="checkbox" id="gaiCheckAlive" checked> 导入前检测能否连上</label></div>' +
+            '<div class="border rounded p-2 mt-2">' +
+            '<div class="d-flex justify-content-between align-items-center">' +
+            '<span class="small fw-bold">无 API 手动模式 <span class="text-muted fw-normal">— 没配接口也能用：提示词复制到任意 AI，回复粘贴回来</span></span>' +
+            '<button class="btn btn-sm btn-link p-0 text-decoration-none" data-bs-toggle="collapse" data-bs-target="#gaiManual">展开/收起</button></div>' +
+            '<div id="gaiManual" class="collapse mt-2">' +
+            '<div class="d-flex gap-2">' +
+            '<button class="btn btn-sm btn-outline-primary flex-grow-1" id="gaiPrompt"><i class="fas fa-copy me-1"></i>第 1 步：生成提示词并复制</button>' +
+            '<button class="btn btn-sm btn-outline-secondary" id="gaiCopyPrompt" type="button">复制</button></div>' +
+            '<textarea id="gaiPromptText" class="form-control form-control-sm mt-2" rows="7" readonly placeholder="点上面按钮生成提示词(自动复制)，粘贴到任意 AI 对话框发送" aria-label="生成的提示词"></textarea>' +
+            '<textarea id="gaiPaste" class="form-control form-control-sm mt-2" rows="8" placeholder="第 2 步：把 AI 的完整回复粘贴到这里(带 ```json 围栏或前后说明文字都能解析)" aria-label="粘贴 AI 回复"></textarea>' +
+            '<button class="btn btn-sm btn-success nav-modal-primary mt-2" id="gaiParse">第 3 步：解析并预览（预览后照常检测并导入）</button>' +
+            '</div></div></div>' +
+            '<div id="gaiPreview" class="nav-ai-preview"></div>' +
+            '<div id="gaiStatus" class="small mt-2"></div>' +
             '</div>' +
-            '<div class="collapse mb-2" id="gaiManual">' +
-            '<textarea id="gaiPromptText" class="form-control form-control-sm mb-1" rows="4" readonly placeholder="点「只出提示词」生成"></textarea>' +
-            '<textarea id="gaiPaste" class="form-control form-control-sm mb-1" rows="4" placeholder="把 AI 的完整回复粘到这里"></textarea>' +
-            '<button type="button" class="btn btn-sm btn-success" id="gaiParse">解析粘贴内容</button>' +
-            '</div>' +
-            '<div id="gaiStatus" class="small text-muted mb-2"></div>' +
-            '<div id="gaiPreview"></div>' +
-            '<div class="d-flex justify-content-end mt-2"><button type="button" class="btn btn-sm btn-success nav-modal-primary" id="gaiImport" disabled>导入所选</button></div>' +
-            '</div>' +
-            '<div id="gaiPaneClassify" class="d-none nav-ai-pane">' +
-            '<div class="row g-2 mb-2 align-items-end">' +
-            '<div class="col-md-3"><label class="small text-muted mb-0" for="gacScope">范围</label><select id="gacScope" class="form-select form-select-sm"><option value="all">全部书签</option><option value="uncategorized">未分类</option><option value="category">指定大类</option></select></div>' +
-            '<div class="col-md-3 d-none" id="gacCatWrap"><label class="small text-muted mb-0" for="gacCat">大类</label><select id="gacCat" class="form-select form-select-sm"></select></div>' +
-            '<div class="col-md-2"><label class="small text-muted mb-0" for="gacLimit">条数</label><input id="gacLimit" type="number" min="1" max="200" value="60" class="form-control form-control-sm"></div>' +
-            '<div class="col-md-4"><button type="button" class="btn btn-sm btn-primary w-100" id="gacRun">开始分类</button></div>' +
-            '</div>' +
-            '<div class="d-flex gap-2 mb-2 flex-wrap">' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" id="gacPrompt">只出提示词(复制)</button>' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#gacManual">手动粘贴 AI 回复</button>' +
-            '</div>' +
-            '<div class="collapse mb-2" id="gacManual">' +
-            '<textarea id="gacPromptText" class="form-control form-control-sm mb-1" rows="4" readonly></textarea>' +
-            '<textarea id="gacPaste" class="form-control form-control-sm mb-1" rows="4" placeholder="把 AI 的完整回复粘到这里"></textarea>' +
-            '<button type="button" class="btn btn-sm btn-success" id="gacParse">解析粘贴内容</button>' +
-            '</div>' +
-            '<div id="gacStatus" class="small text-muted mb-2"></div>' +
-            '<div id="gacResult"></div>' +
-            '</div>' +
-            '</div></div></div>';
-        document.body.appendChild(modal);
-        modal.querySelectorAll('[data-gai-tab]').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                modalTab = btn.getAttribute('data-gai-tab');
-                modal.querySelectorAll('[data-gai-tab]').forEach(function (b) { b.classList.toggle('active', b === btn); });
-                document.getElementById('gaiPaneFind').classList.toggle('d-none', modalTab !== 'find');
-                document.getElementById('gaiPaneClassify').classList.toggle('d-none', modalTab !== 'classify');
-            });
-        });
+            '<div class="modal-footer nav-ai-footer">' +
+            '<span class="small text-muted me-auto" id="gaiFootHint">生成候选后在这里检测能否连上并导入</span>' +
+            '<button type="button" class="btn btn-sm btn-success nav-modal-primary" id="gaiImport" disabled>检测并导入所选</button></div>' +
+            '</div></div>';
+        document.body.appendChild(findModal);
         document.getElementById('gaiGenerate').addEventListener('click', runFind);
         document.getElementById('gaiPrompt').addEventListener('click', function () {
             var p = buildSitePrompt(readFindCat(), readFindSub(), valueOf('gaiScene'), readFindCount());
             document.getElementById('gaiPromptText').value = p;
-            copyText(p).then(function () { setStatus('find', '✓ 提示词已复制,去任意 AI 粘贴发送', 'success'); })
-                .catch(function () { setStatus('find', '提示词已生成,自动复制失败,请手动复制', 'warning'); });
+            copyText(p).then(function () { setStatus('find', '✓ 提示词已复制，去任意 AI 粘贴发送', 'success'); })
+                .catch(function () { setStatus('find', '提示词已生成，自动复制失败，请点「复制」', 'warning'); });
+        });
+        document.getElementById('gaiCopyPrompt').addEventListener('click', function () {
+            copyText(document.getElementById('gaiPromptText').value)
+                .then(function () { setStatus('find', '✓ 已复制', 'success'); });
         });
         document.getElementById('gaiParse').addEventListener('click', function () {
             var text = valueOf('gaiPaste');
@@ -1099,10 +1048,47 @@
                 findDrafts = filtered.kept;
                 findMeta = { channel: 'manual' };
                 renderDrafts(filtered.kept, filtered.skipped);
-                setStatus('find', '✓ 解析到 ' + drafts.length + ' 条,可改字段后导入', 'success');
+                setStatus('find', '✓ 解析到 ' + drafts.length + ' 条，可改字段后导入', 'success');
             } catch (e) { setStatus('find', e.message || '解析失败', 'danger'); }
         });
         document.getElementById('gaiImport').addEventListener('click', importDrafts);
+        return findModal;
+    }
+    function ensureClassModal() {
+        if (classModal) return classModal;
+        classModal = document.createElement('div');
+        classModal.className = 'modal fade';
+        classModal.id = 'navGuestAiClassifyModal';
+        classModal.tabIndex = -1;
+        classModal.setAttribute('data-no-resize', '1');
+        classModal.innerHTML =
+            '<div class="modal-dialog modal-lg modal-dialog-scrollable nav-ai-classify-dialog"><div class="modal-content">' +
+            '<div class="modal-header"><h5 class="modal-title"><i class="fas fa-tags me-2"></i>AI 分类 + 标签 ' +
+            '<small class="text-muted fw-normal fs-6">只列建议调整的条目，逐条决定是否采纳</small></h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></div>' +
+            '<div class="modal-body">' +
+            '<div class="row g-2 mb-2 align-items-end">' +
+            '<div class="col-md-4"><label class="small text-muted mb-0" for="gacScope">范围</label>' +
+            '<select id="gacScope" class="form-select form-select-sm"><option value="all">全部书签</option><option value="uncategorized">未分类(含「自定义」)</option><option value="category">指定大类…</option></select></div>' +
+            '<div class="col-md-3 d-none" id="gacCatWrap"><label class="small text-muted mb-0" for="gacCat">大类</label><select id="gacCat" class="form-select form-select-sm"></select></div>' +
+            '<div class="col-6 col-md-2"><label class="small text-muted mb-0" for="gacLimit">条数</label><input id="gacLimit" type="number" min="1" max="200" value="60" class="form-control form-control-sm"></div>' +
+            '<div class="col-6 col-md-3"><button type="button" class="btn btn-sm btn-primary w-100" id="gacRun"><i class="fas fa-wand-magic-sparkles me-1"></i>开始分类</button></div>' +
+            '</div>' +
+            '<div class="small text-muted mb-2">条数是一次处理总量；超过 40 条会自动分批（每批 40 条），不会截断。</div>' +
+            '<div class="border rounded p-2 mt-2">' +
+            '<div class="d-flex justify-content-between align-items-center">' +
+            '<span class="small fw-bold">没配 AI 接口? <span class="text-muted fw-normal">复制提示词去任意 AI 跑，回复整段粘回来</span></span>' +
+            '<button type="button" class="btn btn-sm btn-link p-0 text-decoration-none" data-bs-toggle="collapse" data-bs-target="#gacManual">展开/收起</button></div>' +
+            '<div id="gacManual" class="collapse mt-2">' +
+            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="gacPrompt"><i class="fas fa-copy me-1"></i>第 1 步：生成提示词并复制</button>' +
+            '<textarea id="gacPromptText" class="form-control form-control-sm mt-2" rows="6" readonly placeholder="点上面按钮生成提示词(会自动复制)，粘到任意 AI 对话框发送" aria-label="生成的提示词"></textarea>' +
+            '<textarea id="gacPaste" class="form-control form-control-sm mt-2" rows="6" placeholder="第 2 步：把 AI 的完整回复粘到这里(带 ```json 围栏或前后说明都能解析)" aria-label="粘贴 AI 回复"></textarea>' +
+            '<button type="button" class="btn btn-sm btn-success nav-modal-primary mt-2" id="gacParse">第 3 步：解析并对比</button>' +
+            '</div></div>' +
+            '<div id="gacStatus" class="small mt-3"></div>' +
+            '<div id="gacResult"></div>' +
+            '</div></div></div>';
+        document.body.appendChild(classModal);
         document.getElementById('gacScope').addEventListener('change', function () {
             document.getElementById('gacCatWrap').classList.toggle('d-none', this.value !== 'category');
         });
@@ -1113,7 +1099,7 @@
                 var p = buildClassifyPrompt(items);
                 document.getElementById('gacPromptText').value = p;
                 copyText(p).then(function () { setStatus('classify', '✓ 提示词已复制(' + items.length + ' 条)', 'success'); })
-                    .catch(function () { setStatus('classify', '提示词已生成,自动复制失败', 'warning'); });
+                    .catch(function () { setStatus('classify', '提示词已生成，自动复制失败', 'warning'); });
             });
         });
         document.getElementById('gacParse').addEventListener('click', function () {
@@ -1136,15 +1122,7 @@
             sw.closest('tr').classList.toggle('text-muted', !sw.checked);
             paintApply();
         });
-        modal.addEventListener('shown.bs.modal', function () { syncCats(); });
-        return modal;
-    }
-    function valueOf(id) { var el = document.getElementById(id); return el ? String(el.value || '') : ''; }
-    function setStatus(where, msg, kind) {
-        var el = document.getElementById(where === 'find' ? 'gaiStatus' : 'gacStatus');
-        if (!el) return;
-        el.className = 'small mb-2 text-' + (kind || 'muted');
-        el.textContent = msg || '';
+        return classModal;
     }
     function syncCats() {
         var cats = window.navGuestLocal ? window.navGuestLocal.categories() : [];
@@ -1158,23 +1136,45 @@
             });
             if (old && cats.indexOf(old) !== -1) sel.value = old;
         });
+        var catSel = document.getElementById('gaiCat');
+        if (catSel && !catSel.dataset.boundSub) {
+            catSel.dataset.boundSub = '1';
+            catSel.addEventListener('change', function () { syncCats(); });
+        }
+        var subSel = document.getElementById('gaiSub');
+        if (subSel) {
+            var cat = (document.getElementById('gaiCat') || {}).value;
+            var oldSub = subSel.value;
+            var subs = [];
+            if (window.navGuestLocal && typeof window.navGuestLocal.subs === 'function') {
+                try { subs = (window.navGuestLocal.subs() || {})[cat] || []; } catch (e) { subs = []; }
+            }
+            subSel.innerHTML = '<option value="">(不指定，大类直属)</option>';
+            subs.forEach(function (t) {
+                var o = document.createElement('option'); o.value = t; o.textContent = t; subSel.appendChild(o);
+            });
+            if (oldSub && subs.indexOf(oldSub) !== -1) subSel.value = oldSub;
+        }
+    }
+    function valueOf(id) { var el = document.getElementById(id); return el ? String(el.value || '') : ''; }
+    function setStatus(where, msg, kind) {
+        var el = document.getElementById(where === 'find' ? 'gaiStatus' : 'gacStatus');
+        if (!el) return;
+        el.className = 'small mb-2 text-' + (kind || 'muted');
+        el.textContent = msg || '';
     }
     function readFindCat() { return valueOf('gaiCat') || (window.navGuestLocal && window.navGuestLocal.categories()[0]) || '我的导入'; }
     function readFindSub() { return valueOf('gaiSub'); }
     function readFindCount() { return Math.max(1, Math.min(15, parseInt(valueOf('gaiCount'), 10) || 8)); }
     function openFind() {
-        ensureModal();
+        ensureFindModal();
         syncCats();
-        modalTab = 'find';
-        document.querySelector('#navGuestAiModal [data-gai-tab="find"]').click();
-        bootstrap.Modal.getOrCreateInstance(modal).show();
+        bootstrap.Modal.getOrCreateInstance(findModal).show();
     }
     function openClassify() {
-        ensureModal();
+        ensureClassModal();
         syncCats();
-        modalTab = 'classify';
-        document.querySelector('#navGuestAiModal [data-gai-tab="classify"]').click();
-        bootstrap.Modal.getOrCreateInstance(modal).show();
+        bootstrap.Modal.getOrCreateInstance(classModal).show();
     }
     function runFind() {
         var cat = readFindCat(), sub = readFindSub(), scene = valueOf('gaiScene'), count = readFindCount();
@@ -1215,6 +1215,8 @@
         if (skipped && skipped.length) {
             html += '<div class="alert alert-secondary py-1 px-2 small mb-2">已剔除 ' + skipped.length + ' 条本机已有同域名候选:' + esc(skipped.map(function (s) { return s.name; }).join('、')) + '</div>';
         }
+        var foot = document.getElementById('gaiFootHint');
+        if (foot) foot.textContent = drafts.length ? '勾选要导入的候选，点右侧「检测并导入所选」' : '生成候选后在这里检测能否连上并导入';
         if (!drafts.length) {
             html += '<div class="alert alert-warning mb-0 py-2 small">没有可导入的候选(可能全部与本机重复),可调整要求后重试。</div>';
         }
@@ -1475,6 +1477,7 @@
         testModel: testModel,
         testAllModels: testAllModels,
         promptSite: buildSitePrompt,
+        suggest: suggestSite,
         promptClassify: buildClassifyPrompt,
         parseSite: parseSiteDrafts
     };

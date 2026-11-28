@@ -4,9 +4,10 @@
 契约:
 - 访客态复用主人端同一套 `.card-menu` 容器 / 定位翻边 / 键盘 ↑↓·Esc / 长按防误触;
 - 访客菜单只落本机:打开链接、编辑(navGuestEdit)、星标(localStorage navStars)、
-  复制链接、删除本机书签(快照覆盖表 deleteSnapshot);
-- 访客分支不调 owner 写接口、不写服务器 DB;不提供置顶/置底/上移/下移;
-- 主人端菜单动作(排序写库)原样保留,不受访客分支改动影响。
+  复制链接、移动到分类(快照覆盖表)、置顶/置底/上移/下移(localStorage 顺序表)、
+  删除(快照覆盖表 deleteSnapshot);
+- 主客两端使用同一份 actionItems 动作清单与分类选择器,菜单条目逐项一致;
+- 访客分支不调 owner 写接口、不写服务器 DB;主人端排序仍走服务端接口。
 
 静态断言为主;浏览器实测(开/关、长按、五项动作、刷新持久化、主人态未变)见
 docs/并行改造/09-访客卡片菜单.md §5/§6。
@@ -37,20 +38,21 @@ class GuestMenuSourceStructureTests(TestCase):
     """源码静态断言:访客菜单项数 / 动作回调 / 边界。"""
 
     def setUp(self):
-        # build() 里 GUEST 分支的菜单项串
-        self.guest_items = _slice_between(CARD_MENU_JS, 'if (GUEST) {', '} else {')
+        # 主客共用的动作清单（不再有 GUEST 分支内联串）
+        self.actions = _slice_between(CARD_MENU_JS, 'function actionItems', 'function build')
         # guestAct 动作回调函数体
         self.guest_act = _slice_between(CARD_MENU_JS, 'function guestAct', 'function onAct')
 
-    def test_guest_menu_five_local_actions(self):
-        # 访客菜单:打开 / 编辑 / 星标 / 复制 / 删除,共五个动作项
-        acts = re.findall(r'data-act="([^"]+)"', self.guest_items)
-        self.assertEqual(acts, ['open', 'edit', 'star', 'copy', 'del'])
+    def test_guest_menu_matches_owner_actions(self):
+        # 两端动作清单同源:打开 / 编辑 / 星标 / 复制 / 移动到分类 / 排序四项 / 删除
+        for act in ('open', 'edit', 'star', 'copy', 'move',
+                    'pin-top', 'pin-bottom', 'up', 'down', 'del'):
+            self.assertIn("item('%s'" % act, self.actions)
 
-    def test_guest_menu_has_no_ordering_actions(self):
-        # 快照数据没有书签级排序持久化:访客菜单不得出现置顶/置底/上移/下移
-        for forbidden in ('pin-top', 'pin-bottom', 'data-act="up"', 'data-act="down"'):
-            self.assertNotIn(forbidden, self.guest_items)
+    def test_guest_ordering_is_local_not_owner_api(self):
+        # 访客排序只能落 navGuestSnapshot.reorder(localStorage 顺序表)
+        self.assertIn('navGuestSnapshot.reorder', self.guest_act)
+        self.assertNotIn('site-order', self.guest_act)
 
     def test_guest_act_does_not_call_owner_api(self):
         # 访客动作回调里禁止出现服务端写接口 / fetch / csrf 提交
@@ -65,14 +67,21 @@ class GuestMenuSourceStructureTests(TestCase):
         self.assertIn(".site-star", self.guest_act)
         self.assertIn('copyText', self.guest_act)
 
-    def test_guest_card_matcher_keeps_snapshot_only(self):
-        # 本机导入书签卡由模板内联 gMenu 接管;HTML 工具卡不进书签菜单
+    def test_guest_card_matcher_covers_snapshot_and_local(self):
+        # 快照卡与本机导入卡共用同一套菜单;HTML 工具卡不进书签菜单
         self.assertIn("guestCard", CARD_MENU_JS)
         self.assertIn("#navGuestImports", CARD_MENU_JS)
         self.assertIn("#toolsSection", CARD_MENU_JS)
         matcher = _slice_between(CARD_MENU_JS, 'function guestCard', 'function toggleStar')
-        self.assertIn("closest('#navGuestImports')", matcher)
+        self.assertNotIn("closest('#navGuestImports')) return null", matcher)
         self.assertIn("closest('#toolsSection')", matcher)
+        self.assertIn("function isLocalCard", CARD_MENU_JS)
+        self.assertIn("window.navGuestLocalCard", CARD_MENU_JS)
+
+    def test_guest_page_has_only_one_card_menu(self):
+        # 模板内联 gMenu / #navGuestCardMenu 已删除,页面只留共享 card-menu.js 这一套
+        for dead in ('navGuestCardMenu', 'function gMenuBuild', 'function gOnAct', 'ngMetaLinkPanel'):
+            self.assertNotIn(dead, TPL)
 
     def test_shared_container_and_geometry_reused(self):
         # 主客共用同一个 .card-menu 容器类与既有定位/翻边/滚动规则,CSS 不另写访客菜单几何
@@ -91,9 +100,9 @@ class OwnerMenuUnchangedTests(TestCase):
     """主人端菜单动作与服务端排序接口原样保留。"""
 
     def test_owner_branch_ordering_actions_kept(self):
-        owner_items = _slice_between(CARD_MENU_JS, '} else {', "menu.innerHTML = items.join('')")
-        for act in ('pin-top', 'pin-bottom', 'up', 'down'):
-            self.assertIn('data-act="' + act + '"', owner_items)
+        actions = _slice_between(CARD_MENU_JS, 'function actionItems', 'function build')
+        for act in ('pin-top', 'pin-bottom', 'up', 'down', 'move'):
+            self.assertIn("item('%s'" % act, actions)
 
     def test_owner_reorder_api_kept(self):
         # 主人端置顶/移动仍走服务端 order 接口;这段不能被访客分支删掉

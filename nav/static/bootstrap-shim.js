@@ -173,6 +173,10 @@
         el.classList.add('show');
         el.style.display = 'block';
         modalOpenCount += 1;
+        // 2026-11-27:叠开弹窗(添加站点 → 选择图标)时后开的必须压在上面。
+        // 原来所有 .modal.show 同一层,z-index 相同、DOM 靠后的反而盖住后开的,
+        // 图标选择器就被「添加站点」整块挡住、点不到。
+        el.style.zIndex = String(1050 + modalOpenCount * 10);
         document.body.classList.add('ui-modal-open');
         if (!this._static) showBackdrop();
         const self = this;

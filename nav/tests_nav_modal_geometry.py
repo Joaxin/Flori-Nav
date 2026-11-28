@@ -100,25 +100,30 @@ class ModalSkeletonParityTests(TestCase):
         self.assertIn('nav-drawer', owner_root)
         self.assertEqual(guest_root, owner_root)
 
-    def test_pair_basket_drawer_vs_guest_care(self):
-        """访客「本机保养维护」= 主人「保养」所在抽屉:同一 offcanvas-end nav-drawer 骨架。
-        (2026-11-25:访客原来自己写居中 modal-lg,主人是右侧抽屉,位置不一致,已统一)"""
-        owner_root = _tokens(_owner_root_classes('navBasketDrawer'))
-        guest_root = _tokens(_guest_dialog_classes(GUEST_CARE, 'navGuestCareModal'))
-        self.assertEqual(guest_root, owner_root)
-        self.assertIn('nav-drawer', guest_root)
+    def test_guest_care_lives_in_basket_not_its_own_drawer(self):
+        """2026-11-27:访客「保养 / URL 卫生」不再自开抽屉,改挂进体检篮第 2、3 个页签,
+        与主人 navBasketDrawer 的「死链篮 / 保养 / URL 卫生」三页签同构。"""
+        self.assertNotIn("id = 'navGuestCareModal'", GUEST_CARE)
+        self.assertIn('window.navGuestCare = { mount: mount, openLink: openLinkModal }', GUEST_CARE)
+        for text in ('死链篮', '保养', 'URL 卫生'):
+            self.assertIn(text, GUEST_MANAGE)
+        for tab in ('ngbTabBasket', 'ngbTabCare', 'ngbTabHygiene'):
+            self.assertIn(tab, GUEST_MANAGE)
 
     def test_pair_pet_ai_vs_guest_ai_panel(self):
-        """AI 接口配置:访客侧 #navGuestAiPanel 与主人 #petAiModal 同一套 modal 外壳。
-        (2026-11-25:访客原来是手写 fixed 浮层 440px 无遮罩,已改成 Bootstrap modal)"""
+        """AI 接口配置:访客侧 #navGuestAiPanel 与主人 #petAiModal 同一套 modal 外壳与同一组分区。
+        (2026-11-27:访客面板原来是一整块「接口+对话+开关+日志」大杂烩,已收成主人同序列:
+         接口状态 → 地址/Key 两列 → 模型 + ▾ → 检测/测试 → 高级 → 保存 → 调用日志)"""
         owner = _tokens(_owner_dialog_classes('petAiModal'))
         self.assertEqual(owner, {'modal-dialog'})
         self.assertIn("panel.className = 'modal fade'", GUEST_AI)
-        self.assertIn("dialog.className = 'modal-dialog'", GUEST_AI)
-        self.assertIn("content.className = 'modal-content'", GUEST_AI)
-        self.assertIn("head.className = 'modal-header'", GUEST_AI)
-        self.assertIn("body.className = 'modal-body'", GUEST_AI)
-        self.assertIn("foot.className = 'modal-footer'", GUEST_AI)
+        for cls in ('modal-dialog', 'modal-content', 'modal-header', 'modal-body'):
+            self.assertIn(cls, GUEST_AI)
+        for token in ('nav-ai-config-row', 'nav-ai-field-base', 'nav-ai-field-key', 'nav-ai-adv'):
+            self.assertIn(token, GUEST_AI)
+        # 接口/Key/模型三件套 id 与主人同位置
+        for gid in ('gaiBase', 'gaiKey', 'gaiModel', 'gaiModelMenu', 'gaiSaveBtn', 'gaiLogBox'):
+            self.assertIn(gid, GUEST_AI)
 
     def test_pair_ai_modal_vs_guest_ai(self):
         owner = _tokens(_owner_dialog_classes('navAiModal'))
