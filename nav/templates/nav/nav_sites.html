@@ -1194,7 +1194,10 @@ document.documentElement.classList.add('nav-guest-mode');
                         <button type="button" class="btn btn-outline-secondary" data-settings-dock="bottom-left" title="竖排贴左下角（默认）">左下角</button>
                         <button type="button" class="btn btn-outline-secondary" data-settings-dock="bottom-right" title="竖排贴右下角，抬高避开回顶钮">右下角</button>
                     </div>
-                    <div class="form-text small mb-2">管的是左下那组圆按钮（回顶 / 收起）；顶栏齿轮固定不动。</div>
+                    <div class="form-text small mb-2">管的是左下那组圆按钮；顶栏齿轮固定不动。</div>
+                    <div class="nav-set-h">快捷工具条动作</div>
+                    <div id="navFixbarActionList" class="mb-1"></div>
+                    <div class="form-text small mb-2">勾选要在展开态显示的动作，至少保留一个；收起后只显示展开钮。</div>
                     <div class="nav-set-h">交互</div>
                     <div class="form-text small mb-1">卡片操作：右键(触屏长按)打开菜单，可编辑 / 置顶 / 上移下移 / 换分类 / 删除</div>
                 </div>
@@ -3875,6 +3878,9 @@ document.documentElement.classList.add('nav-guest-mode');
     setTimeout(function () { applySnapshotCatOrder(); buildGuestCatSort(); }, 0);
 })();
 </script>
+<button type="button" id="navFocusExit" title="退出专注模式" aria-label="退出专注模式">
+    <i class="fas fa-compress" aria-hidden="true"></i><span>退出专注模式</span>
+</button>
 {% if not nav_guest_mode %}
 <script>
 // 主人后台：切换游客页公开范围，保存后立即重建 nav-public.json。

@@ -1050,3 +1050,41 @@ class NavPetWeatherSourceTests(SimpleTestCase):
         with mock.patch('nav.pet_weather.weather_cached', return_value=None):
             self.assertEqual(502, self.client.get(reverse('api_nav_pet_weather'),
                                                   {'lat': 30.75, 'lon': 120.75}).status_code)
+
+
+class PetSettingsGeometryTests(SimpleTestCase):
+    """2026-11-28:宠物设置窗被拖到满屏后右侧越界、底部空白、滑杆只剩圆点。"""
+
+    def setUp(self):
+        self.js = _pet_js()
+        self.css = static_text('css/nav-sites.css')
+
+    def test_modal_is_bounded_and_kept_in_viewport(self):
+        self.assertIn("petSetModal.setAttribute('data-keep-max-width', '1')", self.js)
+        self.assertIn("petSetModal.setAttribute('data-keep-in-viewport', '1')", self.js)
+        self.assertIn('--pet-set-max-h', self.css)
+        self.assertIn('max-width: min(94vw, calc(720px * var(--pet-ui-scale)))', self.css)
+        self.assertIn('height: auto', self.css)
+        self.assertIn('#navPetSettingsModal.modal.show', self.css)
+        self.assertIn('display: flex !important', self.css)
+        # 不能再把 max-width 置 none,否则拖拽/缩放会重新铺满。
+        self.assertNotIn("dialog.style.maxWidth = 'none'", self.js)
+
+    def test_resize_is_width_only_and_clamped(self):
+        for frag in ('function dialogCap()', 'function clampDialog()',
+                     "dialog.style.resize = 'horizontal'",
+                     'petSetModal.addEventListener(\'shown.bs.modal\', clampDialog)',
+                     'window.addEventListener(\'resize\', clampDialog'):
+            self.assertIn(frag, self.js)
+        self.assertNotIn('dialog.style.height = Math.min', self.js)
+        shim = static_text('bootstrap-shim.js')
+        self.assertIn('dialog.style.height = \'\'', shim)
+
+    def test_slider_tracks_are_visible_and_filled(self):
+        for frag in ('--pet-range-track', '--pet-range-pct',
+                     '::-webkit-slider-runnable-track', '::-moz-range-progress',
+                     'linear-gradient(to right'):
+            self.assertIn(frag, self.css)
+        for frag in ('function petRangeFill(el)', 'function petRangeFills()',
+                     "el.style.setProperty('--pet-range-pct'", 'petRangeFills();'):
+            self.assertIn(frag, self.js)

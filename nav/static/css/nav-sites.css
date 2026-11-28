@@ -1176,18 +1176,34 @@
     #navPetSettingsModal .nav-pet-set-pane { max-height: 50vh; overflow-y: auto; padding-right: 2px; }
     /* 设置弹窗跟着界面字号放大:原来固定 320px + 12px 小字,4K 上没法看 */
     #navPetSettingsModal .modal-dialog {
-        width: min(92vw, calc(680px * var(--pet-ui-scale)));
-        height: min(86vh, calc(620px * var(--pet-ui-scale)));
+        /* 2026-11-28:默认宽度收到 640px 档,并给拖拽/缩放留 720px 档上限;
+           高度不再写死,按内容自适应并受 max-height 约束,避免拉高后底部一大片空白。 */
+        --pet-set-max-h: min(88vh, calc(720px * var(--pet-ui-scale)));
+        width: min(92vw, calc(640px * var(--pet-ui-scale)));
+        max-width: min(94vw, calc(720px * var(--pet-ui-scale)));
+        height: auto;
+        max-height: var(--pet-set-max-h);
         min-width: min(86vw, calc(320px * var(--pet-ui-scale)));
         min-height: 0;
+        margin: 0;
         position: relative;
         /* 兼容层给所有弹窗的 dialog 挂 overflow:auto(为了 resize 抓手),内容哪怕只高 1px
            也会站出一条系统白滚动条(2026-11-19 截图);这里改 hidden,滚动交给 .modal-body */
         overflow: hidden !important;
     }
+    /* 宠物设置窗垂直+水平居中:兼容层的 .modal-dialog-centered 靠 dialog 自身撑满高度再
+       内部 align-items:center,但本窗 min-height:0/height:auto 会让它贴顶。这里直接把
+       .modal 变成居中容器,位置不再受内容高度影响。 */
+    #navPetSettingsModal.modal.show {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+    }
     #navPetSettingsModal .modal-content {
-        width: 100%; height: 100%; min-height: 0; max-height: 100%;
-        display: flex; flex-direction: column;
+        width: 100%; height: 100%; min-height: 0; max-height: var(--pet-set-max-h);
+        display: flex;
+        flex-direction: column;
     }
     #navPetSettingsModal .modal-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
     /* 滚动条跟主题走,别露系统白粗条(2026-11-19 用户截图:弹窗右侧一条白条) */
@@ -1202,10 +1218,29 @@
     }
     #navPetSettingsModal .modal-body::-webkit-scrollbar-track { background: transparent; }
     #navPetSettingsModal .nav-pet-set-pane { max-height: none; overflow: visible; }
+    /* 滑杆:基础层的轨道用 tertiary-bg,浅色主题下几乎和背景同色,只剩一个圆点。
+       这里补高对比轨道 + 已填充段;--pet-range-pct 由 pet.js 在 input/sync 时写入。 */
+    #navPetSettingsModal .form-range {
+        --pet-range-track: color-mix(in srgb, var(--bs-body-color) 22%, transparent);
+        --pet-range-pct: 50%;
+        height: 1.5rem;
+    }
+    #navPetSettingsModal .form-range::-webkit-slider-runnable-track {
+        height: 6px; border-radius: var(--nav-r-pill);
+        background: linear-gradient(to right,
+            var(--nav-accent, #5850ec) 0 var(--pet-range-pct),
+            var(--pet-range-track) var(--pet-range-pct) 100%);
+    }
+    #navPetSettingsModal .form-range::-moz-range-track {
+        height: 6px; border-radius: var(--nav-r-pill); background: var(--pet-range-track);
+    }
+    #navPetSettingsModal .form-range::-moz-range-progress {
+        height: 6px; border-radius: var(--nav-r-pill); background: var(--nav-accent, #5850ec);
+    }
     /* 原生 resize 抓手在部分主题下几乎看不见,补一个明显的右下角抓手 */
     .nav-pet-resize-grip {
         position: absolute; right: 0; bottom: 0; width: 26px; height: 26px;
-        cursor: nwse-resize; z-index: 5; opacity: .9;
+        cursor: ew-resize; z-index: 5; opacity: .9;
         border-top-left-radius: var(--nav-r-sm);
         background:
             linear-gradient(135deg, transparent 0 45%, var(--bs-secondary-color) 45% 50%, transparent 50% 100%),
@@ -1213,7 +1248,7 @@
                 color-mix(in srgb, var(--bs-secondary-color) 55%, transparent) 4px 5px);
     }
     .nav-pet-resize-grip::after {
-        content: '↘'; position: absolute; right: 3px; bottom: 0;
+        content: '↔'; position: absolute; right: 3px; bottom: 0;
         font-size: 12px; line-height: 1; color: var(--bs-secondary-color);
     }
     .nav-pet-resize-grip:hover { opacity: 1; }
@@ -1434,6 +1469,13 @@
        现在降到右侧 offcanvas:滚动交给 .offcanvas-body,宽度跟屏幕走;背景沿用 --bs-body-bg,
        10 套主题各自覆盖的底色变量会自动跟过来。 */
     #navSettingsMenu.offcanvas { --bs-offcanvas-width: min(560px, 94vw); }   /* 宽屏下别缩成一条 */
+    /* 2026-11-28:兼容层 show 时写死 display:block(内联),抽屉的 flex 列失效,
+       .offcanvas-body 会按内容长到 1300px 且滚不动 —— 工具条动作设置因此够不到。
+       用 !important 把 show 态拉回 flex 列,滚动交还给 .offcanvas-body。 */
+    #navSettingsMenu.offcanvas.show {
+        display: flex !important;
+        flex-direction: column;
+    }
     /* .offcanvas-body 在本项目没有基础 padding(只有 offcanvas-header 有),原来靠 .dropdown-menu 的 p-2
        撑着;换成抽屉后内容会贴边。这里补对称内边距 + 内容列居中,两侧留白一致 */
     #navSettingsMenu .offcanvas-body {

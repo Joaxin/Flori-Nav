@@ -2097,6 +2097,9 @@ jQuery(function ($) {
     petSetModal.id = 'navPetSettingsModal';
     petSetModal.className = 'modal';
     petSetModal.tabIndex = -1;
+    // 兼容层读到这两个标记后:不释放 max-width,拖拽时整窗留在视口内。
+    petSetModal.setAttribute('data-keep-max-width', '1');
+    petSetModal.setAttribute('data-keep-in-viewport', '1');
     petSetModal.innerHTML =
         '<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content">' +
         '<div class="modal-header"><h6 class="modal-title"><i class="fas fa-gear me-1"></i>宠物设置</h6>' +
@@ -2247,33 +2250,54 @@ jQuery(function ($) {
         const dialog = petSetModal.querySelector('.modal-dialog');
         if (!dialog) return;
         const setHeader = petSetModal.querySelector('.modal-header');
-        if (setHeader) setHeader.title = '按住标题栏拖动窗口；右下角可调整大小';
-        dialog.style.resize = 'both';
+        if (setHeader) setHeader.title = '按住标题栏拖动窗口；右下角可调整宽度';
+        // 2026-11-28:高度改为内容自适应,只保留横向缩放。纵向手拉高会留下大片空白,
+        // 而各页签的超长内容本来就在 .modal-body 里滚动,不需要再手动加高。
+        dialog.style.resize = 'horizontal';
         // 弹窗自己不再滚动(内容由 .modal-body 滚):overflow:auto 会多出一条系统白滚动条,
         // 截图里就在右边站着(2026-11-19);hidden 同样能保住右下角 resize 抓手。
         dialog.style.overflow = 'hidden';
         dialog.style.pointerEvents = 'auto';
-        dialog.style.maxWidth = 'none';
+        // 不再把 max-width 置 none:上限由 CSS 的 --pet-set-max-h / max-width 守,
+        // 兼容层看到 data-keep-max-width 也不会释放。
+        function px(v, fallback) {
+            const n = parseFloat(v);
+            return isFinite(n) ? n : fallback;
+        }
+        function dialogCap() {
+            const cs = getComputedStyle(dialog);
+            return {
+                w: Math.max(320, Math.min(window.innerWidth - 16, px(cs.maxWidth, window.innerWidth - 16))),
+                h: Math.max(260, Math.min(window.innerHeight - 16, px(cs.maxHeight, window.innerHeight - 16)))
+            };
+        }
+        function clampDialog() {
+            const cap = dialogCap();
+            const rect = dialog.getBoundingClientRect();
+            if (rect.width > cap.w + 0.5) dialog.style.width = cap.w + 'px';
+            if (rect.height > cap.h + 0.5) dialog.style.height = cap.h + 'px';
+        }
+        // 打开/窗口变化时再兜一次,防止旧内联尺寸或浏览器缩放把窗口撑出视口。
+        petSetModal.addEventListener('shown.bs.modal', clampDialog);
+        window.addEventListener('resize', clampDialog, { passive: true });
         const grip = document.createElement('div');
         grip.className = 'nav-pet-resize-grip';
-        grip.title = '拖动调整设置窗口大小';
-        grip.setAttribute('aria-label', '拖动调整设置窗口大小');
+        grip.title = '拖动调整设置窗口宽度';
+        grip.setAttribute('aria-label', '拖动调整设置窗口宽度');
         dialog.appendChild(grip);
         grip.addEventListener('pointerdown', function(ev) {
             ev.preventDefault();
             ev.stopPropagation();
-            const sx = ev.clientX, sy = ev.clientY;
+            const sx = ev.clientX;
             const rect = dialog.getBoundingClientRect();
-            const top = rect.top;
+            const cap = dialogCap();
             function move(e) {
-                const maxW = Math.max(320, window.innerWidth - 16);
-                const maxH = Math.max(260, window.innerHeight - top - 10);
-                dialog.style.width = Math.min(maxW, Math.max(320, rect.width + e.clientX - sx)) + 'px';
-                dialog.style.height = Math.min(maxH, Math.max(320, rect.height + e.clientY - sy)) + 'px';
+                dialog.style.width = Math.min(cap.w, Math.max(320, rect.width + e.clientX - sx)) + 'px';
             }
             function up() {
                 document.removeEventListener('pointermove', move);
                 document.removeEventListener('pointerup', up);
+                clampDialog();
             }
             document.addEventListener('pointermove', move);
             document.addEventListener('pointerup', up, {once: true});
@@ -2379,6 +2403,23 @@ jQuery(function ($) {
         show: petSetModal.querySelector('#navPetIpShow'),
         festival: petSetModal.querySelector('#navPetIpFest')
     };
+    function petRangeFill(el) {
+        if (!el) return;
+        const min = parseFloat(el.min);
+        const max = parseFloat(el.max);
+        const val = parseFloat(el.value);
+        const pct = (isFinite(min) && isFinite(max) && max > min && isFinite(val))
+            ? Math.max(0, Math.min(100, (val - min) / (max - min) * 100))
+            : 50;
+        el.style.setProperty('--pet-range-pct', pct.toFixed(2) + '%');
+    }
+    function petRangeFills() {
+        petSetModal.querySelectorAll('input[type="range"]').forEach(petRangeFill);
+    }
+    // 滑杆拖动时不必等 sync:每次 input 立即更新已填充段,视觉跟手。
+    petSetModal.addEventListener('input', function(e) {
+        if (e.target && e.target.matches && e.target.matches('input[type="range"]')) petRangeFill(e.target);
+    });
     function petSettingsSync() {
         const size = parseInt(localStorage.getItem('navPetSize'), 10) || petTier().size;
         const op = parseFloat(localStorage.getItem('navPetOpacity'));
@@ -2415,6 +2456,7 @@ jQuery(function ($) {
         try { ip = JSON.parse(localStorage.getItem('navPetIdlePools') || 'null'); } catch (e) { ip = null; }
         if (!Array.isArray(ip)) ip = ['idle', 'play'];
         Object.keys(petIpCks).forEach(function(k) { petIpCks[k].checked = ip.indexOf(k) >= 0; });
+        petRangeFills();
     }
     petSizeR.addEventListener('input', function() {
         petSizeV.textContent = petSizeR.value + 'px';

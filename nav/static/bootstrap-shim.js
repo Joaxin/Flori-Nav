@@ -122,8 +122,13 @@
         modalEl._uiMovable = true;
         const dialog = modalEl.querySelector('.modal-dialog');
         if (!dialog) return;
+        // 2026-11-28:宠物设置窗要自己守 max-width/max-height(拖拽缩放也不能越界),
+        // 用 data-keep-max-width 标记后这里不把 max-width 置 none。
+        const keepMaxWidth = modalEl.hasAttribute('data-keep-max-width');
+        const keepInViewport = modalEl.hasAttribute('data-keep-in-viewport');
+        dialog._uiKeepMaxWidth = keepMaxWidth;
         const cap = parseFloat(getComputedStyle(dialog).maxWidth);
-        if (cap > 0) {
+        if (cap > 0 && !keepMaxWidth) {
             dialog._uiBaseWidth = 'min(' + Math.round(cap) + 'px, calc(100vw - 2rem))';
             dialog.style.width = dialog._uiBaseWidth;
             dialog.style.maxWidth = 'none';
@@ -148,14 +153,31 @@
             header.addEventListener('dblclick', function (ev) {
                 if (ev.target.closest('.btn, .btn-close, input, select, textarea, a, label')) return;
                 dx = 0; dy = 0; dialog.style.transform = '';
-                if (dialog._uiBaseWidth) dialog.style.width = dialog._uiBaseWidth;  // 尺寸一并复位
+                if (dialog._uiKeepMaxWidth) {
+                    // 宠物设置:宽高都回到 CSS 默认档,别只复位宽度留下一个手拉的高度
+                    dialog.style.width = '';
+                    dialog.style.height = '';
+                } else if (dialog._uiBaseWidth) {
+                    dialog.style.width = dialog._uiBaseWidth;  // 尺寸一并复位
+                }
             });
         }
         document.addEventListener('mousemove', function (ev) {
             if (!dragging) return;
             const r = dialog.getBoundingClientRect();
-            dx = Math.min(Math.max(ev.clientX - sx, -r.left - r.width + 80), Math.max(0, window.innerWidth - r.left - 80));
-            dy = Math.min(Math.max(ev.clientY - sy, 52 - r.top), Math.max(0, window.innerHeight - r.top - 40));
+            if (keepInViewport) {
+                // 整窗留在视口内:用未位移的基准位置算允许的 transform 范围。
+                const baseLeft = r.left - dx, baseTop = r.top - dy;
+                const minDx = 8 - baseLeft;
+                const maxDx = Math.max(minDx, window.innerWidth - r.width - 8 - baseLeft);
+                const minDy = 8 - baseTop;
+                const maxDy = Math.max(minDy, window.innerHeight - r.height - 8 - baseTop);
+                dx = Math.min(Math.max(ev.clientX - sx, minDx), maxDx);
+                dy = Math.min(Math.max(ev.clientY - sy, minDy), maxDy);
+            } else {
+                dx = Math.min(Math.max(ev.clientX - sx, -r.left - r.width + 80), Math.max(0, window.innerWidth - r.left - 80));
+                dy = Math.min(Math.max(ev.clientY - sy, 52 - r.top), Math.max(0, window.innerHeight - r.top - 40));
+            }
             dialog.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
         });
         document.addEventListener('mouseup', function () { dragging = false; });

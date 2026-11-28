@@ -254,3 +254,49 @@ class NavFixbarSelfMutationGuardTests(TestCase):
         self.assertIn("if (root.style.bottom !== bottom)", body)
         self.assertIn("root.style.bottom = bottom", body)
         self.assertIn("dodging !== root.classList.contains('nav-fixbar-dodging')", body)
+
+
+class NavFixbarActionsTests(TestCase):
+    """2026-11-28:工具条从「单颗回顶」扩成可配置动作组,但收起/展开仍只有一套状态。"""
+
+    def setUp(self):
+        self.js = _read_fixbar_js()
+        self.tpl = _read_template()
+
+    def test_action_catalog_and_settings_slot(self):
+        for frag in ('ACTION_KEY', "'navFixbarActionsV1'", "id: 'top'",
+                     "id: 'collapse'", "id: 'focus'", "id: 'bottom'",
+                     "id: 'prevcat'", "id: 'nextcat'", 'navFixbarActionList',
+                     '至少保留一个工具条动作'):
+            self.assertIn(frag, self.js)
+        # 2026-11-28:用户确认去掉「随机一站」,不再保留卡片池和随机打开逻辑。
+        for gone in ("id: 'random'", 'visibleCards()', 'window.open(url'):
+            self.assertNotIn(gone, self.js)
+        self.assertIn('id="navFixbarActionList"', self.tpl)
+        self.assertIn('id="navFocusExit"', self.tpl)
+        self.assertIn('快捷工具条动作', self.tpl)
+
+    def test_owner_actions_use_shared_page_api(self):
+        for frag in ('window.navCollapse.page', 'window.NavUiMode.toggleFocus',
+                     'nav-fixbar-expanded-has-top'):
+            self.assertIn(frag, self.js)
+
+    def test_fixbar_css_has_action_grid_and_backtop_dedupe(self):
+        css = open(os.path.join(NAV_DIR, 'static', 'css', 'nav-fixbar.css'), encoding='utf-8').read()
+        self.assertIn('#navFixbarActionList', css)
+        self.assertIn('body.nav-fixbar-expanded-has-top #navBackTop', css)
+        self.assertIn('body.nav-focus-mode .nav-topbar', css)
+        self.assertIn('body.nav-focus-mode #navFixbar', css)
+        self.assertIn('body.nav-focus-mode #navFocusExit', css)
+        # 设置抽屉 show 态被兼容层写成 display:block 时,动作列表会掉到 1200px 外且滚不到。
+        sites_css = open(os.path.join(NAV_DIR, 'static', 'css', 'nav-sites.css'), encoding='utf-8').read()
+        self.assertIn('#navSettingsMenu.offcanvas.show', sites_css)
+        self.assertIn('display: flex !important', sites_css)
+
+    def test_nav_ui_mode_exposes_focus_toggle(self):
+        sites = open(os.path.join(NAV_DIR, 'static', 'js', 'nav-sites.js'), encoding='utf-8').read()
+        self.assertIn('window.NavUiMode = {', sites)
+        self.assertIn('toggleFocus: navToggleFocus', sites)
+        self.assertIn('navUiModeBeforeFocus', sites)
+        self.assertIn('navSyncFocusClass()', sites)
+        self.assertIn("e.key === 'Escape'", sites)

@@ -90,7 +90,53 @@
     gap: 8px;
 }
 
+#navFixbar.nav-fixbar--top .nav-fixbar-main {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100vw - 28px);
+}
+
 #navFixbar.is-collapsed .nav-fixbar-main { display: none; }
+
+/* 展开态显示工具条回顶时,右下角那枚独立回顶钮暂时退场,避免两个回顶入口;
+   收起态仍保留 #navBackTop,手机上先点它就能回顶,不必先展开工具条。 */
+body.nav-fixbar-expanded-has-top #navBackTop { display: none !important; }
+
+/* 专注模式:隐藏顶栏、独立回顶和整组工具条,只留内容;右上角专用退出钮接住用户。
+   工具条里的「专注」按钮进入后自身会被隐藏,所以退出入口不能依赖工具条。 */
+body.nav-focus-mode .nav-topbar,
+body.nav-focus-mode #navBackTop,
+body.nav-focus-mode #navFixbar { display: none !important; }
+#navFocusExit {
+    display: none;
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1060;
+    align-items: center;
+    gap: .35rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--nav-r-pill, 999px);
+    background: color-mix(in srgb, var(--bs-body-bg) 88%, transparent);
+    color: var(--bs-body-color);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+    padding: .4rem .7rem;
+    font-size: .8rem;
+    backdrop-filter: blur(8px);
+}
+body.nav-focus-mode #navFocusExit { display: inline-flex; }
+#navFocusExit:hover { border-color: var(--nav-accent); color: var(--nav-accent); }
+
+/* 设置里的动作勾选:两列自适应,窄屏自动落成一列 */
+#navFixbarActionList,
+.nav-fixbar-action-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: .2rem .6rem;
+}
+#navFixbarActionList .form-check { margin: 0; min-width: 0; }
+#navFixbarActionList .form-check-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* 收起态 toggle 钮直径 ≤40;展开态同一钮换成收起图标,尺寸不变 */
 #navFixbar .nav-fixbar-toggle { width: 40px; height: 40px; }

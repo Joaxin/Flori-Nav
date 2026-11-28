@@ -235,6 +235,7 @@ $(function() {
         navSafeSet(p.key, on ? '1' : '0');
         $(p.input).prop('checked', on);
         p.apply(on);
+        navSyncFocusClass();
     }
     function navUiModeNow() {
         const cur = {};
@@ -251,13 +252,62 @@ $(function() {
         });
         $('#navUiModeNow').text(now === 'custom' ? '当前:自定义(逐项微调过)' : '');
     }
+    // 专注模式不只收偏好项:顶栏/独立回顶/整组工具条也要退场,右上角专用退出钮兜住。
+    function navSyncFocusClass() {
+        document.body.classList.toggle('nav-focus-mode', navUiModeNow() === 'zen');
+    }
+    // 2026-11-28:工具条要进出「专注」且能恢复用户原来的逐项偏好。
+    // 只快照 NAV_UI_PREFS 里的布尔项;进入 zen 前存一份,退出时原样还原,不粗暴回 browse。
+    let navUiModeBeforeFocus = null;
+    function navUiBoolSnapshot() {
+        const s = {};
+        NAV_UI_PREFS.forEach(function(p) { if (!p.enum) s[p.k] = navPrefVal(p); });
+        return s;
+    }
+    function navApplyModePrefs(prefs) {
+        NAV_UI_PREFS.forEach(function(p) {
+            if (p.enum || !prefs || prefs[p.k] === undefined) return;
+            navPrefSet(p, !!prefs[p.k]);
+        });
+        navPaintUiMode();
+    }
+    function navApplyUiMode(name) {
+        const mode = NAV_UI_MODES[name];
+        if (!mode) return;
+        // 不管是工具条还是设置里的「专注」按钮进来,都先给逐项偏好拍快照;
+        // 这样从任一入口退出都能回到用户原来的「自定义」组合,而不是粗暴回 browse。
+        if (name === 'zen') {
+            if (navUiModeNow() !== 'zen') navUiModeBeforeFocus = navUiBoolSnapshot();
+        } else {
+            navUiModeBeforeFocus = null;
+        }
+        navApplyModePrefs(mode);
+    }
+    function navToggleFocus() {
+        if (navUiModeNow() === 'zen') {
+            const prev = navUiModeBeforeFocus;
+            navUiModeBeforeFocus = null;
+            navApplyModePrefs(prev || NAV_UI_MODES.browse);
+            return false;
+        }
+        navApplyUiMode('zen');
+        return true;
+    }
+    window.NavUiMode = {
+        current: navUiModeNow,
+        isFocus: function() { return navUiModeNow() === 'zen'; },
+        toggleFocus: navToggleFocus,
+        apply: navApplyUiMode
+    };
+    const focusExit = document.getElementById('navFocusExit');
+    if (focusExit) focusExit.addEventListener('click', navToggleFocus);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && navUiModeNow() === 'zen') navToggleFocus();
+    });
     // 逐项微调改过任何一项,模式行跟着重算(委托在祖先,复选框自己的处理器先跑完才轮到它)
     $('#navSettingsMenu').on('change', 'input[type=checkbox]', navPaintUiMode);
     $('#navUiModeGroup, #navQuickUiModeGroup').on('click', '.btn', function() {
-        const mode = NAV_UI_MODES[String($(this).data('ui-mode'))];
-        if (!mode) return;
-        NAV_UI_PREFS.forEach(p => { if (p.enum) return; navPrefSet(p, !!mode[p.k]); });
-        navPaintUiMode();
+        navApplyUiMode(String($(this).data('ui-mode')));
     });
     $('#setFineTuneToggle').on('click', function() {
         const hidden = $('#setFineTune').toggleClass('d-none').hasClass('d-none');
@@ -265,6 +315,7 @@ $(function() {
                .addClass(hidden ? 'fa-chevron-right' : 'fa-chevron-down');
     });
     navPaintUiMode();
+    navSyncFocusClass();
 
     // 设置面板 tab(默认"显示",记住上次所在)。
     // 访客态「维护」页签被 CSS 隐藏;若记住的正是它,回落到「外观」,避免四个 pane 全空。
